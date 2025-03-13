@@ -1,13 +1,12 @@
 WFLAGS := -Wall -Wpedantic -Wextra 
-
 CFLAGS := $(WFLAGS) -g -lm
 
+INPUT_TEST?=image2.bmp
+FILTER_TYPE?=mb
 
 main:
 	$(CC) -o main main.c libbmp/libbmp.c $(CFLAGS)
-
-main2:
-	$(CC) -o main2 main2.c cbmp/cbmp.c $(CFLAGS) 
+	./main $(INPUT_TEST) $(FILTER_TYPE)
 
 clean:
 	rm -rf *.bmp *.out main main2
