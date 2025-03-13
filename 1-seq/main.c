@@ -60,7 +60,6 @@ int compare_images(const bmp_img* img1, const bmp_img* img2)
             bmp_pixel pixel1 = img1->img_pixels[y][x];
             bmp_pixel pixel2 = img2->img_pixels[y][x];
 
-            // Compare RGB components of the pixels
             if (pixel1.red != pixel2.red || pixel1.green != pixel2.green || pixel1.blue != pixel2.blue) {
                 printf("Difference found at pixel (%d, %d):\n", x, y);
                 printf("Image 1 - R:%d G:%d B:%d\n", pixel1.red, pixel1.green, pixel1.blue);
@@ -99,7 +98,6 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height
                 }
             }
 
-            // Normalize the values
 			output_img->img_pixels[y][x].red = fmin(fmax((int)(red * cfilter.factor + cfilter.bias), 0), 255);
             output_img->img_pixels[y][x].green = fmin(fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
             output_img->img_pixels[y][x].blue = fmin(fmax((int)(blue * cfilter.factor + cfilter.bias), 0), 255);
@@ -107,7 +105,6 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height
     }
 }
 
-// Swap function for quick selection
 void swap(int *a, int *b) {
     int temp = *a;
     *a = *b;
@@ -195,7 +192,6 @@ int main(int argc, char *argv[]) {
 	
     snprintf(input_filepath, sizeof(input_filepath), "test/%s", input_filename);
 
-	// Read the input BMP image
     status = bmp_img_read(&img, input_filepath);
     if (status) {
         fprintf(stderr, "Error: Could not open BMP image\n");
@@ -229,7 +225,6 @@ int main(int argc, char *argv[]) {
 
     snprintf(output_filepath, sizeof(output_filepath), "test/output_%s", input_filename);
 
-    // Save the filtered image
     bmp_img_write(&img_result, output_filepath);
 	compare_images(&img, &img_result);
     

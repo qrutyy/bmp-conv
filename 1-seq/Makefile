@@ -5,7 +5,7 @@ INPUT_TEST?=image2.bmp
 FILTER_TYPE?=mb
 
 main:
-	$(CC) -o main main.c libbmp/libbmp.c $(CFLAGS)
+	$(CC) -o main main.c ../libbmp/libbmp.c $(CFLAGS)
 	./main $(INPUT_TEST) $(FILTER_TYPE)
 
 clean:
