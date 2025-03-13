@@ -6,42 +6,41 @@
 #include <string.h>
 #include "main.h"
 
-double factor = 1.0 / 9.0;
-double bias = 0.0;
-
-double motion_blur[9][9] = {
-    {1, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 1, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 1, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 1, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1}
-};
-
-double blur[5][5] =
+void init_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *edges)
 {
-  0, 0, 1, 0, 0,
-  0, 1, 1, 1, 0,
-  1, 1, 1, 1, 1,
-  0, 1, 1, 1, 0,
-  0, 0, 1, 0, 0,
-};
+	motion_blur->size = 9;
+	motion_blur->bias = 0.0;
+	motion_blur->factor = 1.0 / 9.0;
+	motion_blur->filter_arr = motion_blur_arr;
 
+	blur->size = 5;
+	blur->factor = 1.0 / 13.0;
+	blur->bias = 0.0;
+	blur->filter_arr = blur_arr;
 
+	gaus_blur->size = 5;
+	gaus_blur->bias = 0.0;
+	gaus_blur->factor = 1.0 / 256.0;
+	gaus_blur->filter_arr = gaus_blur_arr;
+
+	edges->size = 5;
+	edges->bias = 0.0;
+	edges->factor = 1.0;
+	edges->filter_arr = edges_arr;
+}
 
 // Function to compare two BMP images pixel-by-pixel
-int compare_images(const bmp_img* img1, const bmp_img* img2) {
+int compare_images(const bmp_img* img1, const bmp_img* img2)
+{
+	int width, height = 0;
     // Check if the dimensions of the images match
     if (img1->img_header.biWidth != img2->img_header.biWidth || img1->img_header.biHeight != img2->img_header.biHeight) {
         printf("Images have different dimensions!\n");
         return -1; // Dimensions are different
     }
 
-    int width = img1->img_header.biWidth;
-    int height = img1->img_header.biHeight;
+    width = img1->img_header.biWidth;
+    height = img1->img_header.biHeight;
 
     // Compare pixel values
     for (int y = 0; y < height; y++) {
@@ -61,23 +60,24 @@ int compare_images(const bmp_img* img1, const bmp_img* img2) {
     return 0; // Images are identical
 }
 
-void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, )
+void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, struct filter cfilter)
 {
-    int x, y, filterX, filterY, imageX, imageY;
+    int x, y, filterX, filterY, imageX, imageY, weight = 0;
+	bmp_pixel orig_pixel;
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++) {
             int red = 0, green = 0, blue = 0;
 
-            for (filterY = 0; filterY < FILTER_SIDE_SIZE; filterY++) {
-                for (filterX = 0; filterX < FILTER_SIDE_SIZE; filterX++) {
+            for (filterY = 0; filterY < cfilter.size; filterY++) {
+                for (filterX = 0; filterX < cfilter.size; filterX++) {
                     imageX = (x + filterX - PADDING + width) % width;
                     imageY = (y + filterY - PADDING + height) % height;
 
                     // Check if the pixel is within bounds
                     if (imageX >= 0 && imageX < width && imageY >= 0 && imageY < height) {
-                        bmp_pixel orig_pixel = input_img->img_pixels[imageY][imageX];
-                        int weight = motion_blur[filterY][filterX];
+                        orig_pixel = input_img->img_pixels[imageY][imageX];
+                        weight = cfilter.filter_arr[filterY][filterX];
 
                         // Multiply the pixel value with the filter weight
                         red += orig_pixel.red * weight;
@@ -88,9 +88,9 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height
             }
 
             // Normalize the values
-			output_img->img_pixels[y][x].red = fmin(fmax((int)(red * factor + bias), 0), 255);
-            output_img->img_pixels[y][x].green = fmin(fmax((int)(green * factor + bias), 0), 255);
-            output_img->img_pixels[y][x].blue = fmin(fmax((int)(blue * factor + bias), 0), 255);
+			output_img->img_pixels[y][x].red = fmin(fmax((int)(red * cfilter.factor + cfilter.bias), 0), 255);
+            output_img->img_pixels[y][x].green = fmin(fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
+            output_img->img_pixels[y][x].blue = fmin(fmax((int)(blue * cfilter.factor + cfilter.bias), 0), 255);
         }
     }
 }
@@ -100,6 +100,7 @@ int main(int argc, char *argv[]) {
     enum bmp_error status;
 	char output_filepath[MAX_PATH_LEN];
 	char input_filepath[MAX_PATH_LEN];
+	struct filter blur, motion_blur, gaus_blur, edges; 
 
 	if (argc < 3) {
         printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
@@ -125,11 +126,16 @@ int main(int argc, char *argv[]) {
     int height = img.img_header.biHeight;
 
 	bmp_img_init_df(&img_result, width, height);
-
+	init_filters(&blur, &motion_blur, &gaus_blur, &edges);
+	
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(&img, &img_result, width, height, motion_blur, 9);
+		apply_filter(&img, &img_result, width, height, motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(&img, &img_result, width, height, blur, 5);
+		apply_filter(&img, &img_result, width, height, blur);
+	} else if (strcmp(filter_type, "gb") == 0) {
+		apply_filter(&img, &img_result, width, height, gaus_blur);
+	} else if (strcmp(filter_type, "ed") == 0) {
+		apply_filter(&img, &img_result, width, height, edges);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 		return -1;
