@@ -7,10 +7,12 @@
 #include "main.h"
 #include <pthread.h>
 #include <sys/time.h>
+#include "../utils/utils.h"
 
 const char *input_filename;
 const char *filter_type;
 struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
+pthread_mutex_t input_img_m = PTHREAD_MUTEX_INITIALIZER;
 
 void init_filter(struct filter *f, int size, double bias, double factor, const double arr[size][size])
 {
@@ -55,55 +57,46 @@ void free_filters(struct filter *blur, struct filter *motion_blur, struct filter
 	free_filter(emboss);
 }
 
-int compare_images(const bmp_img *img1, const bmp_img *img2)
+struct img_dim *init_dimensions(int width, int height)
 {
-	int width, height = 0;
-	if (img1->img_header.biWidth != img2->img_header.biWidth ||
-	    img1->img_header.biHeight != img2->img_header.biHeight) {
-		printf("Images have different dimensions!\n");
-		return -1;
-	}
-
-	width = img1->img_header.biWidth;
-	height = img1->img_header.biHeight;
-
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			bmp_pixel pixel1 = img1->img_pixels[y][x];
-			bmp_pixel pixel2 = img2->img_pixels[y][x];
-
-			if (pixel1.red != pixel2.red || pixel1.green != pixel2.green || pixel1.blue != pixel2.blue) {
-				printf("Difference found at pixel (%d, %d):\n", x, y);
-				printf("Image 1 - R:%d G:%d B:%d\n", pixel1.red, pixel1.green, pixel1.blue);
-				printf("Image 2 - R:%d G:%d B:%d\n", pixel2.red, pixel2.green, pixel2.blue);
-				return 1; // Found a difference
-			}
-		}
-	}
-	return 0; // Images are identical
+	struct img_dim *dim = malloc(sizeof(struct img_dim));
+	if (!dim)
+		return NULL;
+	dim->width = width;
+	dim->height = height;
+	return dim;
 }
 
-void apply_filter(bmp_img *input_img, bmp_img *output_img, struct filter *cfilter, struct thread_spec *spec)
+struct img_spec *init_img_spec(bmp_img *input, bmp_img *output)
+{
+	struct img_spec *spec = malloc(sizeof(struct img_spec));
+	if (!spec)
+		return NULL;
+	spec->input_img = input;
+	spec->output_img = output;
+	return spec;
+}
+
+void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
+	printf("start x: %d, end x: %d\n", spec->start_column, spec->start_column + spec->count);
 
-	for (y = 0; y < spec->height; y++) {
-		for (x = spec->start_column; x < spec->start_column + spec->count; x++) {
+	for (x = spec->start_column; x < spec->start_column + spec->count; x++) {
+		for (y = 0; y < spec->dim->height; y++) {
 			int red = 0, green = 0, blue = 0;
 
-			for (filterY = 0; filterY < cfilter->size; filterY++) {
-				for (filterX = 0; filterX < cfilter->size; filterX++) {
-					imageX = (x + filterX - PADDING + spec->width) % spec->width;
-					imageY = (y + filterY - PADDING + spec->height) % spec->height;
+			for (filterY = 0; filterY < cfilter.size; filterY++) {
+				for (filterX = 0; filterX < cfilter.size; filterX++) {
+					imageX = (x + filterX - PADDING + spec->dim->width) % spec->dim->width;
+					imageY = (y + filterY - PADDING + spec->dim->height) % spec->dim->height;
 
 					// Check if the pixel is within bounds
-					if (imageX >= 0 && imageX < spec->width && imageY >= 0 &&
-					    imageY < spec->height) {
-						// mutex here
-						orig_pixel = input_img->img_pixels[imageY][imageX];
-						// end
-						weight = cfilter->filter_arr[filterY][filterX];
+					if (imageX >= 0 && imageX < spec->dim->width && imageY >= 0 &&
+					    imageY < spec->dim->height) {
+						orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
+						weight = cfilter.filter_arr[filterY][filterX];
 
 						// Multiply the pixel value with the filter weight
 						red += orig_pixel.red * weight;
@@ -113,51 +106,17 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, struct filter *cfilte
 				}
 			}
 
-			output_img->img_pixels[y][x].red =
-				fmin(fmax((int)(red * cfilter->factor + cfilter->bias), 0), 255);
-			output_img->img_pixels[y][x].green =
-				fmin(fmax((int)(green * cfilter->factor + cfilter->bias), 0), 255);
-			output_img->img_pixels[y][x].blue =
-				fmin(fmax((int)(blue * cfilter->factor + cfilter->bias), 0), 255);
+			spec->img->output_img->img_pixels[y][x].red =
+				fmin(fmax((int)(red * cfilter.factor + cfilter.bias), 0), 255);
+			spec->img->output_img->img_pixels[y][x].green =
+				fmin(fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
+			spec->img->output_img->img_pixels[y][x].blue =
+				fmin(fmax((int)(blue * cfilter.factor + cfilter.bias), 0), 255);
 		}
 	}
 }
 
-void swap(int *a, int *b)
-{
-	int temp = *a;
-	*a = *b;
-	*b = temp;
-}
-
-int selectKth(int *data, int s, int e, int k)
-{
-	if (e - s <= 5) {
-		for (int i = s + 1; i < e; i++)
-			for (int j = i; j > s && data[j - 1] > data[j]; j--)
-				swap(&data[j], &data[j - 1]);
-		return data[s + k];
-	}
-
-	int p = (s + e) / 2;
-	swap(&data[p], &data[e - 1]);
-
-	int j = s;
-	for (int i = s; i < e - 1; i++)
-		if (data[i] < data[e - 1])
-			swap(&data[i], &data[j++]);
-
-	swap(&data[j], &data[e - 1]);
-
-	if (k == j - s)
-		return data[j];
-	else if (k < j - s)
-		return selectKth(data, s, j, k);
-	else
-		return selectKth(data, j + 1, e, k - (j - s + 1));
-}
-
-void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, int filter_size)
+void apply_median_filter(struct thread_spec *spec, int filter_size)
 {
 	int half_size = filter_size / 2;
 	int filter_area = filter_size * filter_size;
@@ -166,17 +125,17 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 	int *green = malloc(filter_area * sizeof(int));
 	int *blue = malloc(filter_area * sizeof(int));
 
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
+	for (int y = 0; y < spec->dim->height; y++) {
+		for (int x = 0; x < spec->dim->width; x++) {
 			int n = 0;
 
 			// Collect neighboring pixels
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {
 				for (int filterX = -half_size; filterX <= half_size; filterX++) {
-					int imageX = (x + filterX + width) % width;
-					int imageY = (y + filterY + height) % height;
+					int imageX = (x + filterX + spec->dim->width) % spec->dim->width;
+					int imageY = (y + filterY + spec->dim->height) % spec->dim->height;
 
-					bmp_pixel orig_pixel = input_img->img_pixels[imageY][imageX];
+					bmp_pixel orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
 
 					red[n] = orig_pixel.red;
 					green[n] = orig_pixel.green;
@@ -186,9 +145,10 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 			}
 
 			// Apply median filter using selectKth to get the middle value
-			output_img->img_pixels[y][x].red = selectKth(red, 0, filter_area, filter_area / 2);
-			output_img->img_pixels[y][x].green = selectKth(green, 0, filter_area, filter_area / 2);
-			output_img->img_pixels[y][x].blue = selectKth(blue, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].red = selectKth(red, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].green =
+				selectKth(green, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].blue = selectKth(blue, 0, filter_area, filter_area / 2);
 		}
 	}
 
@@ -199,7 +159,9 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 
 int parse_args(int argc, char *argv[])
 {
-	if (argc < 3) {
+	int threadnum = 0;
+
+	if (argc < 4) {
 		printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
 		return -1;
 	}
@@ -210,110 +172,124 @@ int parse_args(int argc, char *argv[])
 	printf("Input image: %s\n", input_filename);
 	printf("Filter type: %s\n", filter_type);
 
-	if (strncmp(argv[1], "--threadnum=", 12) == 0) {
-		threadnum = atoi(argv[1] + 12);
+	if (strncmp(argv[3], "--threadnum=", 12) == 0) {
+		threadnum = atoi(argv[3] + 12);
 		printf("Number of threads: %d\n", threadnum);
 	} else {
 		fprintf(stderr, "Please use correct arg descriptors\n");
 		return -1;
 	}
-	return 0;
+	return threadnum;
 }
 
-// takes row number as a parameter
-void *filter_part_computation(void *args)
+void filter_part_computation(struct thread_spec *spec)
 {
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(&img, &img_result, width, height, motion_blur);
+		apply_filter(spec, motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(&img, &img_result, width, height, blur);
+		apply_filter(spec, blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
-		apply_filter(&img, &img_result, width, height, gaus_blur);
+		apply_filter(spec, gaus_blur);
 	} else if (strcmp(filter_type, "co") == 0) {
-		apply_filter(&img, &img_result, width, height, conv);
+		apply_filter(spec, conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
-		apply_filter(&img, &img_result, width, height, sharpen);
+		apply_filter(spec, sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
-		apply_filter(&img, &img_result, width, height, embos);
+		apply_filter(spec, embos);
 	} else if (strcmp(filter_type, "mm") == 0) {
-		apply_median_filter(&img, &img_result, width, height, 15);
+		apply_median_filter(spec, 15);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
-		return -1;
 	}
 }
 
-double get_time_in_seconds(void)
+void *thread_function(void *arg)
 {
-	struct timeval time;
-	gettimeofday(&time, NULL);
-	return (double)time.tv_sec + (double)time.tv_usec * 0.000001;
+	struct thread_spec *spec = (struct thread_spec *)arg;
+	filter_part_computation(spec);
+	free(spec);
+	return NULL;
 }
 
 int main(int argc, char *argv[])
 {
 	bmp_img img, img_result;
-	enum bmp_error status;
-	char output_filepath[MAX_PATH_LEN];
-	char input_filepath[MAX_PATH_LEN];
-	int width, height = 0;
-	double start_time, end_time = 0;
 	pthread_t *th = NULL;
+	struct img_dim *dim = NULL;
+	struct img_spec *img_spec = NULL;
+	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
+	double start_time, end_time = 0;
+	int i = 0, threadnum;
 
-	if (parse_args(argc, argv))
-		return -1;
-
+	threadnum = parse_args(argc, argv);
 	th = malloc(threadnum * sizeof(pthread_t));
+	if (!th)
+		goto mem_err;
 
 	snprintf(input_filepath, sizeof(input_filepath), "../test/%s", input_filename);
-	status = bmp_img_read(&img, input_filepath);
-	if (status) {
+
+	if (bmp_img_read(&img, input_filepath)) {
 		fprintf(stderr, "Error: Could not open BMP image\n");
-		goto input_error;
+		return -1;
 	}
-	if (img.img_header.biHeight % threadnum != 0) {
-		fprintf(stderr, "Error: threadnum should divide BMP height with no remainder\n");
-		goto input_error;
+	if (img.img_header.biWidth % threadnum != 0) {
+		fprintf(stderr, "Warning: threadnum should divide BMP width with no remainder\n");
+		do {
+			threadnum--;
+		} while (img.img_header.biWidth % threadnum == 0);
+
+		fprintf(stderr, "Warning: decreased threadnum to %d\n", threadnum);
+		if (threadnum <= 1) {
+			fprintf(stderr, "Error: no dividers of biWidth found. Try bigger value\n");
+			return -1;
+		}
 	}
 
-	width = img.img_header.biWidth;
-	height = img.img_header.biHeight;
-	bmp_img_init_df(&img_result, width, height);
+	dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
+	if (!dim)
+		goto mem_err;
+
+	bmp_img_init_df(&img_result, dim->width, dim->height);
+	img_spec = init_img_spec(&img, &img_result);
 	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos);
 
 	start_time = get_time_in_seconds();
 
 	for (i = 0; i < threadnum; i++) {
-		int *a = malloc(sizeof(int));
-		*a = i;
-		if (pthread_create(&th[i], NULL, &filter_part_computation, a) != 0) {
-			perror("Failed to create a thread\n");
+		struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
+		if (!th_spec)
+			goto mem_err;
+		th_spec->count = img.img_header.biWidth / threadnum;
+		th_spec->start_column = i * th_spec->count;
+		th_spec->dim = dim;
+		th_spec->img = img_spec;
+		if (pthread_create(&th[i], NULL, thread_function, th_spec) != 0) {
+			perror("Failed to create a thread");
+			free(th_spec);
 		}
 	}
 
-	for (i = 0; i < threadnum; i++) {
-		if (pthread_join(th[i], NULL) != 0) {
-			perror("Failed to join a thread\n");
-		}
-	}
+	for (i = 0; i < threadnum; i++)
+		pthread_join(th[i], NULL);
 
 	end_time = get_time_in_seconds();
+
 	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n", filter_type, threadnum,
 	       end_time - start_time);
-
-	snprintf(output_filepath, sizeof(output_filepath), "../test/output_%s", input_filename);
+	snprintf(output_filepath, sizeof(output_filepath), "../test/con_out_%s", input_filename);
 
 	bmp_img_write(&img_result, output_filepath);
 	compare_images(&img, &img_result);
 
+	free(th);
+	free(dim);
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
-	free(th);
-
-	printf("Processing complete. Filtered image saved as output.bmp\n");
 	return 0;
 
-input_error:
-	kfree(th);
+mem_err:
+	fprintf(stderr, "Memory allocation error\n");
+	free(th);
+	free(dim);
 	return -1;
 }
