@@ -1,12 +1,13 @@
 #pragma once
 
 #include <stdio.h>
+#include "../libbmp/libbmp.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#define MAX_PATH_LEN 24
+#define MAX_PATH_LEN 30
 #define MAX_FILTER_SIZE 9
-#define PADDING (cfilter->size / 2)
+#define PADDING (cfilter.size / 2)
 
 struct filter {
 	int size;
@@ -15,10 +16,20 @@ struct filter {
 	double **filter_arr;
 };
 
-struct thread_spec {
-	int start_column;
-	int width;
+struct img_dim {
 	int height;
+	int width;
+};
+
+struct img_spec {
+	bmp_img *input_img;
+	bmp_img *output_img;
+};
+
+struct thread_spec {
+	struct img_spec *img;
+	struct img_dim *dim;
+	int start_column;
 	int count;
 };
 
