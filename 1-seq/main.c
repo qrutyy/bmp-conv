@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "libbmp/libbmp.h"
+#include "../libbmp/libbmp.h"
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
@@ -177,20 +177,23 @@ int main(int argc, char *argv[]) {
     enum bmp_error status;
 	char output_filepath[MAX_PATH_LEN];
 	char input_filepath[MAX_PATH_LEN];
+	const char *filter_type;
+	const char *input_filename; 
 	struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos; 
+	int width, height = 0; 
 
 	if (argc < 3) {
         printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
         return -1;
     }
 
-    const char *input_filename = argv[1]; 
-	const char *filter_type = argv[2];     
+    input_filename = argv[1]; 
+	filter_type = argv[2];     
 
     printf("Input image: %s\n", input_filename);
     printf("Filter type: %s\n", filter_type);
 	
-    snprintf(input_filepath, sizeof(input_filepath), "test/%s", input_filename);
+    snprintf(input_filepath, sizeof(input_filepath), "../test/%s", input_filename);
 
     status = bmp_img_read(&img, input_filepath);
     if (status) {
@@ -198,8 +201,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-	int width = img.img_header.biWidth;
-    int height = img.img_header.biHeight;
+	width = img.img_header.biWidth;
+    height = img.img_header.biHeight;
 
 	bmp_img_init_df(&img_result, width, height);
 	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos);
@@ -223,7 +226,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-    snprintf(output_filepath, sizeof(output_filepath), "test/output_%s", input_filename);
+    snprintf(output_filepath, sizeof(output_filepath), "../test/output_%s", input_filename);
 
     bmp_img_write(&img_result, output_filepath);
 	compare_images(&img, &img_result);
