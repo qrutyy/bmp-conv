@@ -1,10 +1,8 @@
 #pragma once
 
-#include <stdio.h>
-
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#define MAX_PATH_LEN 24
+#define MAX_PATH_LEN 30
 #define MAX_FILTER_SIZE 9
 #define PADDING (cfilter.size / 2)
 

@@ -4,12 +4,15 @@ CFLAGS := $(WFLAGS) -g -lm
 INPUT_TEST?=image2.bmp
 FILTER_TYPE?=mb
 
-main:
-	$(CC) -o main main.c ../libbmp/libbmp.c $(CFLAGS)
-	./main $(INPUT_TEST) $(FILTER_TYPE)
+main: main.c
+	$(CC) -o main main.c ../libbmp/libbmp.c ../utils/utils.c $(CFLAGS)
+	make run_main
+
+run_main:
+	./main $(INPUT_TEST) $(FILTER_TYPE) 
 
 clean:
-	rm -rf *.bmp *.out main main2
+	rm -rf *.out main *.o
 
 .PHONY:
-	clean
+	clean run_main
