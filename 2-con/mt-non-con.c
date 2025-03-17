@@ -119,10 +119,10 @@ void *thread_spec_init(bmp_img *img, int i, int threadnum, enum compute_mode m)
 		th_spec->end_column = th_spec->start_column + count;
 		break;
 	case BY_PIXEL:
-		fprintf(stderr, "Error: Not implemented yet\n");
+		fprintf(stderr, "Error: Not implemented yet and wouldn't be. Check con version.\n");
 		return NULL;
 	case BY_GRID:
-		fprintf(stderr, "Error: Not implemented yet\n");
+		fprintf(stderr, "Error: Not implemented yet and wouldn't be. Check con version.\n");
 		return NULL;
 	}
 	return th_spec;

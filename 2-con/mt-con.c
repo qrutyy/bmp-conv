@@ -17,8 +17,11 @@ const char *input_filename;
 const char *filter_type;
 struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
 int block_size = 0;
-int next_block = 0;
-pthread_mutex_t block_mutex = PTHREAD_MUTEX_INITIALIZER;
+int next_x_block = 0;
+int next_y_block = 0;
+pthread_mutex_t x_block_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t y_block_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 enum compute_mode mode;
 
 int parse_args(int argc, char *argv[])
@@ -101,6 +104,91 @@ void filter_part_computation(struct thread_spec *spec)
 	}
 }
 
+void process_by_row(struct thread_spec *th_spec)
+{
+	pthread_mutex_lock(&x_block_mutex);
+	printf("next_block: %d, height: %d\n", next_x_block, th_spec->dim->height);
+
+	if (next_x_block >= th_spec->dim->height) {
+		pthread_mutex_unlock(&x_block_mutex);
+		return;
+	}
+	th_spec->start_row = next_x_block;
+	next_x_block += block_size;
+	pthread_mutex_unlock(&x_block_mutex);
+
+	th_spec->start_column = 0;
+	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
+	th_spec->end_column = th_spec->dim->width;
+}
+
+void process_by_column(struct thread_spec *th_spec)
+{
+	pthread_mutex_lock(&y_block_mutex);
+	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
+
+	if (next_y_block >= th_spec->dim->width) {
+		pthread_mutex_unlock(&y_block_mutex);
+		return;
+	}
+
+	th_spec->start_column = next_y_block;
+	next_y_block += block_size;
+	pthread_mutex_unlock(&y_block_mutex);
+
+	th_spec->start_row = 0;
+	th_spec->end_row = th_spec->dim->height;
+	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
+}
+
+void process_by_pixel(struct thread_spec *th_spec)
+{
+	pthread_mutex_lock(&xy_block_mutex);
+	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
+		pthread_mutex_unlock(&xy_block_mutex);
+		return;
+	}
+
+	th_spec->start_row = next_x_block;
+	th_spec->start_column = next_y_block;
+	next_y_block += 1;
+
+	if (next_y_block >= th_spec->dim->width) {
+		next_y_block = 0;
+		next_x_block += 1;
+	}
+	pthread_mutex_unlock(&xy_block_mutex);
+
+	th_spec->end_row = th_spec->start_row + 1;
+	th_spec->end_column = th_spec->start_column + 1;
+	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
+	       th_spec->start_column, th_spec->end_column);
+}
+
+void process_by_grid(struct thread_spec *th_spec)
+{
+	pthread_mutex_lock(&xy_block_mutex);
+	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
+		pthread_mutex_unlock(&xy_block_mutex);
+		return;
+	}
+
+	th_spec->start_row = next_x_block;
+	th_spec->start_column = next_y_block;
+	next_y_block += block_size;
+
+	if (next_y_block >= th_spec->dim->width) {
+		next_y_block = 0;
+		next_x_block += block_size;
+	}
+	pthread_mutex_unlock(&xy_block_mutex);
+
+	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
+	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
+	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
+	       th_spec->start_column, th_spec->end_column);
+}
+
 void *thread_function(void *arg)
 {
 	struct thread_spec *th_spec = (struct thread_spec *)arg;
@@ -108,54 +196,25 @@ void *thread_function(void *arg)
 	while (1) {
 		switch (mode) {
 		case BY_ROW:
-			pthread_mutex_lock(&block_mutex);
-			printf("next_block: %d, height: %d\n", next_block, th_spec->dim->height);
-
-			if (next_block >= th_spec->dim->height) {
-				pthread_mutex_unlock(&block_mutex);
-				goto exit;
-			}
-			th_spec->start_row = next_block;
-			next_block += block_size;
-			pthread_mutex_unlock(&block_mutex);
-
-			th_spec->start_column = 0;
-			th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
-			th_spec->end_column = th_spec->dim->width;
+			process_by_row(th_spec);
 			break;
-
 		case BY_COLUMN:
-			pthread_mutex_lock(&block_mutex);
-			printf("next_block: %d, width: %d\n", next_block, th_spec->dim->width);
-
-			if (next_block >= th_spec->dim->width) {
-				pthread_mutex_unlock(&block_mutex);
-				goto exit;
-			}
-
-			th_spec->start_column = next_block;
-			next_block += block_size;
-			pthread_mutex_unlock(&block_mutex);
-
-			th_spec->start_row = 0;
-			th_spec->end_row = th_spec->dim->height;
-			th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
+			process_by_column(th_spec);
 			break;
-
 		case BY_PIXEL:
-			fprintf(stderr, "Error: Not implemented yet\n");
-			free(th_spec);
-			return NULL;
-
+			process_by_pixel(th_spec);
+			break;
 		case BY_GRID:
-			fprintf(stderr, "Error: Not implemented yet\n");
+			process_by_grid(th_spec);
+			break;
+		default:
 			free(th_spec);
 			return NULL;
 		}
+
 		filter_part_computation(th_spec);
 	}
 
-exit:
 	free(th_spec);
 	return NULL;
 }
@@ -229,7 +288,7 @@ int main(int argc, char *argv[])
 
 	end_time = get_time_in_seconds();
 
-	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n", filter_type, threadnum,
+	printf("\nRESULT: filter = %s, threadnum = %d, time = %.6f seconds\n", filter_type, threadnum,
 	       end_time - start_time);
 	snprintf(output_filepath, sizeof(output_filepath), "../test/rcon_out_%s", input_filename);
 
@@ -240,6 +299,9 @@ int main(int argc, char *argv[])
 	free(dim);
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
+	pthread_mutex_destroy(&x_block_mutex);
+	pthread_mutex_destroy(&y_block_mutex);
+	pthread_mutex_destroy(&xy_block_mutex);
 	return 0;
 
 mem_err:

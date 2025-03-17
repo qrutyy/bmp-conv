@@ -91,6 +91,7 @@ struct img_dim *init_dimensions(int width, int height)
 		return NULL;
 	dim->width = width;
 	dim->height = height;
+	printf("Width: %d, Height: %d\n", width, height);
 	return dim;
 }
 
