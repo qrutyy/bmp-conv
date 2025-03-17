@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "mt-utils.h"
 #include "../utils/utils.h"
 

@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "../libbmp/libbmp.h"
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
-#include "main.h"
 #include "../utils/utils.h"
 
 /** Comply to KISS, better* arch is shown in 2-con
