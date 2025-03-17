@@ -9,6 +9,10 @@
 #include <sys/time.h>
 #include "../utils/utils.h"
 
+/** TODO
+  * make thread mode (columns/rows per thread == const)
+  */
+
 const char *input_filename;
 const char *filter_type;
 struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
@@ -57,6 +61,7 @@ void free_filters(struct filter *blur, struct filter *motion_blur, struct filter
 	free_filter(emboss);
 }
 
+// if you are confused -> check header file
 struct img_dim *init_dimensions(int width, int height)
 {
 	struct img_dim *dim = malloc(sizeof(struct img_dim));
@@ -81,10 +86,10 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
-	printf("start x: %d, end x: %d\n", spec->start_column, spec->start_column + spec->count);
-
-	for (x = spec->start_column; x < spec->start_column + spec->count; x++) {
-		for (y = 0; y < spec->dim->height; y++) {
+	printf("start x:%d y:%d, end x:%d y:%d\n", spec->start_column, spec->start_row, spec->end_column, spec->end_row);
+	
+	for (x = spec->start_column; x < spec->end_column; x++) {
+		for (y = spec->start_row; y < spec->end_row; y++) {
 			int red = 0, green = 0, blue = 0;
 
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
@@ -125,11 +130,10 @@ void apply_median_filter(struct thread_spec *spec, int filter_size)
 	int *green = malloc(filter_area * sizeof(int));
 	int *blue = malloc(filter_area * sizeof(int));
 
-	for (int y = 0; y < spec->dim->height; y++) {
-		for (int x = 0; x < spec->dim->width; x++) {
+	for (int x = spec->start_column; x < spec->end_column; x++) {
+		for (int y = spec->start_row; y < spec->end_row; y++) {
 			int n = 0;
 
-			// Collect neighboring pixels
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {
 				for (int filterX = -half_size; filterX <= half_size; filterX++) {
 					int imageX = (x + filterX + spec->dim->width) % spec->dim->width;
@@ -157,9 +161,9 @@ void apply_median_filter(struct thread_spec *spec, int filter_size)
 	free(blue);
 }
 
-int parse_args(int argc, char *argv[])
+int parse_args(int argc, char *argv[], int *threadnum, enum compute_mode *mode)
 {
-	int threadnum = 0;
+	const char *mode_str; 
 
 	if (argc < 4) {
 		printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
@@ -173,13 +177,35 @@ int parse_args(int argc, char *argv[])
 	printf("Filter type: %s\n", filter_type);
 
 	if (strncmp(argv[3], "--threadnum=", 12) == 0) {
-		threadnum = atoi(argv[3] + 12);
-		printf("Number of threads: %d\n", threadnum);
+		*threadnum = atoi(argv[3] + 12);
+		printf("Number of threads: %d\n", *threadnum);
 	} else {
 		fprintf(stderr, "Please use correct arg descriptors\n");
 		return -1;
 	}
-	return threadnum;
+	
+	if (strncmp(argv[4], "--mode=", 7) == 0) {
+        mode_str = argv[4] + 7;
+
+        if (strcmp(mode_str, "by_row") == 0) {
+            *mode = BY_ROW;
+        } else if (strcmp(mode_str, "by_column") == 0) {
+            *mode = BY_COLUMN;
+        } else if (strcmp(mode_str, "by_pixel") == 0) {
+            *mode = BY_PIXEL;
+        } else if (strcmp(mode_str, "by_grid") == 0) {
+            *mode = BY_GRID;
+        } else {
+            fprintf(stderr, "Error: Invalid mode. Use by_row, by_column, by_pixel, or by_grid\n");
+            return -1;
+        }
+        printf("Mode selected: %s\n\n", mode_str);
+    } else {
+        fprintf(stderr, "Error: Missing or incorrect --mode argument\n");
+        return -1;
+    }
+	
+	return 0;
 }
 
 void filter_part_computation(struct thread_spec *spec)
@@ -211,17 +237,51 @@ void *thread_function(void *arg)
 	return NULL;
 }
 
+void *thread_spec_init(bmp_img *img, int i, int threadnum, enum compute_mode m)
+{
+	int count = 0;
+	struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
+	if (!th_spec)
+		return NULL;
+
+	switch (m) {
+		case BY_ROW:
+			count = img->img_header.biHeight / threadnum;
+			th_spec->start_row = i * count;
+			th_spec->start_column = 0;
+	  		th_spec->end_row = th_spec->start_row + count;
+			th_spec->end_column = img->img_header.biWidth;
+			break;
+		case BY_COLUMN:
+			count = img->img_header.biWidth / threadnum;
+			th_spec->start_column = i * count;
+			th_spec->start_row = 0;
+			th_spec->end_row = img->img_header.biHeight;
+			th_spec->end_column = th_spec->start_column + count;
+			break;
+		case BY_PIXEL:
+			fprintf(stderr, "Error: Not implemented yet\n");
+			return NULL;
+		case BY_GRID:
+			fprintf(stderr, "Error: Not implemented yet\n");
+			return NULL;
+	}
+	return th_spec;
+}
+
 int main(int argc, char *argv[])
 {
 	bmp_img img, img_result;
 	pthread_t *th = NULL;
 	struct img_dim *dim = NULL;
 	struct img_spec *img_spec = NULL;
+	struct thread_spec *th_spec = NULL;
 	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
 	double start_time, end_time = 0;
 	int i = 0, threadnum;
+	enum compute_mode mode;
 
-	threadnum = parse_args(argc, argv);
+	parse_args(argc, argv, &threadnum, &mode);
 	th = malloc(threadnum * sizeof(pthread_t));
 	if (!th)
 		goto mem_err;
@@ -256,13 +316,13 @@ int main(int argc, char *argv[])
 	start_time = get_time_in_seconds();
 
 	for (i = 0; i < threadnum; i++) {
-		struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
-		if (!th_spec)
+		th_spec = thread_spec_init(&img, i, threadnum, mode);
+		if (!th_spec){
 			goto mem_err;
-		th_spec->count = img.img_header.biWidth / threadnum;
-		th_spec->start_column = i * th_spec->count;
+		}
 		th_spec->dim = dim;
 		th_spec->img = img_spec;
+
 		if (pthread_create(&th[i], NULL, thread_function, th_spec) != 0) {
 			perror("Failed to create a thread");
 			free(th_spec);
