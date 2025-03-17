@@ -16,6 +16,14 @@ struct filter {
 	double **filter_arr;
 };
 
+enum compute_mode {
+	BY_ROW,
+	BY_COLUMN,
+	BY_PIXEL,
+	BY_GRID
+};
+
+// i know that isn't necessary, just a way to make it cleaner (without 6 -> somewhere)
 struct img_dim {
 	int height;
 	int width;
@@ -30,7 +38,9 @@ struct thread_spec {
 	struct img_spec *img;
 	struct img_dim *dim;
 	int start_column;
-	int count;
+	int start_row;
+	int end_row;
+	int end_column;
 };
 
 const double motion_blur_arr[9][9] = { { 1, 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 1, 0, 0, 0, 0, 0, 0, 0 },
