@@ -11,49 +11,6 @@
   * * - however, not the best though, todo
   */
 
-void init_filter(struct filter *f, int size, double bias, double factor, const double arr[size][size])
-{
-	f->size = size;
-	f->bias = bias;
-	f->factor = factor;
-
-	f->filter_arr = malloc(size * sizeof(double *));
-	for (int i = 0; i < size; i++) {
-		f->filter_arr[i] = malloc(size * sizeof(double));
-		memcpy(f->filter_arr[i], arr[i], size * sizeof(double));
-	}
-}
-
-void free_filter(struct filter *f)
-{
-	for (int i = 0; i < f->size; i++) {
-		free(f->filter_arr[i]);
-	}
-	free(f->filter_arr);
-}
-
-void init_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss)
-{
-	init_filter(motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
-	init_filter(blur, 5, 0.0, 1.0 / 13.0, blur_arr);
-	init_filter(gaus_blur, 5, 0.0, 1.0 / 256.0, gaus_blur_arr);
-	init_filter(conv, 3, 0.0, 1.0, conv_arr);
-	init_filter(sharpen, 3, 0.0, 1.0, sharpen_arr);
-	init_filter(emboss, 5, 128.0, 1.0, emboss_arr);
-}
-
-void free_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss)
-{
-	free_filter(motion_blur);
-	free_filter(blur);
-	free_filter(gaus_blur);
-	free_filter(conv);
-	free_filter(sharpen);
-	free_filter(emboss);
-}
-
 void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, struct filter cfilter)
 {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
