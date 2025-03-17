@@ -93,3 +93,5 @@ Temporary Items
 *.icloud
 
 *.state
+
+.clang-format
