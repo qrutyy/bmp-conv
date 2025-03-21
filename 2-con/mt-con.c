@@ -13,20 +13,25 @@
 
 /* *Real* mode (columns/rows per thread == const) */
 
+#define LOG_FILE_PATH "timing-results.dat"
+
 const char *input_filename;
 const char *filter_type;
+const char *mode_str;
+enum compute_mode mode;
+
 struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
+
 int block_size = 0;
 int next_x_block = 0;
 int next_y_block = 0;
 pthread_mutex_t x_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t y_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
-enum compute_mode mode;
 
 int parse_args(int argc, char *argv[])
 {
-	const char *mode_str;
+
 	int threadnum = 0;
 
 	if (argc < 4) {
@@ -104,14 +109,15 @@ void filter_part_computation(struct thread_spec *spec)
 	}
 }
 
-void process_by_row(struct thread_spec *th_spec)
+int process_by_row(struct thread_spec *th_spec)
 {
 	pthread_mutex_lock(&x_block_mutex);
-	printf("next_block: %d, height: %d\n", next_x_block, th_spec->dim->height);
+//	printf("next_block: %d, height: %d\n", next_x_block, th_spec->dim->height);
 
 	if (next_x_block >= th_spec->dim->height) {
 		pthread_mutex_unlock(&x_block_mutex);
-		return;
+		th_spec->start_row = th_spec->end_row = 0;
+		return 1;
 	}
 	th_spec->start_row = next_x_block;
 	next_x_block += block_size;
@@ -120,16 +126,19 @@ void process_by_row(struct thread_spec *th_spec)
 	th_spec->start_column = 0;
 	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
 	th_spec->end_column = th_spec->dim->width;
+
+	return 0;
 }
 
-void process_by_column(struct thread_spec *th_spec)
+int process_by_column(struct thread_spec *th_spec)
 {
 	pthread_mutex_lock(&y_block_mutex);
-	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
+//	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
 
 	if (next_y_block >= th_spec->dim->width) {
 		pthread_mutex_unlock(&y_block_mutex);
-		return;
+		th_spec->start_column = th_spec->end_column = 0;
+		return 1;
 	}
 
 	th_spec->start_column = next_y_block;
@@ -139,38 +148,18 @@ void process_by_column(struct thread_spec *th_spec)
 	th_spec->start_row = 0;
 	th_spec->end_row = th_spec->dim->height;
 	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
+
+	return 0;
 }
 
-void process_by_pixel(struct thread_spec *th_spec)
+int process_by_grid(struct thread_spec *th_spec)
 {
 	pthread_mutex_lock(&xy_block_mutex);
 	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
 		pthread_mutex_unlock(&xy_block_mutex);
-		return;
-	}
-
-	th_spec->start_row = next_x_block;
-	th_spec->start_column = next_y_block;
-	next_y_block += 1;
-
-	if (next_y_block >= th_spec->dim->width) {
-		next_y_block = 0;
-		next_x_block += 1;
-	}
-	pthread_mutex_unlock(&xy_block_mutex);
-
-	th_spec->end_row = th_spec->start_row + 1;
-	th_spec->end_column = th_spec->start_column + 1;
-	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
-	       th_spec->start_column, th_spec->end_column);
-}
-
-void process_by_grid(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&xy_block_mutex);
-	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&xy_block_mutex);
-		return;
+		th_spec->start_row = th_spec->end_row = 0;
+        th_spec->start_column = th_spec->end_column = 0;
+		return 1;
 	}
 
 	th_spec->start_row = next_x_block;
@@ -185,8 +174,15 @@ void process_by_grid(struct thread_spec *th_spec)
 
 	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
 	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
-	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
-	       th_spec->start_column, th_spec->end_column);
+	// printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row, th_spec->start_column, th_spec->end_column);
+
+	return 0;
+}
+
+int process_by_pixel(struct thread_spec *th_spec)
+{
+	block_size = 1;
+	return process_by_grid(th_spec);
 }
 
 void *thread_function(void *arg)
@@ -196,16 +192,20 @@ void *thread_function(void *arg)
 	while (1) {
 		switch (mode) {
 		case BY_ROW:
-			process_by_row(th_spec);
+			if (process_by_row(th_spec))
+					goto exit;
 			break;
 		case BY_COLUMN:
-			process_by_column(th_spec);
+				if (process_by_column(th_spec))
+					goto exit;
 			break;
 		case BY_PIXEL:
-			process_by_pixel(th_spec);
+				if (process_by_pixel(th_spec))
+					goto exit;
 			break;
 		case BY_GRID:
-			process_by_grid(th_spec);
+				if (process_by_grid(th_spec))
+					goto exit;
 			break;
 		default:
 			free(th_spec);
@@ -215,8 +215,9 @@ void *thread_function(void *arg)
 		filter_part_computation(th_spec);
 	}
 
-	free(th_spec);
-	return NULL;
+exit:
+ 	free(th_spec);
+ 	return NULL;
 }
 
 void *thread_spec_init()
@@ -238,6 +239,7 @@ int main(int argc, char *argv[])
 	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
 	double start_time, end_time = 0;
 	int i, threadnum = 0;
+	FILE *file = NULL;
 
 	threadnum = parse_args(argc, argv);
 	if (threadnum < 0) {
@@ -248,7 +250,7 @@ int main(int argc, char *argv[])
 	if (!th)
 		goto mem_err;
 
-	snprintf(input_filepath, sizeof(input_filepath), "../test/%s", input_filename);
+	snprintf(input_filepath, sizeof(input_filepath), "../test-img/%s", input_filename);
 
 	if (bmp_img_read(&img, input_filepath)) {
 		fprintf(stderr, "Error: Could not open BMP image\n");
@@ -288,12 +290,20 @@ int main(int argc, char *argv[])
 
 	end_time = get_time_in_seconds();
 
-	printf("\nRESULT: filter = %s, threadnum = %d, time = %.6f seconds\n", filter_type, threadnum,
+	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n\n", filter_type, threadnum,
 	       end_time - start_time);
-	snprintf(output_filepath, sizeof(output_filepath), "../test/rcon_out_%s", input_filename);
+
+	file = fopen(LOG_FILE_PATH, "a");
+    if (file) {
+		fprintf(file, "%s %d %s %d %.6f\n", filter_type, threadnum, mode_str, block_size, end_time - start_time);
+        fclose(file);
+    } else {
+        fprintf(stderr, "Error: could not open timing results file\n");
+    }
+
+	snprintf(output_filepath, sizeof(output_filepath), "../test-img/rcon_out_%s", input_filename);
 
 	bmp_img_write(&img_result, output_filepath);
-	compare_images(&img, &img_result);
 
 	free(th);
 	free(dim);
