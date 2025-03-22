@@ -12,6 +12,8 @@
   * * - however, not the best though, todo
   */
 
+const char *output_filename = NULL;
+
 void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, struct filter cfilter)
 {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
 	char input_filepath[MAX_PATH_LEN];
 	const char *filter_type;
 	const char *input_filename;
-	struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
+	struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
 	int width, height = 0;
 
 	if (argc < 3) {
@@ -110,6 +112,11 @@ int main(int argc, char *argv[])
 
 	printf("Input image: %s\n", input_filename);
 	printf("Filter type: %s\n", filter_type);
+	
+    if (argc == 4 && strncmp(argv[3], "--output=", 9) == 0) {
+        output_filename = argv[3] + 9;
+        printf("Output filename set to: %s\n", output_filename);
+    }
 
 	snprintf(input_filepath, sizeof(input_filepath), "../test-img/%s", input_filename);
 
@@ -123,7 +130,7 @@ int main(int argc, char *argv[])
 	height = img.img_header.biHeight;
 
 	bmp_img_init_df(&img_result, width, height);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos);
+	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos, &big_gaus);
 
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(&img, &img_result, width, height, motion_blur);
@@ -131,6 +138,8 @@ int main(int argc, char *argv[])
 		apply_filter(&img, &img_result, width, height, blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
 		apply_filter(&img, &img_result, width, height, gaus_blur);
+	} else if (strcmp(filter_type, "gg") == 0) {
+		apply_filter(&img, &img_result, width, height, big_gaus);
 	} else if (strcmp(filter_type, "co") == 0) {
 		apply_filter(&img, &img_result, width, height, conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
@@ -144,13 +153,18 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	snprintf(output_filepath, sizeof(output_filepath), "../test-img/seq_out_%s", input_filename);
+	if (output_filename) {
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s", output_filename);
+	} else {
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/seq_out_%s", input_filename);
+	}
 
 	bmp_img_write(&img_result, output_filepath);
+//	compare_images(&img, &img_result);
 
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
 
-	printf("Sequential processing completed.\n");
+	printf("Processing complete. Filtered image saved as %s\n", output_filepath);
 	return 0;
 }

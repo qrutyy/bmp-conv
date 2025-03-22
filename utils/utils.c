@@ -33,6 +33,23 @@ const double emboss_arr[5][5] = { { -1, -1, -1, -1, 0 },
 				  { -1, 0, 1, 1, 1 },
 				  { 0, 1, 1, 1, 1 } };
 
+const double big_gaus_arr[15][15] = {
+    {2, 2, 3, 3, 4, 4, 5, 5, 5, 4, 4, 3, 3, 2, 2},
+    {2, 3, 3, 4, 4, 5, 5, 6, 5, 5, 4, 4, 3, 3, 2},
+    {3, 3, 4, 5, 5, 6, 6, 7, 6, 6, 5, 5, 4, 3, 3},
+    {3, 4, 5, 6, 7, 7, 8, 8, 8, 7, 7, 6, 5, 4, 3},
+    {4, 4, 5, 7, 8, 9, 9, 10, 9, 9, 8, 7, 5, 4, 4},
+    {4, 5, 6, 7, 9, 10, 11, 11, 11, 10, 9, 7, 6, 5, 4},
+    {5, 5, 6, 8, 9, 11, 12, 12, 12, 11, 9, 8, 6, 5, 5},
+    {5, 6, 7, 8, 10, 11, 12, 13, 12, 11, 10, 8, 7, 6, 5},
+    {5, 5, 6, 8, 9, 11, 12, 12, 12, 11, 9, 8, 6, 5, 5},
+    {4, 5, 6, 7, 9, 10, 11, 11, 11, 10, 9, 7, 6, 5, 4},
+    {4, 4, 5, 7, 8, 9, 9, 10, 9, 9, 8, 7, 5, 4, 4},
+    {3, 4, 5, 6, 7, 7, 8, 8, 8, 7, 7, 6, 5, 4, 3},
+    {3, 3, 4, 5, 5, 6, 6, 7, 6, 6, 5, 5, 4, 3, 3},
+    {2, 3, 3, 4, 4, 5, 5, 6, 5, 5, 4, 4, 3, 3, 2},
+    {2, 2, 3, 3, 4, 4, 5, 5, 5, 4, 4, 3, 3, 2, 2}
+};
 void swap(int *a, int *b)
 {
 	int temp = *a;
@@ -124,7 +141,7 @@ static void free_filter(struct filter *f)
 }
 
 void init_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss)
+		  struct filter *sharpen, struct filter *emboss, struct filter *big_gaus)
 {
 	init_filter(motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
 	init_filter(blur, 5, 0.0, 1.0 / 13.0, blur_arr);
@@ -132,10 +149,11 @@ void init_filters(struct filter *blur, struct filter *motion_blur, struct filter
 	init_filter(conv, 3, 0.0, 1.0, conv_arr);
 	init_filter(sharpen, 3, 0.0, 1.0, sharpen_arr);
 	init_filter(emboss, 5, 128.0, 1.0, emboss_arr);
+	init_filter(big_gaus, 15, 0.0, 1.0 / 771, big_gaus_arr);
 }
 
 void free_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss)
+		  struct filter *sharpen, struct filter *emboss,struct filter *big_gaus)
 {
 	free_filter(motion_blur);
 	free_filter(blur);
@@ -143,4 +161,5 @@ void free_filters(struct filter *blur, struct filter *motion_blur, struct filter
 	free_filter(conv);
 	free_filter(sharpen);
 	free_filter(emboss);
+	free_filter(big_gaus);
 }

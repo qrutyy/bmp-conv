@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdio.h>
@@ -13,14 +14,15 @@
 
 /* *Real* mode (columns/rows per thread == const) */
 
-#define LOG_FILE_PATH "timing-results.dat"
+#define LOG_FILE_PATH "tests/timing-results.dat"
 
 const char *input_filename;
+const char *output_filename = NULL;
 const char *filter_type;
 const char *mode_str;
 enum compute_mode mode;
 
-struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
+struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
 
 int block_size = 0;
 int next_x_block = 0;
@@ -85,6 +87,13 @@ int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
+    for (int i = 6; i < argc; i++) {
+        if (strncmp(argv[i], "--output=", 9) == 0) {
+            output_filename = argv[i] + 9;
+            printf("Output filename set to: %s\n", output_filename);
+        }
+    }
+
 	return threadnum;
 }
 
@@ -104,6 +113,8 @@ void filter_part_computation(struct thread_spec *spec)
 		apply_filter(spec, embos);
 	} else if (strcmp(filter_type, "mm") == 0) {
 		apply_median_filter(spec, 15);
+	} else if (strcmp(filter_type, "gg") == 0) {
+		apply_filter(spec, big_gaus);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 	}
@@ -265,7 +276,7 @@ int main(int argc, char *argv[])
 
 	bmp_img_init_df(&img_result, dim->width, dim->height);
 	img_spec = init_img_spec(&img, &img_result);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos);
+	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos, &big_gaus);
 
 	start_time = get_time_in_seconds();
 
@@ -301,7 +312,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Error: could not open timing results file\n");
     }
 
-	snprintf(output_filepath, sizeof(output_filepath), "../test-img/rcon_out_%s", input_filename);
+	if (output_filename) {
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s", output_filename);
+	} else {
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/rcon_out_%s", input_filename);
+	}
 
 	bmp_img_write(&img_result, output_filepath);
 
