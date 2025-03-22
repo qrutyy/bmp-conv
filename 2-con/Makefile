@@ -7,20 +7,20 @@ THREAD_NUM?=2
 COMPUTE_MODE=by_column
 BLOCK_SIZE=5
 
-mt-non-cn: mt_non_con.c
-	$(CC) -o mt-non-con mt-non-con.c ../libbmp/libbmp.c ../utils/utils.c mt-utils.c $(CFLAGS)
+UTILS_PATH = ../utils
+LIBBMP_PATH = ../libbmp
 
-run-non-con:
-	./mt-non-con $(INPUT_TEST) $(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE)
+UTILS_SRC = $(UTILS_PATH)/utils.c $(UTILS_PATH)/mt-utils.c
+LIBBMP_SRC = $(LIBBMP_PATH)/libbmp.c
 
 mt-con: mt-con.c
-	$(CC) -o mt-con mt-con.c ../libbmp/libbmp.c ../utils/utils.c mt-utils.c  $(CFLAGS)
+	$(CC) -o mt-con mt-con.c $(LIBBMP_SRC) $(UTILS_SRC) $(CFLAGS)
 
 run-con:
 	./mt-con $(INPUT_TEST) $(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE) --block=$(BLOCK_SIZE)
 
 clean:
-	rm -rf *.out mt-con mt-non-con *.o tests/*.dat
+	rm -rf *.out mt-con *.o tests/*.dat
 
 .PHONY:
 	clean run_non_con run_con
