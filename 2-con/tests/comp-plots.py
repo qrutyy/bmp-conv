@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
-RESULTS_FILE = "timing-results.dat"
-PLOTS_PATH = "./plots/"
+RESULTS_FILE = "tests/timing-results.dat"
+PLOTS_PATH = "./test/plots/"
 
 colors = ['green', 'red', 'blue', 'brown', 'purple', 'orange', 'pink']
 

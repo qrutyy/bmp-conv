@@ -3,7 +3,6 @@
 RUN_NUM=5
 TEST_FILE="image3.bmp"
 FILTERS=("mb" "bb" "gb" "co" "sh" "em" "mm" "gg")
-BFILTERS=("mb" "gb" "bb" "em") # big filters only
 BLOCK_SIZE=("4" "8" "16" "32")
 THREADNUM=4
 LOG_FILE="timing-results.dat"
@@ -57,7 +56,7 @@ for mode in "${MODES[@]}"; do
 	done
 done
 
-python3 tests/build_plots.py
+python3 tests/avg_plots.py
 
 for pair in "${pairs[@]}"; do
 	IFS=',' read -r f1 f2 <<< "$pair"
