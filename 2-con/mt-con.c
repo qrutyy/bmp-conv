@@ -1,16 +1,15 @@
-
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../libbmp/libbmp.h"
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
-#include "mt-utils.h"
 #include <pthread.h>
 #include <sys/time.h>
 #include "../utils/utils.h"
+#include "../utils/mt-utils.h"
+#include "../libbmp/libbmp.h"
 
 /* *Real* mode (columns/rows per thread == const) */
 
@@ -21,7 +20,7 @@ const char *output_filename = NULL;
 const char *filter_type;
 const char *mode_str;
 enum compute_mode mode;
-
+// #shitty
 struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
 
 int block_size = 0;
@@ -120,82 +119,6 @@ void filter_part_computation(struct thread_spec *spec)
 	}
 }
 
-int process_by_row(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&x_block_mutex);
-//	printf("next_block: %d, height: %d\n", next_x_block, th_spec->dim->height);
-
-	if (next_x_block >= th_spec->dim->height) {
-		pthread_mutex_unlock(&x_block_mutex);
-		th_spec->start_row = th_spec->end_row = 0;
-		return 1;
-	}
-	th_spec->start_row = next_x_block;
-	next_x_block += block_size;
-	pthread_mutex_unlock(&x_block_mutex);
-
-	th_spec->start_column = 0;
-	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
-	th_spec->end_column = th_spec->dim->width;
-
-	return 0;
-}
-
-int process_by_column(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&y_block_mutex);
-//	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
-
-	if (next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&y_block_mutex);
-		th_spec->start_column = th_spec->end_column = 0;
-		return 1;
-	}
-
-	th_spec->start_column = next_y_block;
-	next_y_block += block_size;
-	pthread_mutex_unlock(&y_block_mutex);
-
-	th_spec->start_row = 0;
-	th_spec->end_row = th_spec->dim->height;
-	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
-
-	return 0;
-}
-
-int process_by_grid(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&xy_block_mutex);
-	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&xy_block_mutex);
-		th_spec->start_row = th_spec->end_row = 0;
-        th_spec->start_column = th_spec->end_column = 0;
-		return 1;
-	}
-
-	th_spec->start_row = next_x_block;
-	th_spec->start_column = next_y_block;
-	next_y_block += block_size;
-
-	if (next_y_block >= th_spec->dim->width) {
-		next_y_block = 0;
-		next_x_block += block_size;
-	}
-	pthread_mutex_unlock(&xy_block_mutex);
-
-	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
-	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
-	// printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row, th_spec->start_column, th_spec->end_column);
-
-	return 0;
-}
-
-int process_by_pixel(struct thread_spec *th_spec)
-{
-	block_size = 1;
-	return process_by_grid(th_spec);
-}
-
 void *thread_function(void *arg)
 {
 	struct thread_spec *th_spec = (struct thread_spec *)arg;
@@ -203,19 +126,19 @@ void *thread_function(void *arg)
 	while (1) {
 		switch (mode) {
 		case BY_ROW:
-			if (process_by_row(th_spec))
+			if (process_by_row(th_spec, &next_x_block, block_size, &x_block_mutex))
 					goto exit;
 			break;
 		case BY_COLUMN:
-				if (process_by_column(th_spec))
+				if (process_by_column(th_spec, &next_y_block, block_size, &y_block_mutex))
 					goto exit;
 			break;
 		case BY_PIXEL:
-				if (process_by_pixel(th_spec))
+				if (process_by_pixel(th_spec, &next_x_block, &next_y_block, &xy_block_mutex))
 					goto exit;
 			break;
 		case BY_GRID:
-				if (process_by_grid(th_spec))
+				if (process_by_grid(th_spec, &next_x_block, &next_y_block, block_size, &xy_block_mutex))
 					goto exit;
 			break;
 		default:
@@ -280,7 +203,7 @@ int main(int argc, char *argv[])
 
 	start_time = get_time_in_seconds();
 
-	for (i = 0; i < threadnum; i++) {
+	for (i = 0; i < 3; i++) {
 		th_spec = thread_spec_init();
 		if (!th_spec) {
 			bmp_img_free(&img);
