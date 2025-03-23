@@ -19,11 +19,19 @@ struct filter {
 	double **filter_arr;
 };
 
+struct filter_mix {
+	struct filter *blur;
+	struct filter *motion_blur;
+	struct filter *gaus_blur;
+	struct filter *conv;
+	struct filter *sharpen;
+	struct filter *emboss;
+	struct filter *big_gaus;
+};
+
 void swap(int *a, int *b);
 int selectKth(int *data, int s, int e, int k);
 double get_time_in_seconds(void);
 int compare_images(const bmp_img *img1, const bmp_img *img2);
-void free_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss, struct filter *big_gaus);
-void init_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss, struct filter *big_gaus);
+void free_filters(struct filter_mix *filters);
+void init_filters(struct filter_mix *filters);

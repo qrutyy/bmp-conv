@@ -140,26 +140,24 @@ static void free_filter(struct filter *f)
 	free(f->filter_arr);
 }
 
-void init_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss, struct filter *big_gaus)
+void init_filters(struct filter_mix *filters)
 {
-	init_filter(motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
-	init_filter(blur, 5, 0.0, 1.0 / 13.0, blur_arr);
-	init_filter(gaus_blur, 5, 0.0, 1.0 / 256.0, gaus_blur_arr);
-	init_filter(conv, 3, 0.0, 1.0, conv_arr);
-	init_filter(sharpen, 3, 0.0, 1.0, sharpen_arr);
-	init_filter(emboss, 5, 128.0, 1.0, emboss_arr);
-	init_filter(big_gaus, 15, 0.0, 1.0 / 771, big_gaus_arr);
+	init_filter(filters->motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
+	init_filter(filters->blur, 5, 0.0, 1.0 / 13.0, blur_arr);
+	init_filter(filters->gaus_blur, 5, 0.0, 1.0 / 256.0, gaus_blur_arr);
+	init_filter(filters->conv, 3, 0.0, 1.0, conv_arr);
+	init_filter(filters->sharpen, 3, 0.0, 1.0, sharpen_arr);
+	init_filter(filters->emboss, 5, 128.0, 1.0, emboss_arr);
+	init_filter(filters->big_gaus, 15, 0.0, 1.0 / 771, big_gaus_arr);
 }
 
-void free_filters(struct filter *blur, struct filter *motion_blur, struct filter *gaus_blur, struct filter *conv,
-		  struct filter *sharpen, struct filter *emboss,struct filter *big_gaus)
+void free_filters(struct filter_mix *filters)
 {
-	free_filter(motion_blur);
-	free_filter(blur);
-	free_filter(gaus_blur);
-	free_filter(conv);
-	free_filter(sharpen);
-	free_filter(emboss);
-	free_filter(big_gaus);
+	free_filter(filters->motion_blur);
+	free_filter(filters->blur);
+	free_filter(filters->gaus_blur);
+	free_filter(filters->conv);
+	free_filter(filters->sharpen);
+	free_filter(filters->emboss);
+	free_filter(filters->big_gaus);
 }

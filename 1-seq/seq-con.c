@@ -8,7 +8,8 @@
 #include <string.h>
 #include "../utils/utils.h"
 
-/** Comply to KISS, better* arch is shown in 2-con
+/** Can be shitty somewhere, didn't change the code intentionally.
+  * Comply to KISS. Better* arch is shown in next tasks 2-con
   * * - however, not the best though, todo
   */
 
@@ -99,8 +100,8 @@ int main(int argc, char *argv[])
 	char input_filepath[MAX_PATH_LEN];
 	const char *filter_type;
 	const char *input_filename;
-	struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
 	int width, height = 0;
+	struct filter_mix *filters = NULL;
 
 	if (argc < 3) {
 		printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
@@ -130,22 +131,28 @@ int main(int argc, char *argv[])
 	height = img.img_header.biHeight;
 
 	bmp_img_init_df(&img_result, width, height);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos, &big_gaus);
+	filters = malloc(sizeof(struct filter_mix));
+	if (filters) {
+		free(filters);
+		fprintf(stderr, "Memory alocation failed\n");
+		return -1;
+	}
+	init_filters(filters);
 
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(&img, &img_result, width, height, motion_blur);
+		apply_filter(&img, &img_result, width, height, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(&img, &img_result, width, height, blur);
+		apply_filter(&img, &img_result, width, height, *filters->blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
-		apply_filter(&img, &img_result, width, height, gaus_blur);
+		apply_filter(&img, &img_result, width, height, *filters->gaus_blur);
 	} else if (strcmp(filter_type, "gg") == 0) {
-		apply_filter(&img, &img_result, width, height, big_gaus);
+		apply_filter(&img, &img_result, width, height, *filters->big_gaus);
 	} else if (strcmp(filter_type, "co") == 0) {
-		apply_filter(&img, &img_result, width, height, conv);
+		apply_filter(&img, &img_result, width, height, *filters->conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
-		apply_filter(&img, &img_result, width, height, sharpen);
+		apply_filter(&img, &img_result, width, height, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
-		apply_filter(&img, &img_result, width, height, embos);
+		apply_filter(&img, &img_result, width, height, *filters->emboss);
 	} else if (strcmp(filter_type, "mm") == 0) {
 		apply_median_filter(&img, &img_result, width, height, 15);
 	} else {

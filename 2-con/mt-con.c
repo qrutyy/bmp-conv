@@ -20,14 +20,11 @@ const char *output_filename = NULL;
 const char *filter_type;
 const char *mode_str;
 enum compute_mode mode;
-// #shitty
-struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
+struct filter_mix *filters = NULL;
 
 int block_size = 0;
 int next_x_block = 0;
 int next_y_block = 0;
-pthread_mutex_t x_block_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t y_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int parse_args(int argc, char *argv[])
@@ -99,21 +96,21 @@ int parse_args(int argc, char *argv[])
 void filter_part_computation(struct thread_spec *spec)
 {
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(spec, motion_blur);
+		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(spec, blur);
+		apply_filter(spec, *filters->blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
-		apply_filter(spec, gaus_blur);
+		apply_filter(spec, *filters->gaus_blur);
 	} else if (strcmp(filter_type, "co") == 0) {
-		apply_filter(spec, conv);
+		apply_filter(spec, *filters->conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
-		apply_filter(spec, sharpen);
+		apply_filter(spec, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
-		apply_filter(spec, embos);
+		apply_filter(spec, *filters->emboss);
 	} else if (strcmp(filter_type, "mm") == 0) {
 		apply_median_filter(spec, 15);
 	} else if (strcmp(filter_type, "gg") == 0) {
-		apply_filter(spec, big_gaus);
+		apply_filter(spec, *filters->big_gaus);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 	}
@@ -126,11 +123,11 @@ void *thread_function(void *arg)
 	while (1) {
 		switch (mode) {
 		case BY_ROW:
-			if (process_by_row(th_spec, &next_x_block, block_size, &x_block_mutex))
+			if (process_by_row(th_spec, &next_x_block, block_size, &xy_block_mutex))
 					goto exit;
 			break;
 		case BY_COLUMN:
-				if (process_by_column(th_spec, &next_y_block, block_size, &y_block_mutex))
+				if (process_by_column(th_spec, &next_y_block, block_size, &xy_block_mutex))
 					goto exit;
 			break;
 		case BY_PIXEL:
@@ -199,7 +196,13 @@ int main(int argc, char *argv[])
 
 	bmp_img_init_df(&img_result, dim->width, dim->height);
 	img_spec = init_img_spec(&img, &img_result);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos, &big_gaus);
+
+	filters = malloc(sizeof(struct filter_mix));
+	if (filters) {
+		free(filters);
+		goto mem_err;
+	}
+	init_filters(filters);
 
 	start_time = get_time_in_seconds();
 
@@ -247,8 +250,6 @@ int main(int argc, char *argv[])
 	free(dim);
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
-	pthread_mutex_destroy(&x_block_mutex);
-	pthread_mutex_destroy(&y_block_mutex);
 	pthread_mutex_destroy(&xy_block_mutex);
 	return 0;
 

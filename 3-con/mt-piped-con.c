@@ -30,8 +30,7 @@ pthread_mutex_t x_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t y_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// #shitty
-struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos, big_gaus;
+struct filter_mix *filters = NULL;
 
 struct img_queue {
 	bmp_img images[MAX_QUEUE_SIZE];
@@ -146,21 +145,21 @@ int parse_args(int argc, char *argv[], char ***input_files, int *file_count)
 void filter_part_computation(struct thread_spec *spec)
 {
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(spec, motion_blur);
+		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(spec, blur);
+		apply_filter(spec, *filters->blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
-		apply_filter(spec, gaus_blur);
+		apply_filter(spec, *filters->gaus_blur);
 	} else if (strcmp(filter_type, "co") == 0) {
-		apply_filter(spec, conv);
+		apply_filter(spec, *filters->conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
-		apply_filter(spec, sharpen);
+		apply_filter(spec, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
-		apply_filter(spec, embos);
+		apply_filter(spec, *filters->emboss);
 	} else if (strcmp(filter_type, "mm") == 0) {
 		apply_median_filter(spec, 15);
 	} else if (strcmp(filter_type, "gg") == 0) {
-		apply_filter(spec, big_gaus);
+		apply_filter(spec, *filters->big_gaus);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 	}
@@ -256,7 +255,7 @@ void *writer_thread(void *arg)
 		bmp_img img = queue_pop(&output_queue);
 		printf("ppopped\n");
 		if (img.img_header.biWidth == 0 && img.img_header.biHeight == 0) {
-			break; // Stop when termination signal is received
+			break;
 		}
 		if (output_filename)
 			snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s_%d.bmp", output_filename, i);
@@ -274,7 +273,15 @@ int main(int argc, char *argv[])
 	pthread_t reader, writer, workers[THREAD_NUM];
 	queue_init(&input_queue);
 	queue_init(&output_queue);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos, &big_gaus);
+	
+	filters = malloc(sizeof(struct filter_mix));
+	if (filters) {
+		free(filters);
+		fprintf(stderr, "Memory allocation failed\n");
+		return -1;
+	}
+
+	init_filters(filters);
 
 	if (parse_args(argc, argv, &input_files, &file_count) < 0) {
 		fprintf(stderr, "Error parsing arguments\n");
