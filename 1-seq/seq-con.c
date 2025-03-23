@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "../libbmp/libbmp.h"
+#include "../utils/utils.h"
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../libbmp/libbmp.h"
-#include <stdint.h>
-#include <math.h>
 #include <string.h>
-#include "../utils/utils.h"
 
 /** Can be shitty somewhere, didn't change the code intentionally.
-  * Comply to KISS. Better* arch is shown in next tasks 2-con
-  * * - however, not the best though, todo
-  */
+ * Comply to KISS. Better* arch is shown in next tasks 2-con
+ * * - however, not the best though, todo
+ */
 
 const char *output_filename = NULL;
 
-void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, struct filter cfilter)
-{
+void apply_filter(bmp_img *input_img, bmp_img *output_img, int width,
+				  int height, struct filter cfilter) {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
 
@@ -30,7 +30,8 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height
 					imageY = (y + filterY - PADDING + height) % height;
 
 					// Check if the pixel is within bounds
-					if (imageX >= 0 && imageX < width && imageY >= 0 && imageY < height) {
+					if (imageX >= 0 && imageX < width && imageY >= 0 &&
+						imageY < height) {
 						orig_pixel = input_img->img_pixels[imageY][imageX];
 						weight = cfilter.filter_arr[filterY][filterX];
 
@@ -44,16 +45,16 @@ void apply_filter(bmp_img *input_img, bmp_img *output_img, int width, int height
 
 			output_img->img_pixels[y][x].red =
 				fmin(fmax((int)(red * cfilter.factor + cfilter.bias), 0), 255);
-			output_img->img_pixels[y][x].green =
-				fmin(fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
+			output_img->img_pixels[y][x].green = fmin(
+				fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
 			output_img->img_pixels[y][x].blue =
 				fmin(fmax((int)(blue * cfilter.factor + cfilter.bias), 0), 255);
 		}
 	}
 }
 
-void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int height, int filter_size)
-{
+void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width,
+						 int height, int filter_size) {
 	int half_size = filter_size / 2;
 	int filter_area = filter_size * filter_size;
 
@@ -67,11 +68,13 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 
 			// Collect neighboring pixels
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {
-				for (int filterX = -half_size; filterX <= half_size; filterX++) {
+				for (int filterX = -half_size; filterX <= half_size;
+					 filterX++) {
 					int imageX = (x + filterX + width) % width;
 					int imageY = (y + filterY + height) % height;
 
-					bmp_pixel orig_pixel = input_img->img_pixels[imageY][imageX];
+					bmp_pixel orig_pixel =
+						input_img->img_pixels[imageY][imageX];
 
 					red[n] = orig_pixel.red;
 					green[n] = orig_pixel.green;
@@ -81,9 +84,12 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 			}
 
 			// Apply median filter using selectKth to get the middle value
-			output_img->img_pixels[y][x].red = selectKth(red, 0, filter_area, filter_area / 2);
-			output_img->img_pixels[y][x].green = selectKth(green, 0, filter_area, filter_area / 2);
-			output_img->img_pixels[y][x].blue = selectKth(blue, 0, filter_area, filter_area / 2);
+			output_img->img_pixels[y][x].red =
+				selectKth(red, 0, filter_area, filter_area / 2);
+			output_img->img_pixels[y][x].green =
+				selectKth(green, 0, filter_area, filter_area / 2);
+			output_img->img_pixels[y][x].blue =
+				selectKth(blue, 0, filter_area, filter_area / 2);
 		}
 	}
 
@@ -92,8 +98,7 @@ void apply_median_filter(bmp_img *input_img, bmp_img *output_img, int width, int
 	free(blue);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	bmp_img img, img_result;
 	enum bmp_error status;
 	char output_filepath[MAX_PATH_LEN];
@@ -102,7 +107,6 @@ int main(int argc, char *argv[])
 	const char *input_filename;
 	int width, height = 0;
 	struct filter_mix *filters = NULL;
-
 	if (argc < 3) {
 		printf("Usage: %s <input_image> <filter_type>\n", argv[0]);
 		return -1;
@@ -113,13 +117,14 @@ int main(int argc, char *argv[])
 
 	printf("Input image: %s\n", input_filename);
 	printf("Filter type: %s\n", filter_type);
-	
-    if (argc == 4 && strncmp(argv[3], "--output=", 9) == 0) {
-        output_filename = argv[3] + 9;
-        printf("Output filename set to: %s\n", output_filename);
-    }
 
-	snprintf(input_filepath, sizeof(input_filepath), "../test-img/%s", input_filename);
+	if (argc == 4 && strncmp(argv[3], "--output=", 9) == 0) {
+		output_filename = argv[3] + 9;
+		printf("Output filename set to: %s\n", output_filename);
+	}
+
+	snprintf(input_filepath, sizeof(input_filepath), "../test-img/%s",
+			 input_filename);
 
 	status = bmp_img_read(&img, input_filepath);
 	if (status) {
@@ -132,7 +137,7 @@ int main(int argc, char *argv[])
 
 	bmp_img_init_df(&img_result, width, height);
 	filters = malloc(sizeof(struct filter_mix));
-	if (filters) {
+	if (!filters) {
 		free(filters);
 		fprintf(stderr, "Memory alocation failed\n");
 		return -1;
@@ -161,17 +166,21 @@ int main(int argc, char *argv[])
 	}
 
 	if (output_filename) {
-		snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s", output_filename);
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s",
+				 output_filename);
 	} else {
-		snprintf(output_filepath, sizeof(output_filepath), "../test-img/seq_out_%s", input_filename);
+		snprintf(output_filepath, sizeof(output_filepath),
+				 "../test-img/seq_out_%s", input_filename);
 	}
 
 	bmp_img_write(&img_result, output_filepath);
-//	compare_images(&img, &img_result);
+	//	compare_images(&img, &img_result);
 
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
+	free_filters(filters);
 
-	printf("Processing complete. Filtered image saved as %s\n", output_filepath);
+	printf("Processing complete. Filtered image saved as %s\n",
+		   output_filepath);
 	return 0;
 }

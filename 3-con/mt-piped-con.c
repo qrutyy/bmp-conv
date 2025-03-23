@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "../libbmp/libbmp.h"
+#include "../utils/mt-utils.h"
+#include "../utils/utils.h"
+#include <math.h>
+#include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <math.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/time.h>
-#include "../utils/utils.h"
-#include "../utils/mt-utils.h"
-#include "../libbmp/libbmp.h"
 
 #define THREAD_NUM 1
 #define LOG_FILE_PATH "tests/timing-results.dat"
@@ -39,15 +39,13 @@ struct img_queue {
 	pthread_cond_t cond;
 } input_queue, output_queue;
 
-void queue_init(struct img_queue *q)
-{
+void queue_init(struct img_queue *q) {
 	q->front = q->rear = q->size = 0;
 	pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
 }
 
-void queue_push(struct img_queue *q, bmp_img img)
-{
+void queue_push(struct img_queue *q, bmp_img img) {
 	pthread_mutex_lock(&q->mutex);
 	while (q->size == MAX_QUEUE_SIZE)
 		pthread_cond_wait(&q->cond, &q->mutex);
@@ -58,8 +56,7 @@ void queue_push(struct img_queue *q, bmp_img img)
 	pthread_mutex_unlock(&q->mutex);
 }
 
-bmp_img queue_pop(struct img_queue *q)
-{
+bmp_img queue_pop(struct img_queue *q) {
 	pthread_mutex_lock(&q->mutex);
 	while (q->size == 0)
 		pthread_cond_wait(&q->cond, &q->mutex);
@@ -71,13 +68,13 @@ bmp_img queue_pop(struct img_queue *q)
 	return img;
 }
 
-int parse_args(int argc, char *argv[], char ***input_files, int *file_count)
-{
+int parse_args(int argc, char *argv[], char ***input_files, int *file_count) {
 	int threadnum = 0;
 
 	if (argc < 5) {
-		printf("Usage: %s <input_images...> <filter_type> --threadnum=N --mode=MODE --block=N [--output=NAME]\n",
-		       argv[0]);
+		printf("Usage: %s <input_images...> <filter_type> --threadnum=N "
+			   "--mode=MODE --block=N [--output=NAME]\n",
+			   argv[0]);
 		return -1;
 	}
 
@@ -120,7 +117,8 @@ int parse_args(int argc, char *argv[], char ***input_files, int *file_count)
 			} else if (strcmp(mode_str, "by_grid") == 0) {
 				mode = BY_GRID;
 			} else {
-				fprintf(stderr, "Error: Invalid mode. Use by_row, by_column, by_pixel, or by_grid\n");
+				fprintf(stderr, "Error: Invalid mode. Use by_row, by_column, "
+								"by_pixel, or by_grid\n");
 				return -1;
 			}
 			printf("Mode selected: %s\n", mode_str);
@@ -142,8 +140,7 @@ int parse_args(int argc, char *argv[], char ***input_files, int *file_count)
 	return threadnum;
 }
 
-void filter_part_computation(struct thread_spec *spec)
-{
+void filter_part_computation(struct thread_spec *spec) {
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
@@ -165,8 +162,7 @@ void filter_part_computation(struct thread_spec *spec)
 	}
 }
 
-void *reader_thread(void *arg)
-{
+void *reader_thread(void *arg) {
 	for (int i = 0; i < file_count; i++) {
 		bmp_img img;
 		char filepath[MAX_PATH_LEN];
@@ -176,19 +172,16 @@ void *reader_thread(void *arg)
 			continue;
 		}
 		queue_push(&input_queue, img);
-		printf("Input img first pix: %d %d %d\n", img.img_pixels[0][0].red, img.img_pixels[0][0].green,
-		       img.img_pixels[0][0].blue);
 		printf("Successfully read %s\n", filepath);
 	}
 	for (int i = 0; i < THREAD_NUM; i++) {
-		bmp_img empty_img = { 0 }; // Special empty image as termination signal
+		bmp_img empty_img = {0}; // Special empty image as termination signal
 		queue_push(&input_queue, empty_img);
 	}
 	return NULL;
 }
 
-void *worker_thread(void *arg)
-{
+void *worker_thread(void *arg) {
 	while (1) {
 		bmp_img img = queue_pop(&input_queue);
 		if (img.img_header.biWidth == 0 && img.img_header.biHeight == 0) {
@@ -200,30 +193,42 @@ void *worker_thread(void *arg)
 			fprintf(stderr, "Memory allocation failed\n");
 			exit(EXIT_FAILURE);
 		}
-		struct thread_spec *th_spec = malloc(sizeof(struct thread_spec)); // TODO add mem check
-		bmp_img_init_df(img_result, img.img_header.biWidth, img.img_header.biHeight);
+		struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
+		if (!th_spec) {
+			free(th_spec);
+			fprintf(stderr, "Memory allocation failed\n");
+			exit(-1);
+		}
+
+		bmp_img_init_df(img_result, img.img_header.biWidth,
+						img.img_header.biHeight);
 
 		struct img_spec *img_spec = init_img_spec(&img, img_result);
-		struct img_dim *dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
+		struct img_dim *dim =
+			init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
 		th_spec->dim = dim;
 		th_spec->img = img_spec;
 
 		while (1) {
 			switch (mode) {
 			case BY_ROW:
-				if (process_by_row(th_spec, &next_x_block, block_size, &x_block_mutex))
+				if (process_by_row(th_spec, &next_x_block, block_size,
+								   &x_block_mutex))
 					goto exit;
 				break;
 			case BY_COLUMN:
-				if (process_by_column(th_spec, &next_y_block, block_size, &y_block_mutex))
+				if (process_by_column(th_spec, &next_y_block, block_size,
+									  &y_block_mutex))
 					goto exit;
 				break;
 			case BY_PIXEL:
-				if (process_by_pixel(th_spec, &next_x_block, &next_y_block, &xy_block_mutex))
+				if (process_by_pixel(th_spec, &next_x_block, &next_y_block,
+									 &xy_block_mutex))
 					goto exit;
 				break;
 			case BY_GRID:
-				if (process_by_grid(th_spec, &next_x_block, &next_y_block, block_size, &xy_block_mutex))
+				if (process_by_grid(th_spec, &next_x_block, &next_y_block,
+									block_size, &xy_block_mutex))
 					goto exit;
 				break;
 			default:
@@ -234,8 +239,9 @@ void *worker_thread(void *arg)
 
 			filter_part_computation(th_spec);
 			printf("Input img_result afterr first pix: %d %d %d\n",
-			       th_spec->img->output_img->img_pixels[0][0].red, img_result->img_pixels[0][0].green,
-			       img_result->img_pixels[0][0].blue);
+				   th_spec->img->output_img->img_pixels[0][0].red,
+				   img_result->img_pixels[0][0].green,
+				   img_result->img_pixels[0][0].blue);
 		}
 
 	exit:
@@ -248,19 +254,19 @@ void *worker_thread(void *arg)
 	return NULL;
 }
 
-void *writer_thread(void *arg)
-{
+void *writer_thread(void *arg) {
 	printf("File count: %d\n", file_count);
 	for (int i = 0; i < file_count; i++) {
 		bmp_img img = queue_pop(&output_queue);
-		printf("ppopped\n");
 		if (img.img_header.biWidth == 0 && img.img_header.biHeight == 0) {
 			break;
 		}
 		if (output_filename)
-			snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s_%d.bmp", output_filename, i);
+			snprintf(output_filepath, sizeof(output_filepath),
+					 "../test-img/%s_%d.bmp", output_filename, i);
 		else
-			snprintf(output_filepath, sizeof(output_filepath), "../test-img/output_%d.bmp", i);
+			snprintf(output_filepath, sizeof(output_filepath),
+					 "../test-img/output_%d.bmp", i);
 		bmp_img_write(&img, output_filepath);
 		bmp_img_free(&img);
 		printf("Successfully write%s\n", output_filepath);
@@ -268,14 +274,13 @@ void *writer_thread(void *arg)
 	return NULL;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	pthread_t reader, writer, workers[THREAD_NUM];
 	queue_init(&input_queue);
 	queue_init(&output_queue);
-	
+
 	filters = malloc(sizeof(struct filter_mix));
-	if (filters) {
+	if (!filters) {
 		free(filters);
 		fprintf(stderr, "Memory allocation failed\n");
 		return -1;
@@ -297,7 +302,7 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < THREAD_NUM; i++)
 		pthread_join(workers[i], NULL);
 	pthread_join(writer, NULL);
-
+	free_filters(filters);
 	free(input_files);
 	return 0;
 }
