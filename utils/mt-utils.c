@@ -29,7 +29,7 @@ int process_by_row(struct thread_spec *th_spec, int *next_x_block, int block_siz
 int process_by_column(struct thread_spec *th_spec, int *next_y_block, int block_size, pthread_mutex_t *y_block_mutex)
 {
 	pthread_mutex_lock(y_block_mutex);
-//	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
+//	printf("next_block: %d, width: %d\n", *next_y_block, th_spec->dim->width);
 
 	if (*next_y_block >= th_spec->dim->width) {
 		pthread_mutex_unlock(y_block_mutex);
@@ -84,7 +84,7 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
-	// printf("start x:%d y:%d, end x:%d y:%d\n", spec->start_column, spec->start_row, spec->end_column, spec->end_row);
+//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size, spec->start_column, spec->start_row, spec->end_column, spec->end_row);
 
 	for (x = spec->start_column; x < spec->end_column; x++) {
 		for (y = spec->start_row; y < spec->end_row; y++) {
