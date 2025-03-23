@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #ifndef __LIBBMP_H__
 #define __LIBBMP_H__
 

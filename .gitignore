@@ -94,4 +94,6 @@ Temporary Items
 
 *.state
 
-.clang-format
+clang-format.txt
+
+.vscode

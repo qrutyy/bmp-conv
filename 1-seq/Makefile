@@ -4,12 +4,17 @@ CFLAGS := $(WFLAGS) -g -lm
 INPUT_TEST?=image2.bmp
 FILTER_TYPE?=mb
 
-main: main.c
-	$(CC) -o main main.c ../libbmp/libbmp.c ../utils/utils.c $(CFLAGS)
-	make run_main
+UTILS_PATH = ../utils
+LIBBMP_PATH = ../libbmp
 
-run_main:
-	./main $(INPUT_TEST) $(FILTER_TYPE) 
+UTILS_SRC = $(UTILS_PATH)/utils.c
+LIBBMP_SRC = $(LIBBMP_PATH)/libbmp.c
+
+seq-con: seq-con.c
+	$(CC) -o seq-con seq-con.c $(LIBBMP_SRC) $(UTILS_SRC) $(CFLAGS)
+
+run-seq-con:
+	./seq-con $(INPUT_TEST) $(FILTER_TYPE) 
 
 clean:
 	rm -rf *.out main *.o

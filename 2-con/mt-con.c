@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "../libbmp/libbmp.h"
+#include "../utils/mt-utils.h"
+#include "../utils/utils.h"
+#include <math.h>
+#include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../libbmp/libbmp.h"
-#include <stdint.h>
-#include <math.h>
 #include <string.h>
-#include "mt-utils.h"
-#include <pthread.h>
 #include <sys/time.h>
-#include "../utils/utils.h"
 
 /* *Real* mode (columns/rows per thread == const) */
 
+#define LOG_FILE_PATH "tests/timing-results.dat"
+
 const char *input_filename;
+const char *output_filename = NULL;
 const char *filter_type;
-struct filter blur, motion_blur, gaus_blur, conv, sharpen, embos;
+const char *mode_str;
+enum compute_mode mode;
+struct filter_mix *filters = NULL;
+
 int block_size = 0;
 int next_x_block = 0;
 int next_y_block = 0;
-pthread_mutex_t x_block_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t y_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
-enum compute_mode mode;
 
-int parse_args(int argc, char *argv[])
-{
-	const char *mode_str;
+int parse_args(int argc, char *argv[]) {
+
 	int threadnum = 0;
 
 	if (argc < 4) {
@@ -60,7 +62,8 @@ int parse_args(int argc, char *argv[])
 		} else if (strcmp(mode_str, "by_grid") == 0) {
 			mode = BY_GRID;
 		} else {
-			fprintf(stderr, "Error: Invalid mode. Use by_row, by_column, by_pixel, or by_grid\n");
+			fprintf(stderr, "Error: Invalid mode. Use by_row, by_column, "
+							"by_pixel, or by_grid\n");
 			return -1;
 		}
 		printf("Mode selected: %s\n\n", mode_str);
@@ -80,132 +83,62 @@ int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
+	for (int i = 6; i < argc; i++) {
+		if (strncmp(argv[i], "--output=", 9) == 0) {
+			output_filename = argv[i] + 9;
+			printf("Output filename set to: %s\n", output_filename);
+		}
+	}
+
 	return threadnum;
 }
 
-void filter_part_computation(struct thread_spec *spec)
-{
+void filter_part_computation(struct thread_spec *spec) {
 	if (strcmp(filter_type, "mb") == 0) {
-		apply_filter(spec, motion_blur);
+		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
-		apply_filter(spec, blur);
+		apply_filter(spec, *filters->blur);
 	} else if (strcmp(filter_type, "gb") == 0) {
-		apply_filter(spec, gaus_blur);
+		apply_filter(spec, *filters->gaus_blur);
 	} else if (strcmp(filter_type, "co") == 0) {
-		apply_filter(spec, conv);
+		apply_filter(spec, *filters->conv);
 	} else if (strcmp(filter_type, "sh") == 0) {
-		apply_filter(spec, sharpen);
+		apply_filter(spec, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
-		apply_filter(spec, embos);
+		apply_filter(spec, *filters->emboss);
 	} else if (strcmp(filter_type, "mm") == 0) {
 		apply_median_filter(spec, 15);
+	} else if (strcmp(filter_type, "gg") == 0) {
+		apply_filter(spec, *filters->big_gaus);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 	}
 }
 
-void process_by_row(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&x_block_mutex);
-	printf("next_block: %d, height: %d\n", next_x_block, th_spec->dim->height);
-
-	if (next_x_block >= th_spec->dim->height) {
-		pthread_mutex_unlock(&x_block_mutex);
-		return;
-	}
-	th_spec->start_row = next_x_block;
-	next_x_block += block_size;
-	pthread_mutex_unlock(&x_block_mutex);
-
-	th_spec->start_column = 0;
-	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
-	th_spec->end_column = th_spec->dim->width;
-}
-
-void process_by_column(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&y_block_mutex);
-	printf("next_block: %d, width: %d\n", next_y_block, th_spec->dim->width);
-
-	if (next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&y_block_mutex);
-		return;
-	}
-
-	th_spec->start_column = next_y_block;
-	next_y_block += block_size;
-	pthread_mutex_unlock(&y_block_mutex);
-
-	th_spec->start_row = 0;
-	th_spec->end_row = th_spec->dim->height;
-	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
-}
-
-void process_by_pixel(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&xy_block_mutex);
-	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&xy_block_mutex);
-		return;
-	}
-
-	th_spec->start_row = next_x_block;
-	th_spec->start_column = next_y_block;
-	next_y_block += 1;
-
-	if (next_y_block >= th_spec->dim->width) {
-		next_y_block = 0;
-		next_x_block += 1;
-	}
-	pthread_mutex_unlock(&xy_block_mutex);
-
-	th_spec->end_row = th_spec->start_row + 1;
-	th_spec->end_column = th_spec->start_column + 1;
-	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
-	       th_spec->start_column, th_spec->end_column);
-}
-
-void process_by_grid(struct thread_spec *th_spec)
-{
-	pthread_mutex_lock(&xy_block_mutex);
-	if (next_x_block >= th_spec->dim->height || next_y_block >= th_spec->dim->width) {
-		pthread_mutex_unlock(&xy_block_mutex);
-		return;
-	}
-
-	th_spec->start_row = next_x_block;
-	th_spec->start_column = next_y_block;
-	next_y_block += block_size;
-
-	if (next_y_block >= th_spec->dim->width) {
-		next_y_block = 0;
-		next_x_block += block_size;
-	}
-	pthread_mutex_unlock(&xy_block_mutex);
-
-	th_spec->end_row = fmin(th_spec->start_row + block_size, th_spec->dim->height);
-	th_spec->end_column = fmin(th_spec->start_column + block_size, th_spec->dim->width);
-	printf("Row: st: %d, end: %d, Column: st: %d, end: %d \n", th_spec->start_row, th_spec->end_row,
-	       th_spec->start_column, th_spec->end_column);
-}
-
-void *thread_function(void *arg)
-{
+void *thread_function(void *arg) {
 	struct thread_spec *th_spec = (struct thread_spec *)arg;
 
 	while (1) {
 		switch (mode) {
 		case BY_ROW:
-			process_by_row(th_spec);
+			if (process_by_row(th_spec, &next_x_block, block_size,
+							   &xy_block_mutex))
+				goto exit;
 			break;
 		case BY_COLUMN:
-			process_by_column(th_spec);
+			if (process_by_column(th_spec, &next_y_block, block_size,
+								  &xy_block_mutex))
+				goto exit;
 			break;
 		case BY_PIXEL:
-			process_by_pixel(th_spec);
+			if (process_by_pixel(th_spec, &next_x_block, &next_y_block,
+								 &xy_block_mutex))
+				goto exit;
 			break;
 		case BY_GRID:
-			process_by_grid(th_spec);
+			if (process_by_grid(th_spec, &next_x_block, &next_y_block,
+								block_size, &xy_block_mutex))
+				goto exit;
 			break;
 		default:
 			free(th_spec);
@@ -215,12 +148,12 @@ void *thread_function(void *arg)
 		filter_part_computation(th_spec);
 	}
 
+exit:
 	free(th_spec);
 	return NULL;
 }
 
-void *thread_spec_init()
-{
+void *thread_spec_init() {
 	struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
 	if (!th_spec)
 		return NULL;
@@ -228,8 +161,7 @@ void *thread_spec_init()
 	return th_spec;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	bmp_img img, img_result;
 	pthread_t *th = NULL;
 	struct img_dim *dim = NULL;
@@ -238,6 +170,7 @@ int main(int argc, char *argv[])
 	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
 	double start_time, end_time = 0;
 	int i, threadnum = 0;
+	FILE *file = NULL;
 
 	threadnum = parse_args(argc, argv);
 	if (threadnum < 0) {
@@ -248,7 +181,8 @@ int main(int argc, char *argv[])
 	if (!th)
 		goto mem_err;
 
-	snprintf(input_filepath, sizeof(input_filepath), "../test/%s", input_filename);
+	snprintf(input_filepath, sizeof(input_filepath), "../test-img/%s",
+			 input_filename);
 
 	if (bmp_img_read(&img, input_filepath)) {
 		fprintf(stderr, "Error: Could not open BMP image\n");
@@ -263,11 +197,17 @@ int main(int argc, char *argv[])
 
 	bmp_img_init_df(&img_result, dim->width, dim->height);
 	img_spec = init_img_spec(&img, &img_result);
-	init_filters(&blur, &motion_blur, &gaus_blur, &conv, &sharpen, &embos);
+
+	filters = malloc(sizeof(struct filter_mix));
+	if (!filters) {
+		free(filters);
+		goto mem_err;
+	}
+	init_filters(filters);
 
 	start_time = get_time_in_seconds();
 
-	for (i = 0; i < threadnum; i++) {
+	for (i = 0; i < 3; i++) {
 		th_spec = thread_spec_init();
 		if (!th_spec) {
 			bmp_img_free(&img);
@@ -288,19 +228,33 @@ int main(int argc, char *argv[])
 
 	end_time = get_time_in_seconds();
 
-	printf("\nRESULT: filter = %s, threadnum = %d, time = %.6f seconds\n", filter_type, threadnum,
-	       end_time - start_time);
-	snprintf(output_filepath, sizeof(output_filepath), "../test/rcon_out_%s", input_filename);
+	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n\n",
+		   filter_type, threadnum, end_time - start_time);
+
+	file = fopen(LOG_FILE_PATH, "a");
+	if (file) {
+		fprintf(file, "%s %d %s %d %.6f\n", filter_type, threadnum, mode_str,
+				block_size, end_time - start_time);
+		fclose(file);
+	} else {
+		fprintf(stderr, "Error: could not open timing results file\n");
+	}
+
+	if (output_filename) {
+		snprintf(output_filepath, sizeof(output_filepath), "../test-img/%s",
+				 output_filename);
+	} else {
+		snprintf(output_filepath, sizeof(output_filepath),
+				 "../test-img/rcon_out_%s", input_filename);
+	}
 
 	bmp_img_write(&img_result, output_filepath);
-	compare_images(&img, &img_result);
 
 	free(th);
 	free(dim);
 	bmp_img_free(&img);
 	bmp_img_free(&img_result);
-	pthread_mutex_destroy(&x_block_mutex);
-	pthread_mutex_destroy(&y_block_mutex);
+	free_filters(filters);
 	pthread_mutex_destroy(&xy_block_mutex);
 	return 0;
 
