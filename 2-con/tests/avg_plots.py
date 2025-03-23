@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 RESULTS_FILE = "tests/timing-results.dat"
-PLOTS_PATH = "./plots/"
+PLOTS_PATH = "./tests/plots/"
 
 colors = ['green', 'red', 'blue', 'brown', 'purple', 'orange', 'pink']
 
@@ -60,7 +60,8 @@ def plot_filter(filter_name):
     plt.xticks(x + width / 2, modes)
     plt.legend()
     
-    plt.ylim(0, max(df["TIME"]) * 1.1)  # Adjust y-axis scale for better precision
+    if not subset.empty:
+        plt.ylim(0, max(subset.values) * 1.1)
     
     save_path = os.path.join(PLOTS_PATH, f"{filter_name}_execution_time_vs_mode.png")
     plt.savefig(save_path, bbox_inches='tight')

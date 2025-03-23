@@ -40,7 +40,7 @@ echo "RunID Filter-type Thread-num Mode Block-size Result" > $LOG_FILE
 
 mkdir -p $PLOTS_PATH
 cd ..
-
+'
 echo -e "\nRunning mt tests with 1 filter"
 for mode in "${MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
@@ -57,7 +57,7 @@ for mode in "${MODES[@]}"; do
 done
 
 python3 tests/avg_plots.py
-
+'
 for pair in "${pairs[@]}"; do
 	IFS=',' read -r f1 f2 <<< "$pair"
 	for i in $(seq 1 "$RUN_NUM"); do 
