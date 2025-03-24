@@ -96,8 +96,9 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter) {
 	//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size,
 	// spec->start_column, spec->start_row, spec->end_column, spec->end_row);
 
-	for (x = spec->start_column; x < spec->end_column; x++) {
-		for (y = spec->start_row; y < spec->end_row; y++) {
+	for (y = spec->start_row; y < spec->end_row; y++) {
+		for (x = spec->start_column; x < spec->end_column; x++) {
+
 			int red = 0, green = 0, blue = 0;
 
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
@@ -140,8 +141,9 @@ void apply_median_filter(struct thread_spec *spec, int filter_size) {
 	int *green = malloc(filter_area * sizeof(int));
 	int *blue = malloc(filter_area * sizeof(int));
 
-	for (int x = spec->start_column; x < spec->end_column; x++) {
-		for (int y = spec->start_row; y < spec->end_row; y++) {
+	for (int y = spec->start_row; y < spec->end_row; y++) {
+		for (int x = spec->start_column; x < spec->end_column; x++) {
+
 			int n = 0;
 
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {

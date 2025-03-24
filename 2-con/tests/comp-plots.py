@@ -34,11 +34,12 @@ def process_filter_pairs(df):
             times.append(total_time)
 
     pair_df = pd.DataFrame({"PAIR": pairs, "TIME": times})
+    print(pair_df)
     return pair_df, pair_order
 
 pair_df, pair_order = process_filter_pairs(df)
 pair_avg_df = pair_df.groupby("PAIR")["TIME"].mean().reset_index()
-
+print(pair_avg_df)
 pair_avg_df["ORDER"] = pair_avg_df["PAIR"].map(pair_order)
 pair_avg_df = pair_avg_df.sort_values(by="ORDER")
 
