@@ -115,6 +115,7 @@ else
 			compare_results "$TEST_FILE"
 	done
 
+	python3 "$SD/avg_plots.py" # just for verificaton
 
 	echo -e "\nRunning multithreaded verification tests"
 	for mode in "${MODES[@]}"; do
