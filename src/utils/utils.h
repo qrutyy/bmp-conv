@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "../libbmp/libbmp.h"
+#include "../../libbmp/libbmp.h"
 #include <stdio.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))

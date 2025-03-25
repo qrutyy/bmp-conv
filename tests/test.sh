@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERIFY?="false"
+VERIFY="false"
 
 RUN_NUM=20
 TEST_FILE="image4.bmp"

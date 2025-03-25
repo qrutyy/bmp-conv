@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "libbmp/libbmp.h"
+#include "../libbmp/libbmp.h"
 #include "utils/mt-utils.h"
 #include "utils/utils.h"
 #include <math.h>

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "../libbmp/libbmp.h"
+#include "../../libbmp/libbmp.h"
 #include "utils.h"
 #include <math.h>
 #include <pthread.h>
