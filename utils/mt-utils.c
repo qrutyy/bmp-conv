@@ -93,12 +93,10 @@ int process_by_pixel(struct thread_spec *th_spec, int *next_x_block,
 void apply_filter(struct thread_spec *spec, struct filter cfilter) {
 	int x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
-	//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size,
-	// spec->start_column, spec->start_row, spec->end_column, spec->end_row);
+//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size, spec->start_column, spec->start_row, spec->end_column, spec->end_row);
 
 	for (y = spec->start_row; y < spec->end_row; y++) {
 		for (x = spec->start_column; x < spec->end_column; x++) {
-
 			int red = 0, green = 0, blue = 0;
 
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
@@ -198,3 +196,12 @@ struct img_spec *init_img_spec(bmp_img *input, bmp_img *output) {
 	spec->output_img = output;
 	return spec;
 }
+
+void *thread_spec_init(void) {
+	struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
+	if (!th_spec)
+		return NULL;
+
+	return th_spec;
+}
+

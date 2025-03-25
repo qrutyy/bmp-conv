@@ -11,8 +11,8 @@
 
 enum compute_mode { BY_ROW, BY_COLUMN, BY_PIXEL, BY_GRID };
 
-// i know that isn't necessary, just a way to make it cleaner (without 6 ->
-// somewhere)
+// i know that isn't necessary, just a way to make it cleaner 
+// (somewhere without 6 '->')
 struct img_dim {
 	int height;
 	int width;
@@ -44,3 +44,4 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter);
 void apply_median_filter(struct thread_spec *spec, int filter_size);
 struct img_dim *init_dimensions(int width, int height);
 struct img_spec *init_img_spec(bmp_img *input, bmp_img *output);
+void *thread_spec_init(void);

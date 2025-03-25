@@ -51,6 +51,36 @@ const double big_gaus_arr[15][15] = {
 	{2, 3, 3, 4, 4, 5, 5, 6, 5, 5, 4, 4, 3, 3, 2},
 	{2, 2, 3, 3, 4, 4, 5, 5, 5, 4, 4, 3, 3, 2, 2}};
 
+const double med_gaus_arr[9][9] = {
+    {1, 1, 2, 2, 2, 2, 2, 1, 1},
+    {1, 2, 2, 3, 3, 3, 2, 2, 1},
+    {2, 2, 3, 4, 5, 4, 3, 2, 2},
+    {2, 3, 4, 5, 6, 5, 4, 3, 2},
+    {2, 3, 5, 6, 7, 6, 5, 3, 2},
+    {2, 3, 4, 5, 6, 5, 4, 3, 2},
+    {2, 2, 3, 4, 5, 4, 3, 2, 2},
+    {1, 2, 2, 3, 3, 3, 2, 2, 1},
+    {1, 1, 2, 2, 2, 2, 2, 1, 1}
+};
+
+const double box_blur_arr[15][15] = {
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+};
+
 void swap(int *a, int *b) {
 	int temp = *a;
 	*a = *b;
@@ -153,6 +183,8 @@ void init_filters(struct filter_mix *filters) {
 	init_filter(&filters->sharpen, 3, 0.0, 1.0, sharpen_arr);
 	init_filter(&filters->emboss, 5, 128.0, 1.0, emboss_arr);
 	init_filter(&filters->big_gaus, 15, 0.0, 1.0 / 771, big_gaus_arr);
+	init_filter(&filters->med_gaus, 9, 0.0, 1.0 / 213, med_gaus_arr);
+	init_filter(&filters->box_blur, 15, 0.0, 1.0/ 225, box_blur_arr);
 }
 
 void free_filters(struct filter_mix *filters) {
@@ -163,4 +195,6 @@ void free_filters(struct filter_mix *filters) {
 	free_filter(filters->sharpen);
 	free_filter(filters->emboss);
 	free_filter(filters->big_gaus);
+	free_filter(filters->med_gaus);
+	free_filter(filters->box_blur);
 }

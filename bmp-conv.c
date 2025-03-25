@@ -13,7 +13,6 @@
 #include <sys/time.h>
 #include "bmp-conv.h"
 
-const char *output_filename = NULL;
 struct filter_mix *filters = NULL;
 struct p_args *args = NULL;
 
@@ -21,7 +20,7 @@ int next_x_block = 0;
 int next_y_block = 0;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", NULL };
+const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
 const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL };
 
 char *check_filter_arg(char *filter) {
@@ -63,6 +62,7 @@ int parse_args(int argc, char *argv[], struct p_args *args) {
     args->output_filename = NULL;
     args->filter_type = NULL;
     args->mode = -1;
+	args->log_enabled = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strncmp(argv[i], "--filter=", 9) == 0) {
@@ -83,6 +83,8 @@ int parse_args(int argc, char *argv[], struct p_args *args) {
                 fprintf(stderr, "Error: Block size must be >= 1.\n");
                 return -1;
             }
+		 } else if (strncmp(argv[i], "--log=", 6) == 0) {
+            args->log_enabled = atoi(argv[i] + 6);
         } else if (strncmp(argv[i], "--output=", 9) == 0) {
             args->output_filename = argv[i] + 9;
         } else if (args->input_filename == NULL) {
@@ -120,6 +122,10 @@ void filter_part_computation(struct thread_spec *spec) {
 		apply_median_filter(spec, 15);
 	} else if (strcmp(filter_type, "gg") == 0) {
 		apply_filter(spec, *filters->big_gaus);
+	} else if (strcmp(filter_type, "bo") == 0) {
+		apply_filter(spec, *filters->box_blur);
+	} else if (strcmp(filter_type, "mg") == 0) {
+		apply_filter(spec, *filters->med_gaus);
 	} else {
 		fprintf(stderr, "Wrong filter type parameter\n");
 	}
@@ -221,14 +227,19 @@ mem_err:
 
 
 void write_logs(struct p_args *args, FILE *file, double result_time) {
+	if (!args->log_enabled) return;
+
 	file = fopen(LOG_FILE_PATH, "a");
+	const char* mode_str = (args->threadnum == 1) ? "none" : mode_to_str(args->mode);
+
 	if (file) {
-		fprintf(file, "%s %d %s %d %.6f\n", args->filter_type, args->threadnum, mode_to_str(args->mode),
+		fprintf(file, "%s %d %s %d %.3f\n", args->filter_type, args->threadnum, mode_str,
 				args->block_size, result_time);
 		fclose(file);
 	} else {
 		fprintf(stderr, "Error: could not open timing results file\n");
 	}
+
 	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n\n",
 		   args->filter_type, args->threadnum, result_time);
 	return;
@@ -290,10 +301,10 @@ int main(int argc, char *argv[]) {
 
 	result_time = execute_threads(threadnum, dim, img_spec);
 	write_logs(args, file, result_time);
-
-	if (output_filename) {
+	printf("outf%sf\n", args->output_filename);
+	if (strcmp(args->output_filename, "") != 0) {
 		snprintf(output_filepath, sizeof(output_filepath), "test-img/%s",
-				 output_filename);
+				 args->output_filename);
 	} else {
 		if (threadnum > 1) 
 			snprintf(output_filepath, sizeof(output_filepath),
@@ -301,9 +312,8 @@ int main(int argc, char *argv[]) {
 		else 
 			snprintf(output_filepath, sizeof(output_filepath),
 				 "test-img/seq_out_%s", args->input_filename);
-
 	}
-
+	printf("result out filepath %s\n", output_filepath);
 	bmp_img_write(&img_result, output_filepath);
 
 	free(th);

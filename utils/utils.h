@@ -27,6 +27,8 @@ struct filter_mix {
 	struct filter *sharpen;
 	struct filter *emboss;
 	struct filter *big_gaus;
+	struct filter *med_gaus;
+	struct filter *box_blur;
 };
 
 void swap(int *a, int *b);
