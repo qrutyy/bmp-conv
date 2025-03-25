@@ -1,0 +1,60 @@
+name: Linters Check
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+    paths:
+      - '**/*.c'
+      - '**/*.h'
+      - '**/*.py'
+      - '**/*.sh'
+
+jobs:
+  linters:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install Clang-Format
+      run: |
+        sudo apt update
+        sudo apt install clang-format
+
+    - name: Run Clang-Format
+      run: |
+        clang-format --version
+        git diff --exit-code --name-only | grep -E '\.c$|\.h$' | while read file; do
+          clang-format -n "$file"
+        done
+
+    - name: Fail if clang-format issues are detected
+      run: |
+        git diff --exit-code --unified=0 --color=always $(git ls-files '*.c' '*.h')
+
+    - name: Set up Python and install Black
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black
+
+    - name: Check Python code formatting with Black
+      run: |
+        black --check .
+
+    # Install ShellCheck for shell script checks
+    - name: Install ShellCheck
+      run: |
+        sudo apt update
+        sudo apt install shellcheck
+
+    # Run ShellCheck for shell scripts
+    - name: ShellCheck for shell scripts
+      run: |
+        shellcheck tests/*.sh
+
