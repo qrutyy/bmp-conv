@@ -6,12 +6,11 @@
 #define LOG_FILE_PATH "tests/timing-results.dat"
 
 struct p_args {
-    int8_t threadnum;
-    uint8_t block_size;
-    char *input_filename;
-    char *output_filename;
-    char *filter_type;
-    enum compute_mode mode;
+	int8_t threadnum;
+	uint8_t block_size;
+	char *input_filename;
+	char *output_filename;
+	char *filter_type;
+	enum compute_mode mode;
 	uint8_t log_enabled;
 };
-
