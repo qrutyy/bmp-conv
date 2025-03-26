@@ -34,6 +34,18 @@ jobs:
       run: |
         git diff --exit-code --unified=0 --color=always $(git ls-files '*.c' '*.h')
 
+    - name: Run Clang-Tidy
+      # its shitty, for general edu only 
+      run: |
+        clang-tidy --version
+        git ls-files '*.c' '*.h' | grep -v '^libbmp/' | while read -r file; do
+          clang-tidy "$file" --quiet -- -I. -std=c99
+        done
+
+    - name: Fail if clang-tidy issues are detected
+      run: |
+        git diff --exit-code --unified=0 --color=always $(git ls-files '*.c' '*.h')
+
     - name: Set up Python and install Black
       uses: actions/setup-python@v2
       with:

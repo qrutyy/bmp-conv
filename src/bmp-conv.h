@@ -11,6 +11,6 @@ struct p_args {
 	char *input_filename;
 	char *output_filename;
 	char *filter_type;
-	enum compute_mode mode;
+	int mode;
 	uint8_t log_enabled;
 };

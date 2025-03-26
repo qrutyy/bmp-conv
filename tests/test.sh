@@ -2,7 +2,7 @@
 
 VERIFY="false"
 
-RUN_NUM=20
+RUN_NUM=25
 TEST_FILE="image4.bmp"
 FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
 BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
@@ -110,21 +110,17 @@ else
 	echo -e "\nRunning single-threaded verification tests"
 	for fil in "${FILTERS[@]}"; do
 		make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" LOG=0 > /dev/null
-
-			make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 LOG=0 > /dev/null 
-			compare_results "$TEST_FILE"
+		make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 LOG=0 > /dev/null 
+		compare_results "$TEST_FILE"
 	done
-
-	python3 "$SD/avg_plots.py" # just for verificaton
 
 	echo -e "\nRunning multithreaded verification tests"
 	for mode in "${MODES[@]}"; do
 		for fil in "${FILTERS[@]}"; do
 			for bs in "${BLOCK_SIZE[@]}"; do
 				make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 LOG=0 >/dev/null
-
-					make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode" LOG=0 > /dev/null
-					compare_results "$TEST_FILE"
+				make -C "$BD" run-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode" LOG=0 > /dev/null
+				compare_results "$TEST_FILE"
 			done
 		done
 	done

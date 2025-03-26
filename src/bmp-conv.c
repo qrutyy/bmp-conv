@@ -30,28 +30,32 @@ char *check_filter_arg(char *filter)
 			return filter;
 		}
 	}
-	fprintf(stderr, "Error: Wrong filter.\n");
+	fputs("Error: Wrong filter.\n", stderr);
 	return NULL;
 }
 
-enum compute_mode check_mode_arg(char *mode_str)
+int check_mode_arg(char *mode_str)
 {
 	for (int i = 0; valid_modes[i] != NULL; i++) {
 		if (strcmp(mode_str, valid_modes[i]) == 0) {
 			return i;
 		}
 	}
-	fprintf(stderr, "Error: Invalid mode.\n");
+	fputs("Error: Invalid mode.\n", stderr);
 	return -1;
 }
 
-const char *mode_to_str(enum compute_mode mode)
+const char *mode_to_str(int mode)
 {
 	if (mode >= 0 && mode < (sizeof(valid_modes) / sizeof(valid_modes[0]) - 1)) {
 		return valid_modes[mode];
 	}
+    if (mode == -1) {
+        return "unset/invalid";
+    }
 	return "unknown";
 }
+
 
 int parse_args(int argc, char *argv[], struct p_args *args)
 {
@@ -63,7 +67,7 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 	args->threadnum = 1;
 	args->block_size = 0;
 	args->input_filename = NULL;
-	args->output_filename = NULL;
+	args->output_filename = "";
 	args->filter_type = NULL;
 	args->mode = -1;
 	args->log_enabled = 0;
@@ -80,13 +84,13 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "--threadnum=", 12) == 0) {
 			args->threadnum = atoi(argv[i] + 12);
 			if (args->threadnum <= 0) {
-				fprintf(stderr, "Error: Invalid threadnum.\n");
+				fputs("Error: Invalid threadnum.\n", stderr);
 				return -1;
 			}
 		} else if (strncmp(argv[i], "--block=", 8) == 0) {
 			args->block_size = atoi(argv[i] + 8);
 			if (args->block_size <= 0) {
-				fprintf(stderr, "Error: Block size must be >= 1.\n");
+				fputs("Error: Block size must be >= 1.\n", stderr);
 				return -1;
 			}
 		} else if (strncmp(argv[i], "--log=", 6) == 0) {
@@ -94,7 +98,7 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "--output=", 9) == 0) {
 			args->output_filename = argv[i] + 9;
 		} else if (args->input_filename == NULL) {
-			args->input_filename = argv[i]; // Assume first positional argument is input image
+			args->input_filename = argv[i];
 		} else {
 			fprintf(stderr, "Error: Unknown argument %s\n", argv[i]);
 			return -1;
@@ -102,7 +106,7 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 	}
 
 	if (!args->input_filename || !args->filter_type || args->mode == -1 || args->block_size == 0) {
-		fprintf(stderr, "Error: Missing required arguments.\n");
+		fputs("Error: Missing required arguments.\n", stderr);
 		return -1;
 	}
 
@@ -111,7 +115,12 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 
 void filter_part_computation(struct thread_spec *spec)
 {
-	char *filter_type = args->filter_type;
+	if (!spec || !args || !args->filter_type || !filters) {
+        fputs("Error: Invalid state in filter_part_computation.\n", stderr);
+        return;
+    }
+    char *filter_type = args->filter_type;
+
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
@@ -133,36 +142,38 @@ void filter_part_computation(struct thread_spec *spec)
 	} else if (strcmp(filter_type, "mg") == 0) {
 		apply_filter(spec, *filters->med_gaus);
 	} else {
-		fprintf(stderr, "Wrong filter type parameter\n");
+		fprintf(stderr, "Error: Wrong filter type parameter '%s'\n", filter_type);
 	}
 }
 
 void *thread_function(void *arg)
 {
 	struct thread_spec *th_spec = (struct thread_spec *)arg;
+    int result = 0;
 
 	while (1) {
-		switch (args->mode) {
+		switch ((enum compute_mode)args->mode) {
 		case BY_ROW:
-			if (process_by_row(th_spec, &next_x_block, args->block_size, &xy_block_mutex))
-				goto exit;
+			result = process_by_row(th_spec, &next_x_block, args->block_size, &xy_block_mutex);
 			break;
 		case BY_COLUMN:
-			if (process_by_column(th_spec, &next_y_block, args->block_size, &xy_block_mutex))
-				goto exit;
+			result = process_by_column(th_spec, &next_y_block, args->block_size, &xy_block_mutex);
 			break;
 		case BY_PIXEL:
-			if (process_by_pixel(th_spec, &next_x_block, &next_y_block, &xy_block_mutex))
-				goto exit;
+			result = process_by_pixel(th_spec, &next_x_block, &next_y_block, &xy_block_mutex);
 			break;
 		case BY_GRID:
-			if (process_by_grid(th_spec, &next_x_block, &next_y_block, args->block_size, &xy_block_mutex))
-				goto exit;
+			result = process_by_grid(th_spec, &next_x_block, &next_y_block, args->block_size, &xy_block_mutex);
 			break;
 		default:
-			free(th_spec);
-			return NULL;
+            fprintf(stderr, "Error: Invalid mode %d in thread function.\n", args->mode);
+            result = 1;
+			break;
 		}
+
+        if (result != 0) {
+            goto exit;
+        }
 
 		filter_part_computation(th_spec);
 	}
@@ -176,7 +187,8 @@ double execute_threads(int threadnum, struct img_dim *dim, struct img_spec *img_
 {
 	struct thread_spec *th_spec = NULL;
 	pthread_t *th = NULL;
-	double start_time, end_time;
+	double start_time = 0, end_time = 0;
+    int create_error = 0;
 
 	if (threadnum > 1) {
 		th = malloc(threadnum * sizeof(pthread_t));
@@ -187,8 +199,12 @@ double execute_threads(int threadnum, struct img_dim *dim, struct img_spec *img_
 
 		for (int i = 0; i < threadnum; i++) {
 			th_spec = thread_spec_init();
-			if (!th_spec)
-				goto mem_err;
+			if (!th_spec) {
+                create_error = 1;
+                fprintf(stderr, "Memory allocation error for thread_spec %d\n", i);
+                threadnum = i;
+                break;
+            }
 
 			th_spec->dim = dim;
 			th_spec->img = img_spec;
@@ -196,16 +212,26 @@ double execute_threads(int threadnum, struct img_dim *dim, struct img_spec *img_
 			if (pthread_create(&th[i], NULL, thread_function, th_spec) != 0) {
 				perror("Failed to create a thread");
 				free(th_spec);
+                create_error = 1;
+                threadnum = i;
+				break;
 			}
+            th_spec = NULL;
 		}
 
-		for (int i = 0; i < threadnum; i++)
+		for (int i = 0; i < threadnum; i++) {
 			pthread_join(th[i], NULL);
+        }
 
 		end_time = get_time_in_seconds();
-		free(th);
-	} else {
-		// case when threadnum < 0 already was checked in parse_args
+
+        if (create_error) {
+            free(th);
+            return 0;
+        }
+
+        free(th);
+	} else if (threadnum == 1) {
 		start_time = get_time_in_seconds();
 
 		th_spec = thread_spec_init();
@@ -220,12 +246,15 @@ double execute_threads(int threadnum, struct img_dim *dim, struct img_spec *img_
 		end_time = get_time_in_seconds();
 
 		free(th_spec);
-	}
+	} else {
+        fputs("Error: Invalid thread count in execute_threads.\n", stderr);
+        return 0;
+    }
 
 	return end_time - start_time;
 
 mem_err:
-	fprintf(stderr, "Memory allocation error\n");
+	fputs("Memory allocation error\n", stderr);
 	free(th);
 	free(th_spec);
 	return 0;
@@ -233,20 +262,30 @@ mem_err:
 
 void write_logs(struct p_args *args, FILE *file, double result_time)
 {
-	if (!args->log_enabled)
+	if (!args || !args->log_enabled)
 		return;
 
 	file = fopen(LOG_FILE_PATH, "a");
 	const char *mode_str = (args->threadnum == 1) ? "none" : mode_to_str(args->mode);
 
 	if (file) {
-		fprintf(file, "%s %d %s %d %.3f\n", args->filter_type, args->threadnum, mode_str, args->block_size, result_time);
+		fprintf(file, "%s %d %s %d %.3f\n",
+                args->filter_type ? args->filter_type : "unknown",
+                args->threadnum,
+                mode_str,
+                args->block_size,
+                result_time);
 		fclose(file);
 	} else {
-		fprintf(stderr, "Error: could not open timing results file\n");
+		fputs("Error: could not open timing results file for appending.\n", stderr);
 	}
 
-	printf("RESULT: filter = %s, threadnum = %d, time = %.6f seconds\n\n", args->filter_type, args->threadnum, result_time);
+	printf("RESULT: filter = %s, threadnum = %d, mode = %s, block = %d, time = %.6f seconds\n\n",
+           args->filter_type ? args->filter_type : "unknown",
+           args->threadnum,
+           mode_str,
+           args->block_size,
+           result_time);
 	return;
 }
 
@@ -262,9 +301,6 @@ int main(int argc, char *argv[])
 	FILE *file = NULL;
 
 	args = malloc(sizeof(struct p_args));
-	if (!args) {
-		goto mem_err;
-	}
 
 	threadnum = parse_args(argc, argv, args);
 	if (threadnum < 0) {
@@ -283,12 +319,14 @@ int main(int argc, char *argv[])
 	snprintf(input_filepath, sizeof(input_filepath), "./test-img/%s", args->input_filename);
 
 	if (bmp_img_read(&img, input_filepath)) {
+		free(th);
 		fprintf(stderr, "Error: Could not open BMP image\n");
 		return -1;
 	}
 
 	dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
 	if (!dim) {
+		free(th);
 		bmp_img_free(&img);
 		goto mem_err;
 	}
@@ -298,6 +336,8 @@ int main(int argc, char *argv[])
 
 	filters = malloc(sizeof(struct filter_mix));
 	if (!filters) {
+		free(th);
+		bmp_img_free(&img);
 		free(filters);
 		goto mem_err;
 	}
