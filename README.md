@@ -3,16 +3,16 @@
 This program applies various filters to a BMP image in a multi-threaded manner, allowing for efficient processing based on the selected filter type and computation mode.
 
 ## Usage
-First, you should build the sources by `make build`.
+At first, you should build the sources by `make build`.
 
 ### Command Line Arguments
 
 ```bash
-Usage: ./bmp-conv <input_file.bmp> [--mode=<compute_mode>] --filter=<type> --threadnum=<N> [--block=<size>] [--output=<file>] [--log=<N>]
+Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N>] [--mode=<compute_mode>] [--block=<size>] [--output=<file>] [--log=<N>]
 ```
 
-#### Required Arguments:
-- `<input_file.bmp>`: The path to the input BMP image.
+#### Mandatory Arguments:
+- `<input_file.bmp>`: The path to the input BMP image from test-img/ dir.  **All free arguments will be considered as input_files. Non queued mode uses only 1 input file.**
 - `--mode=<compute_mode>`: Defines the mode of computation. Possible values:
   - `by_row`: Process image row by row.
   - `by_column`: Process image column by column.
@@ -29,22 +29,35 @@ Usage: ./bmp-conv <input_file.bmp> [--mode=<compute_mode>] --filter=<type> --thr
   - `mm`: Median
   - `bo`: Box Blur
   - `mg`: Median Gaussian
+- `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. Must be greater than `0`.
 
 [Filter description and performance analysis](https://github.com/qrutyy/bmp-conv/blob/feat/conc/MT-mode-analysis.md)
 
 #### Optional Arguments:
-- `--threadnum=<N>`: The number of threads to use (default: `1`). Specify the number of threads to run in parallel.
-- `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. Must be greater than `0`.
-- `--output=<file>`: The name of the output file where the processed image will be saved. If not specified, an output filename will be generated based on the input filename.
+- `-queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)
+- `--threadnum=<N>`: The number of threads to use (default: `1`). Specify the number of threads to run in parallel. **Isn't required for queue mode.**
+- `--output=<file>`: The name of the output file where the processed image will be saved. If not specified, an output filename will be generated based on the input filename. In case of queue-mode provided parameter will be used as a template
 - `--log=<0|1>`: Enable or disable logging (default: `0`). Set to `1` to log execution time and parameters to a file.
 - `--mode=<compute_mode>`: This argument is optional when threadnum equals to `1` (single-threaded mode is turned on).
+- `--rww=<x,y,z>`: Sets the number of **reader**, **worker** and **writer** threads. Is required in queue-mode. If `sum < 3` -> queue-mode won't work.  
 
 ### Example Usage
 
-Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16:
-   ```bash
-   ./image_filter input.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
-   ```
+Apply Sharpen filter in single-threded (sequential) column mode with block size of 30 (minimum args required):
+```bash
+./src/bmp-conv image1.bmp --mode=by_column --filter=sh --block=30
+```
+
+Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ specified output):
+```bash
+./src/bmp-conv image2.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
+```
+
+Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
+```bash
+./src/bmp-conv -queue-mode image1.bmp image2.bmp ../test-img/image3.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
+```
+add queue-mode example
 
 ### Testing
 For future performance analysis - shell testing script and plot gen were implemented. To execute tests - simply run:
