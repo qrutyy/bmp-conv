@@ -3,12 +3,14 @@
 #include "mt-utils.h"
 #include "utils.h"
 #include <pthread.h>
+#include <stdint.h>
+#include <string.h>
 
-int process_by_row(struct thread_spec *th_spec, int *next_x_block, int block_size, pthread_mutex_t *x_block_mutex)
+uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t block_size, pthread_mutex_t *x_block_mutex)
 {
 	pthread_mutex_lock(x_block_mutex);
-	//	printf("next_block: %d, height: %d\n", next_x_block,
-	// th_spec->dim->height);
+	printf("next_block: %u, height: %d\n", *next_x_block,
+	th_spec->dim->height);
 
 	if (*next_x_block >= th_spec->dim->height) {
 		pthread_mutex_unlock(x_block_mutex);
@@ -26,7 +28,7 @@ int process_by_row(struct thread_spec *th_spec, int *next_x_block, int block_siz
 	return 0;
 }
 
-int process_by_column(struct thread_spec *th_spec, int *next_y_block, int block_size, pthread_mutex_t *y_block_mutex)
+uint8_t process_by_column(struct thread_spec *th_spec, uint16_t *next_y_block, uint16_t block_size, pthread_mutex_t *y_block_mutex)
 {
 	pthread_mutex_lock(y_block_mutex);
 	//	printf("next_block: %d, width: %d\n", *next_y_block,
@@ -49,7 +51,7 @@ int process_by_column(struct thread_spec *th_spec, int *next_y_block, int block_
 	return 0;
 }
 
-int process_by_grid(struct thread_spec *th_spec, int *next_x_block, int *next_y_block, int block_size, pthread_mutex_t *xy_block_mutex)
+uint8_t process_by_grid(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t *next_y_block, uint16_t block_size, pthread_mutex_t *xy_block_mutex)
 {
 	pthread_mutex_lock(xy_block_mutex);
 	if (*next_x_block >= th_spec->dim->height || *next_y_block >= th_spec->dim->width) {
@@ -78,14 +80,14 @@ int process_by_grid(struct thread_spec *th_spec, int *next_x_block, int *next_y_
 	return 0;
 }
 
-int process_by_pixel(struct thread_spec *th_spec, int *next_x_block, int *next_y_block, pthread_mutex_t *xy_block_mutex)
+uint8_t process_by_pixel(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t *next_y_block, pthread_mutex_t *xy_block_mutex)
 {
 	return process_by_grid(th_spec, next_x_block, next_y_block, 1, xy_block_mutex);
 }
 
 void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
-	int x, y, filterX, filterY, imageX, imageY, weight = 0;
+	int32_t x, y, filterX, filterY, imageX, imageY, weight = 0;
 	bmp_pixel orig_pixel;
 	//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size, spec->start_column, spec->start_row, spec->end_column, spec->end_row);
 
@@ -118,14 +120,14 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 	}
 }
 
-void apply_median_filter(struct thread_spec *spec, int filter_size)
+void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 {
-	int half_size = filter_size / 2;
-	int filter_area = filter_size * filter_size;
+	int32_t half_size = filter_size / 2;
+	int32_t filter_area = filter_size * filter_size;
 
-	int *red = malloc(filter_area * sizeof(int));
-	int *green = malloc(filter_area * sizeof(int));
-	int *blue = malloc(filter_area * sizeof(int));
+	int32_t *red = malloc(filter_area * sizeof(int));
+	int32_t *green = malloc(filter_area * sizeof(int));
+	int32_t *blue = malloc(filter_area * sizeof(int));
 
 	for (int y = spec->start_row; y < spec->end_row; y++) {
 		for (int x = spec->start_column; x < spec->end_column; x++) {
@@ -157,8 +159,36 @@ void apply_median_filter(struct thread_spec *spec, int filter_size)
 	free(blue);
 }
 
+void filter_part_computation(struct thread_spec *spec, char* filter_type, struct filter_mix *filters)
+{
+
+	if (strcmp(filter_type, "mb") == 0) {
+		apply_filter(spec, *filters->motion_blur);
+	} else if (strcmp(filter_type, "bb") == 0) {
+		apply_filter(spec, *filters->blur);
+	} else if (strcmp(filter_type, "gb") == 0) {
+		apply_filter(spec, *filters->gaus_blur);
+	} else if (strcmp(filter_type, "co") == 0) {
+		apply_filter(spec, *filters->conv);
+	} else if (strcmp(filter_type, "sh") == 0) {
+		apply_filter(spec, *filters->sharpen);
+	} else if (strcmp(filter_type, "em") == 0) {
+		apply_filter(spec, *filters->emboss);
+	} else if (strcmp(filter_type, "mm") == 0) {
+		apply_median_filter(spec, 15);
+	} else if (strcmp(filter_type, "gg") == 0) {
+		apply_filter(spec, *filters->big_gaus);
+	} else if (strcmp(filter_type, "bo") == 0) {
+		apply_filter(spec, *filters->box_blur);
+	} else if (strcmp(filter_type, "mg") == 0) {
+		apply_filter(spec, *filters->med_gaus);
+	} else {
+		fprintf(stderr, "Error: Wrong filter type parameter '%s'\n", filter_type);
+	}
+}
+
 // if you are confused -> check header file
-struct img_dim *init_dimensions(int width, int height)
+struct img_dim *init_dimensions(uint16_t width, uint16_t height)
 {
 	struct img_dim *dim = malloc(sizeof(struct img_dim));
 	if (!dim)

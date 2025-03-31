@@ -12,10 +12,10 @@
 enum compute_mode { BY_ROW, BY_COLUMN, BY_PIXEL, BY_GRID };
 
 // i know that isn't necessary, just a way to make it cleaner
-// (somewhere without 6 '->')
+// (somewhere without 6 '->'), just an alias
 struct img_dim {
-	int height;
-	int width;
+	uint16_t height;
+	uint16_t width;
 };
 
 struct img_spec {
@@ -23,20 +23,23 @@ struct img_spec {
 	bmp_img *output_img;
 };
 
+// thread-specific parameters for computation
 struct thread_spec {
 	struct img_spec *img;
 	struct img_dim *dim;
-	int start_column;
-	int start_row;
-	int end_row;
-	int end_column;
+	uint16_t start_column;
+	uint16_t start_row;
+	uint16_t end_row;
+	uint16_t end_column;
 };
-int process_by_row(struct thread_spec *th_spec, int *next_x_block, int block_size, pthread_mutex_t *x_block_mutex);
-int process_by_column(struct thread_spec *th_spec, int *next_y_block, int block_size, pthread_mutex_t *y_block_mutex);
-int process_by_grid(struct thread_spec *th_spec, int *next_x_block, int *next_y_block, int block_size, pthread_mutex_t *xy_block_mutex);
-int process_by_pixel(struct thread_spec *th_spec, int *next_x_block, int *next_y_block, pthread_mutex_t *xy_block_mutex);
+
+uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t block_size, pthread_mutex_t *x_block_mutex);
+uint8_t process_by_column(struct thread_spec *th_spec, uint16_t *next_y_block, uint16_t block_size, pthread_mutex_t *y_block_mutex);
+uint8_t process_by_grid(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t *next_y_block, uint16_t block_size, pthread_mutex_t *xy_block_mutex);
+uint8_t process_by_pixel(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t *next_y_block, pthread_mutex_t *xy_block_mutex);
 void apply_filter(struct thread_spec *spec, struct filter cfilter);
-void apply_median_filter(struct thread_spec *spec, int filter_size);
-struct img_dim *init_dimensions(int width, int height);
+void apply_median_filter(struct thread_spec *spec, uint16_t filter_size);
+void filter_part_computation(struct thread_spec *spec, char* filter_type, struct filter_mix *filters);
+struct img_dim *init_dimensions(uint16_t width, uint16_t height);
 struct img_spec *init_img_spec(bmp_img *input, bmp_img *output);
 void *thread_spec_init(void);
