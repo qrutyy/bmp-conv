@@ -39,6 +39,9 @@ const double box_blur_arr[15][15] = {
 	{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
 };
 
+const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
+const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL };
+
 void swap(int *a, int *b)
 {
 	int temp = *a;
@@ -78,6 +81,59 @@ double get_time_in_seconds(void)
 	struct timeval time;
 	gettimeofday(&time, NULL);
 	return (double)time.tv_sec + (double)time.tv_usec * 0.000001;
+}
+
+char *check_filter_arg(char *filter)
+{
+	for (int i = 0; valid_filters[i] != NULL; i++) {
+		if (strcmp(filter, valid_filters[i]) == 0) {
+			return filter;
+		}
+	}
+	fputs("Error: Wrong filter.\n", stderr);
+	return NULL;
+}
+
+int check_mode_arg(char *mode_str)
+{
+	for (int i = 0; valid_modes[i] != NULL; i++) {
+		if (strcmp(mode_str, valid_modes[i]) == 0) {
+			return i;
+		}
+	}
+	fputs("Error: Invalid mode.\n", stderr);
+	return -1;
+}
+
+const char *mode_to_str(int mode)
+{
+	if (mode >= 0 && (unsigned long)mode < (sizeof(valid_modes) / sizeof(valid_modes[0]) - 1)) {
+		return valid_modes[mode];
+	}
+	if (mode == -1) {
+		return "unset/invalid";
+	}
+	return "unknown";
+}
+
+
+
+void initialize_args(struct p_args *args_ptr)
+{
+	args_ptr->threadnum = 1;
+	args_ptr->block_size = 0;
+	args_ptr->output_filename = "";
+	args_ptr->filter_type = NULL;
+	args_ptr->compute_mode = -1;
+	args_ptr->log_enabled = 0;
+	args_ptr->queue_mode = 0;
+	args_ptr->wrt_count = 0;
+	args_ptr->ret_count = 0;
+	args_ptr->wot_count = 0;
+	args_ptr->file_count = 0;
+	for (int i = 0; i < MAX_IMAGE_QUEUE_SIZE; ++i) {
+		args_ptr->input_filename[i] = NULL;
+	}
 }
 
 int compare_images(const bmp_img *img1, const bmp_img *img2)
