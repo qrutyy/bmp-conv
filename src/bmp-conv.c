@@ -68,6 +68,8 @@ static int parse_args(int argc, char *argv[])
 		for (int i = 2; i < argc; i++) {
 			if (strncmp(argv[i], "--log=", 6) == 0) {
 				args->log_enabled = atoi(argv[i] + 6);
+			} else if (strncmp(argv[i], "--lim=", 6) == 0) {
+				args->queue_memory_limit = atoi(argv[i] + 6) * 1024 * 1024;
 			} else if (strncmp(argv[i], "--output=", 9) == 0) {
 				args->output_filename = argv[i] + 9; // make save with template
 			} else if (strncmp(argv[i], "--rww=", 6) == 0) {

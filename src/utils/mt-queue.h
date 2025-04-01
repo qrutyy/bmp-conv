@@ -6,6 +6,7 @@
 
 #define MAX_QUEUE_SIZE 10
 #define MAX_PATH_LEN 40
+#define MAX_QUEUE_MEMORY (50 * 1024 * 1024)
 
 struct queue_img_info {
 	bmp_img *image;
@@ -16,7 +17,10 @@ struct img_queue {
 	struct queue_img_info *images[MAX_QUEUE_SIZE];
 	uint8_t front, rear, size;
 	pthread_mutex_t mutex;
-	pthread_cond_t cond;
+
+	// for advanced balancing by mem_usage factor;
+	pthread_cond_t cond_non_empty, cond_non_full;
+	size_t current_mem_usage, max_mem_usage;
 };
 
 // thread-work specific struct for better abstraction (#saynotoglobals)
@@ -37,7 +41,7 @@ struct qthreads_info {
 };
 
 
-void queue_init(struct img_queue *q);
+void queue_init(struct img_queue *q, size_t max_mem);
 
 void *reader_thread(void *arg);
 void *worker_thread(void *arg);

@@ -45,7 +45,8 @@ struct p_args {
 	int8_t threadnum;
 	uint8_t wrt_count; // writer threads count 
 	uint8_t ret_count; // reader threads count 
-	uint8_t wot_count; // worker threads count 
+	uint8_t wot_count; // worker threads count
+	size_t queue_memory_limit;
 };
 
 void swap(int *a, int *b);

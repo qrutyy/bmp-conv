@@ -131,6 +131,7 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->ret_count = 0;
 	args_ptr->wot_count = 0;
 	args_ptr->file_count = 0;
+	args_ptr->queue_memory_limit = 500 * 1024 * 1024;
 	for (int i = 0; i < MAX_IMAGE_QUEUE_SIZE; ++i) {
 		args_ptr->input_filename[i] = NULL;
 	}

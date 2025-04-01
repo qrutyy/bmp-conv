@@ -91,8 +91,8 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 	bmp_pixel orig_pixel;
 	//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size, spec->start_column, spec->start_row, spec->end_column, spec->end_row);
 
+	for (y = spec->start_row; y < spec->end_row; y++) {
 		for (x = spec->start_column; x < spec->end_column; x++) {
-			for (y = spec->start_row; y < spec->end_row; y++) {
 
 			int red = 0, green = 0, blue = 0;
 
@@ -130,9 +130,8 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 	int32_t *green = malloc(filter_area * sizeof(int));
 	int32_t *blue = malloc(filter_area * sizeof(int));
 
+	for (int y = spec->start_row; y < spec->end_row; y++) {
 		for (int x = spec->start_column; x < spec->end_column; x++) {
-			for (int y = spec->start_row; y < spec->end_row; y++) {
-
 			int n = 0;
 
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {
