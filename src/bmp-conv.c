@@ -197,7 +197,7 @@ static void sthreads_save(char *output_filepath, size_t path_len, int threadnum,
 		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
 	} else {
 		if (threadnum > 1)
-			snprintf(output_filepath, path_len, "test-img/con_out_%s", args->input_filename[0]);
+			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
 		else
 			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
 	}
@@ -370,7 +370,6 @@ int main(int argc, char *argv[])
 			}
 		}
 		snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
-		printf("DEBUG: input filepath %s\n", input_filepath);
 		if (bmp_img_read(&img, input_filepath)) {
 			fprintf(stderr, "Error: Could not open BMP image\n");
 			return -1;
