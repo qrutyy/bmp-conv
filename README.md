@@ -31,7 +31,7 @@ Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N
   - `mg`: Median Gaussian
 - `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. Must be greater than `0`.
 
-[Filter description and performance analysis](https://github.com/qrutyy/bmp-conv/blob/feat/conc/MT-mode-analysis.md)
+[Filter description and performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
 
 #### Optional Arguments:
 - `-queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)
