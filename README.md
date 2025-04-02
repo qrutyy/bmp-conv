@@ -61,9 +61,9 @@ Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2
 add queue-mode example
 
 ### Testing
-For future performance analysis - shell testing script and plot gen were implemented. To execute tests - simply run:
+For future performance analysis - shell script for benchmarking and plot gen were implemented. To execute tests - simply run:
 ```
-./tests/test.sh
+./tests/benchmark.sh
 ``` 
 To use it only as a testing-system (without plot generation) - use `-v|--verify` option.
 
