@@ -40,6 +40,7 @@ Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N
 - `--log=<0|1>`: Enable or disable logging (default: `0`). Set to `1` to log execution time and parameters to a file.
 - `--mode=<compute_mode>`: This argument is optional when threadnum equals to `1` (single-threaded mode is turned on).
 - `--rww=<x,y,z>`: Sets the number of **reader**, **worker** and **writer** threads. Is required in queue-mode. If `sum < 3` -> queue-mode won't work.  
+- `--lim=<N>`: Sets the memory limit (in MB) for images being queued for convolution. Initial value is `500` MB. 
 
 ### Example Usage
 
@@ -50,7 +51,7 @@ Apply Sharpen filter in single-threded (sequential) column mode with block size 
 
 Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ specified output):
 ```bash
-./src/bmp-conv image2.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
+./src/bmp-conv image5.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
 ```
 
 Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
