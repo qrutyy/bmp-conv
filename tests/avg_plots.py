@@ -62,38 +62,35 @@ def compute_confidence_interval(data):
         return (conf_int[1] - conf_int[0]) / 2.0
     return 0
 
-
 def plot_single_thread():
-    single_thread_df = df[df["THREADNUM"] == 1].copy()
+    single_thread_df = df[df["THREADNUM"] == 1]
     plt.figure(figsize=(14, 8), dpi=300)
 
-    grouped = single_thread_df.groupby("FILTER")["TIME"]
-    means = grouped.mean()
-    conf_intervals = grouped.apply(compute_confidence_interval)
-    filters = means.index
+    filters = single_thread_df["FILTER"].unique()
+    means = []
+    conf_intervals = []
 
-    num_filters = len(filters)
-    bar_colors = colors[:num_filters] if len(colors) >= num_filters else plt.cm.get_cmap('tab10', num_filters)(range(num_filters))
+    for f in filters:
+        times = single_thread_df[single_thread_df["FILTER"] == f]["TIME"]
+        means.append(times.mean())
+        conf_intervals.append(compute_confidence_interval(times))
 
     plt.bar(
         [convert_fn(f) for f in filters],
         means,
         yerr=conf_intervals,
-        color=bar_colors,
+        color=colors[: len(filters)],
         capsize=5,
     )
 
     plt.xlabel("Filter")
     plt.ylabel("Execution Time (seconds)")
     plt.title("Execution Time for Different Filters (Single Thread)")
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    os.makedirs(ST_PP, exist_ok=True)
+    plt.xticks(rotation=45)
     save_path = os.path.join(ST_PP, "all_filters_execution_time.png")
     plt.savefig(save_path, bbox_inches="tight")
     plt.close()
     print(f"Saved: {save_path}")
-
 
 def plot_filter(filter_name):
     filter_df = df[(df["FILTER"] == filter_name) & (df["THREADNUM"] > 1)].copy()
