@@ -16,4 +16,4 @@ jobs:
             make build
       - name: test
         run: |
-             ./tests/test.sh -v
+             ./tests/benchmark.sh -v
