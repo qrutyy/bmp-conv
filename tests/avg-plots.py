@@ -58,9 +58,12 @@ def compute_confidence_interval(data):
     data = data.dropna()
     if len(data) > 1:
         mean, sigma = np.mean(data), np.std(data)
-        conf_int = stats.t.interval(0.95, len(data)-1, loc=mean, scale=stats.sem(data))
+        conf_int = stats.t.interval(
+            0.95, len(data) - 1, loc=mean, scale=stats.sem(data)
+        )
         return (conf_int[1] - conf_int[0]) / 2.0
     return 0
+
 
 def plot_single_thread():
     single_thread_df = df[df["THREADNUM"] == 1]
@@ -92,6 +95,7 @@ def plot_single_thread():
     plt.close()
     print(f"Saved: {save_path}")
 
+
 def plot_filter(filter_name):
     filter_df = df[(df["FILTER"] == filter_name) & (df["THREADNUM"] > 1)].copy()
     if filter_df.empty:
@@ -102,7 +106,7 @@ def plot_filter(filter_name):
     con_filter_name = convert_fn(filter_name)
 
     block_sizes = sorted(filter_df["BLOCK_SIZE"].unique())
-    canonical_modes = ['by_row', 'by_column', 'by_grid']
+    canonical_modes = ["by_row", "by_column", "by_grid"]
 
     modes_in_data = filter_df["MODE"].unique()
     modes_to_plot = [m for m in canonical_modes if m in modes_in_data]
@@ -116,14 +120,16 @@ def plot_filter(filter_name):
     num_block_sizes = len(block_sizes)
     total_width_per_group = 0.8
     width = total_width_per_group / num_block_sizes if num_block_sizes > 0 else 0.15
-    start_offset = - (total_width_per_group / 2) + (width / 2)
+    start_offset = -(total_width_per_group / 2) + (width / 2)
 
     for i, block_size in enumerate(block_sizes):
         subset = filter_df[filter_df["BLOCK_SIZE"] == block_size].groupby("MODE")[
             "TIME"
         ]
         means = subset.mean().reindex(modes_to_plot)
-        conf_intervals = subset.apply(compute_confidence_interval).reindex(modes_to_plot)
+        conf_intervals = subset.apply(compute_confidence_interval).reindex(
+            modes_to_plot
+        )
 
         plt.bar(
             x + start_offset + i * width,

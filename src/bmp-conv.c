@@ -23,7 +23,6 @@ uint16_t next_x_block = 0;
 uint16_t next_y_block = 0;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
 //shorten this up
 static int parse_args(int argc, char *argv[])
 {
@@ -56,7 +55,7 @@ static int parse_args(int argc, char *argv[])
 		} else if (strncmp(argv[i], "--block=", 8) == 0) {
 			args->block_size = atoi(argv[i] + 8);
 			if (args->block_size <= 0) {
-				fputs("Error: Block size must be >= 1.\n", stderr);
+				fprintf(stderr, "Error: Block size must be >= 1.\n");
 				return -1;
 			}
 			argv[i] = "_";
@@ -106,10 +105,10 @@ static int parse_args(int argc, char *argv[])
 			}
 		}
 		if ((args->ret_count + args->wot_count + args->wrt_count) < 3) {
-			fputs("Error: queue-based mode requires more than 3 threads all in all. see README\n", stderr);
+			fprintf(stderr, "Error: queue-based mode requires more than 3 threads all in all. see README\n");
 		}
 		if (!rww_found) {
-			fputs("Error: queue-based mode requires --rww=W,R,T argument.\n", stderr);
+			fprintf(stderr, "Error: queue-based mode requires --rww=W,R,T argument.\n");
 			return -1;
 		}
 
@@ -119,7 +118,7 @@ static int parse_args(int argc, char *argv[])
 			if (strncmp(argv[i], "--threadnum=", 12) == 0) {
 				args->threadnum = atoi(argv[i] + 12);
 				if (args->threadnum <= 0) {
-					fputs("Error: Invalid threadnum.\n", stderr);
+					fprintf(stderr, "Error: Invalid threadnum.\n");
 					return -1;
 				}
 			} else if (strncmp(argv[i], "--log=", 6) == 0) {
@@ -139,13 +138,13 @@ static int parse_args(int argc, char *argv[])
 			}
 		}
 		if (args->file_count != 1) {
-			fputs("Error: not queued mode requires strictly 1 input image\n", stderr);
+			fprintf(stderr, "Error: not queued mode requires strictly 1 input image\n");
 			return -1;
 		}
 	}
 
 	if (!args->input_filename[0] || !args->filter_type || args->compute_mode == -1 || args->block_size == 0) {
-		fputs("Error: Missing required arguments.\n", stderr);
+		fprintf(stderr, "Error: Missing required arguments.\n");
 		return -1;
 	}
 
@@ -181,7 +180,7 @@ static void *sthread_function(void *arg)
 			goto exit;
 		}
 		if (!th_spec || !args || !args->filter_type || !filters) {
-			fputs("Error: Invalid state before filter_part_computation.\n", stderr);
+			fprintf(stderr, "Error: Invalid state before filter_part_computation.\n");
 			return NULL;
 		}
 
@@ -288,7 +287,7 @@ static double execute_sthreads(int threadnum, struct img_dim *dim, struct img_sp
 	return end_time - start_time;
 
 mem_err:
-	fputs("Memory allocation error\n", stderr);
+	fprintf(stderr, "Memory allocation error\n");
 	return 0;
 }
 
@@ -336,7 +335,7 @@ static void write_logs(struct p_args *args, FILE *file, double result_time)
 		fprintf(file, "%s %d %s %d %.3f\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str, args->block_size, result_time);
 		fclose(file);
 	} else {
-		fputs("Error: could not open timing results file for appending.\n", stderr);
+		fprintf(stderr, "Error: could not open timing results file for appending.\n");
 	}
 
 	printf("RESULT: filter = %s, threadnum = %d, mode = %s, block = %d, time = %.6f seconds\n\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str,

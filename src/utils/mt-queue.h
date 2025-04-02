@@ -24,7 +24,7 @@ struct img_queue {
 };
 
 // thread-work specific struct for better abstraction (#saynotoglobals)
-struct threads_info { 
+struct threads_info {
 	uint8_t used_threads;
 	pthread_t *threads;
 };
@@ -40,15 +40,13 @@ struct qthreads_info {
 	struct filter_mix *filters;
 };
 
-
 void queue_init(struct img_queue *q, size_t max_mem);
 
 void *reader_thread(void *arg);
 void *worker_thread(void *arg);
 void *writer_thread(void *arg);
 
-int allocate_qthread_resources(struct qthreads_info *qt_info, struct p_args *args_ptr,  struct img_queue *input_queue, struct img_queue *output_queue);
+int allocate_qthread_resources(struct qthreads_info *qt_info, struct p_args *args_ptr, struct img_queue *input_queue, struct img_queue *output_queue);
 void join_qthreads(struct qthreads_info *qt_info);
 void create_qthreads(struct qthreads_info *qt_info, struct p_args *args_ptr);
 void free_qthread_resources(struct qthreads_info *qt_info);
-

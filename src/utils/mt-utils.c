@@ -10,7 +10,7 @@ uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint
 {
 	pthread_mutex_lock(x_block_mutex);
 	// printf("next_block: %u, height: %d\n", *next_x_block,
-// 	th_spec->dim->height);
+	// 	th_spec->dim->height);
 
 	if (*next_x_block >= th_spec->dim->height) {
 		pthread_mutex_unlock(x_block_mutex);
@@ -93,7 +93,6 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 
 	for (y = spec->start_row; y < spec->end_row; y++) {
 		for (x = spec->start_column; x < spec->end_column; x++) {
-
 			int red = 0, green = 0, blue = 0;
 
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
@@ -160,9 +159,8 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 	free(blue);
 }
 
-void filter_part_computation(struct thread_spec *spec, char* filter_type, struct filter_mix *filters)
+void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters)
 {
-
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {

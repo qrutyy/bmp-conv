@@ -116,8 +116,6 @@ const char *mode_to_str(int mode)
 	return "unknown";
 }
 
-
-
 void initialize_args(struct p_args *args_ptr)
 {
 	args_ptr->threadnum = 1;

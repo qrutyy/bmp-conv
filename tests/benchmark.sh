@@ -55,7 +55,7 @@ if [ "$VERIFY" == "false" ]; then
 
 	echo -e "\nRunning single-threaded tests"
 	for fil in "${FILTERS[@]}"; do
-		echo $BD
+		echo "$BD"
 		make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" LOG=0
 
 		for i in $(seq 1 "$RUN_NUM"); do

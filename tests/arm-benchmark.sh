@@ -38,7 +38,7 @@ calculate_stats() {
   fi
 
   # Use awk for calculations
-  stats=$(printf "%s\n" "${times_array[@]}" | sort -n | awk -v n=$n '
+  stats=$(printf "%s\n" "${times_array[@]}" | sort -n | awk -v n="$n" '
     BEGIN {
       sum = 0; sumsq = 0; min = "";
       p95_idx = int(0.95 * n + 0.999); # 95th percentile index (round up)
