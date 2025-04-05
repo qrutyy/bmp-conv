@@ -18,7 +18,7 @@ p_core_times=()
 
 extract_time() {
   local output="$1"
-  echo "$output" | grep 'RESULT:.*time = ' | awk '{print $(NF-1)}'
+  echo -e "$output" | grep 'RESULT:.*time = ' | awk '{print $(NF-1)}'
 }
 
 calculate_stats() {
@@ -26,7 +26,7 @@ calculate_stats() {
   local n=${#times_array[@]}
 
   if [ "$n" -eq 0 ]; then
-    echo "Error: No data for statistics calculation."
+    echo -e "Error: No data for statistics calculation."
     return 1
   fi
 
@@ -62,44 +62,44 @@ calculate_stats() {
       }
     }'
   )
-  echo "$stats"
+  echo -e "$stats"
 }
 
-echo "\nRunning tests on E-cores (${ITERATIONS} times)"
+echo -e "\nRunning tests on E-cores (${ITERATIONS} times)"
 
 for (( i=1; i<=ITERATIONS; i++ )); do
-  echo -n "Running E-cores $i/$ITERATIONS... "
+  echo -e "Running E-cores $i/$ITERATIONS... "
   output=$(eval "${MAKE_CMD_ECORES} ${MAKE_PARAMS}" 2>&1)
   time_val=$(extract_time "$output")
 
   if [[ "$time_val" =~ ^[0-9.]+$ ]]; then
-    echo "Time: ${time_val} s"
+    echo -e "Time: ${time_val} s"
     e_core_times+=("$time_val")
   else
-    echo "Error extracting time! Skipping."
+    echo -e "Error extracting time! Skipping."
   fi
 done
 
-echo "\nRunning tests on P-cores (${ITERATIONS} times)"
+echo -e "\nRunning tests on P-cores (${ITERATIONS} times)"
 
 for (( i=1; i<=ITERATIONS; i++ )); do
-  echo -n "Running P-cores $i/$ITERATIONS... "
+  echo -e "Running P-cores $i/$ITERATIONS... "
   output=$(eval "${MAKE_CMD_PCORES} ${MAKE_PARAMS}" 2>&1)
   time_val=$(extract_time "$output")
 
   if [[ "$time_val" =~ ^[0-9.]+$ ]]; then
-    echo "Time: ${time_val} s"
+    echo -e "Time: ${time_val} s\n"
     p_core_times+=("$time_val")
   else
-    echo "Error extracting time! Skipping."
+    echo -e "Error extracting time! Skipping.\n"
   fi
 done
 
-echo "\nE-cores Statistics"
+echo -e "\nE-cores Statistics\n"
 calculate_stats "${e_core_times[@]}" 
 
-echo "\nP-cores Statistics"
+echo -e "\nP-cores Statistics\n"
 calculate_stats "${p_core_times[@]}" 
 
-echo "\nARM benchmark is done"
+echo -e "\nARM benchmark is done\n"
 

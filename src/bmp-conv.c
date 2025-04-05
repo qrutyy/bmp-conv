@@ -29,6 +29,7 @@ static int parse_args(int argc, char *argv[])
 	uint8_t rww_found = 0;
 	uint8_t parsed_count = 0;
 	char *rww_values = NULL;
+	int wrt_temp, ret_temp, wot_temp = 0;
 
 	if (argc < 2) {
 		fprintf(stderr, "Usage: %s <input_file.bmp> --mode=<compute_mode> --filter=<type>  --threadnum=<N> --block=<size> [--output=<file>]\n", argv[0]);
@@ -73,8 +74,6 @@ static int parse_args(int argc, char *argv[])
 				args->output_filename = argv[i] + 9; // make save with template
 			} else if (strncmp(argv[i], "--rww=", 6) == 0) {
 				rww_values = argv[i] + 6;
-				int wrt_temp, ret_temp, wot_temp; // Use temporary ints for parsing
-
 				parsed_count = sscanf(rww_values, "%d,%d,%d", &ret_temp, &wot_temp, &wrt_temp);
 
 				if (parsed_count != 3) {
@@ -323,26 +322,6 @@ mem_err:
 	return 0;
 }
 
-static void write_logs(struct p_args *args, FILE *file, double result_time)
-{
-	if (!args || !args->log_enabled)
-		return;
-
-	file = fopen(LOG_FILE_PATH, "a");
-	const char *mode_str = (args->threadnum == 1) ? "none" : mode_to_str(args->compute_mode);
-
-	if (file) {
-		fprintf(file, "%s %d %s %d %.3f\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str, args->block_size, result_time);
-		fclose(file);
-	} else {
-		fprintf(stderr, "Error: could not open timing results file for appending.\n");
-	}
-
-	printf("RESULT: filter = %s, threadnum = %d, mode = %s, block = %d, time = %.6f seconds\n\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str,
-	       args->block_size, result_time);
-	return;
-}
-
 int main(int argc, char *argv[])
 {
 	bmp_img img, img_result;
@@ -352,7 +331,6 @@ int main(int argc, char *argv[])
 	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
 	double result_time = 0;
 	int threadnum = 0;
-	FILE *file = NULL;
 
 	args = malloc(sizeof(struct p_args));
 
@@ -395,7 +373,7 @@ int main(int argc, char *argv[])
 	init_filters(filters);
 
 	result_time = (!args->queue_mode) ? execute_sthreads(threadnum, dim, img_spec) : execute_qthreads();
-	write_logs(args, file, result_time);
+	st_write_logs(args, result_time);
 
 	if (!args->queue_mode) {
 		sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result);
