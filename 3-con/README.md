@@ -1,5 +1,0 @@
-# Piped Mutlithreaded Convolution
-## Usage
-```
-...
-```

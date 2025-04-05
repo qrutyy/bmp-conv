@@ -97,3 +97,5 @@ Temporary Items
 clang-format.txt
 
 .vscode
+
+tests/*.dat
