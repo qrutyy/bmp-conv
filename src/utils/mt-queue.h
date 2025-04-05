@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#define MAX_QUEUE_SIZE 10
+#define MAX_QUEUE_SIZE 2
 #define MAX_PATH_LEN 40
 #define MAX_QUEUE_MEMORY (50 * 1024 * 1024)
 

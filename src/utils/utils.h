@@ -13,6 +13,10 @@
 #define PADDING (cfilter.size / 2)
 #define MAX_FILTERS 10
 #define MAX_IMAGE_QUEUE_SIZE 20
+#define ST_LOG_FILE_PATH "tests/timing-results.dat"
+#define QT_LOG_FILE_PATH "tests/queue-timings.dat"
+
+enum LOG_TAG { QPOP, QPUSH, READER, WORKER, WRITER };
 
 struct filter {
 	int size;
@@ -54,6 +58,8 @@ int selectKth(int *data, int s, int e, int k);
 void initialize_args(struct p_args *args_ptr);
 double get_time_in_seconds(void);
 const char *mode_to_str(int mode);
+void st_write_logs(struct p_args *args, double result_time);
+void qt_write_logs(double result_time, enum LOG_TAG tag);
 int check_mode_arg(char *mode_str);
 char *check_filter_arg(char *filter);
 int compare_images(const bmp_img *img1, const bmp_img *img2);

@@ -41,6 +41,7 @@ const double box_blur_arr[15][15] = {
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
 const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL };
+const char *valid_tags[] = { "QPOP", "QPUSH", "READER", "WORKER", "WRITER", NULL };
 
 void swap(int *a, int *b)
 {
@@ -114,6 +115,53 @@ const char *mode_to_str(int mode)
 		return "unset/invalid";
 	}
 	return "unknown";
+}
+
+static const char *log_tag_to_str(enum LOG_TAG tag)
+{
+	if (tag >= 0 && (unsigned long)tag < (sizeof(valid_tags) / sizeof(valid_tags[0]) - 1)) {
+		return valid_tags[tag];
+	}
+	return "unknown";
+}
+
+void st_write_logs(struct p_args *args, double result_time)
+{
+	FILE *file = NULL;
+
+	if (!args || !args->log_enabled)
+		return;
+
+	file = fopen(ST_LOG_FILE_PATH, "a");
+	const char *mode_str = (args->threadnum == 1) ? "none" : mode_to_str(args->compute_mode);
+
+	if (file) {
+		fprintf(file, "%s %d %s %d %.6f\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str, args->block_size, result_time);
+		fclose(file);
+	} else {
+		fputs("Error: could not open timing results file for appending.\n", stderr);
+	}
+
+	printf("RESULT: filter = %s, threadnum = %d, mode = %s, block = %d, time = %.6f seconds\n\n", args->filter_type ? args->filter_type : "unknown", args->threadnum, mode_str,
+	       args->block_size, result_time);
+	return;
+}
+
+void qt_write_logs(double result_time, enum LOG_TAG tag)
+{
+	FILE *file = NULL;
+
+	file = fopen(QT_LOG_FILE_PATH, "a");
+	const char *log_tag_str = log_tag_to_str(tag);
+
+	if (file) {
+		fprintf(file, "%s %.6f\n", log_tag_str, result_time);
+		fclose(file);
+	} else {
+		fputs("Error: could not open timing results file for appending.\n", stderr);
+	}
+
+	return;
 }
 
 void initialize_args(struct p_args *args_ptr)
