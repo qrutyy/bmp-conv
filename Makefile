@@ -8,6 +8,7 @@ COMPUTE_MODE?=by_column
 BLOCK_SIZE?=5
 OUTPUT_FILE?=""
 LOG?=1
+RWW_MIX?=1,1,1
 
 UTILS_PATH = src/utils
 LIBBMP_PATH = libbmp
@@ -28,6 +29,9 @@ run-mac-e-cores:
 run-mac-p-cores:
 #\ By default (taskpolicy without -c), macOS automatically allocates the process to all available kernels, both P-cores and E-cores. I've noticed that it has the same performance as in taskset's 'utility' mode. There is no available way to lock process execution only to P-cores, its kinda wrongly.
 	make run
+
+run-q-mode:
+	./src/bmp-conv -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
 
 clean:
 	rm -rf src/*.out src/bmp-conv src/*.o tests/*.dat 
