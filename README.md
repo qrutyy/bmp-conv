@@ -56,23 +56,32 @@ Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ spe
 
 Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
 ```bash
-./src/bmp-conv -queue-mode image1.bmp image2.bmp ../test-img/image3.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
+./src/bmp-conv -queue-mode image4.bmp image4.bmp image4.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
 ```
 add queue-mode example
 
 ### Testing
-For future performance analysis - shell script for benchmarking and plot gen were implemented. To execute tests - simply run:
+For future performance analysis of mutlithreaded mode - shell script for benchmarking and plot gen were implemented. To execute tests - simply run:
 ```
 ./tests/benchmark.sh
 ``` 
 To use it only as a testing-system (without plot generation) - use `-v|--verify` option.
 
+**(WIP)** To test the queued mode and its balancing - use:
+```
+./tests/q-mode-benchmark.sh
+```
+
 ### Logs
-If logging is enabled, execution times and configurations (filter, thread count, block size) will be saved in a log file, `log.txt`. The format is:
+If logging is enabled, execution times and configurations (filter, thread count, block size) will be saved in a log file, `.txt`. The format is:
 ```
 <RunID> <filter_type> <threadnum> <mode> <block_size> <execution_time>
 ```
-
+Queued mode logging saves blocking time for `queue_pop` and `queue_push`, and execution_time for every thread of every role. The format is:
+```
+<LOG_TAG> <TIME>
+```
+, where **LOG_TAG = <QPOP|QPUSH|READER|WRITER|WORKER>**
 ## License
 
 Distributed under the [GPL-3.0 License](https://github.com/qrutyy/bmp-conv/blob/main/LICENSE). 
