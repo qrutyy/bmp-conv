@@ -1,21 +1,20 @@
 #!/bin/bash
 
 VERIFY="false"
-
-RUN_NUM=25
-TEST_FILE="image5.bmp"
-FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
-BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
-THREADNUM=4
-MODES=("by_row" "by_column" "by_grid") # removed by_pixel due to too big execution time
-FILTER_PAIRS="gb,sh sh,gb mb,sh sh,mb gg,sh sh,gg"
-
 SD=$(dirname "$(realpath "$0")") # script directory
 BASEDIR=$(dirname "$SD")  # Parent directory of script's location
 BD="$BASEDIR"
 IMG_FOLDER="$BD/test-img/"
 LOG_FILE="$SD/timing-results.dat"
 PLOTS_PATH="$SD/plots/"
+RUN_NUM=25
+
+TEST_FILE="image5.bmp"
+FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
+BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
+THREADNUM=4
+MODES=("by_row" "by_column" "by_grid") # removed by_pixel due to too big execution time
+FILTER_PAIRS="gb,sh sh,gb mb,sh sh,mb gg,sh sh,gg"
 
 IFS=' ' read -r -a pairs <<< "$FILTER_PAIRS"
 
