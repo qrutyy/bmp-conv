@@ -6,24 +6,18 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdatomic.h>
-#include <sys/time.h>
 #include <errno.h>
-
-// TODO: add better logging + test
 
 /** Notes about balanced distributed work:
   * 1. Its kinda already balanced when the size of the queue is limited.
-  * 2. We can calculate the ammount of used per thread memory/pixels and limit by it (so it would fair balanced)... i was thinking that thats stupid, but i guess thats the only good idea i have by now. 
+  * 2. We can calculate the ammount of used per thread memory/pixels and limit by it (so it would be fairly balanced)...
   * 3. Memory usage per thread isn't a good metric in terms of metrics that directly depend on execution time. However, at first i won't depend on threadnum, block_size and other metrics that affect the execution time.
-  * 4. There is an idea to block the reader, but thats already was made in queue_push/queue_pop in both sides.
 */
 
 #define RAW_MEM_OVERHEAD (512 * 1024) // some auxiliary data structures and all this stuff...
-#define NSEC_OFFSET (1000 * 1000000) // 100 ms in nanoseconds
 
-// due to queue_pop sleep mechanism - we should use global atomic for writers
+// due to queue_pop sleep mechanism - we should use global atomic for writers and writers, to prevent the deadlock-safety
 size_t written_files = 0;
-// almost the same with read_files
 size_t read_files = 0;
 
 pthread_barrier_t reader_barrier;
@@ -117,11 +111,8 @@ restart_loop:
 		start_block_time = get_time_in_seconds();
 		if (__atomic_load_n(&written_files, __ATOMIC_ACQUIRE) >= file_count)
 			return NULL;
-		
-		clock_gettime(CLOCK_REALTIME, &wait_time);
-        wait_time.tv_nsec += NSEC_OFFSET;
-        wait_time.tv_sec += wait_time.tv_nsec / 1000000000;
-        wait_time.tv_nsec %= 1000000000;
+
+		set_wait_time(&wait_time);	
 		wait_result = pthread_cond_timedwait(&q->cond_non_empty, &q->mutex, &wait_time);
 
 		if (wait_result == ETIMEDOUT) {
@@ -166,14 +157,10 @@ restart_loop:
 	if (result_time)
 		qt_write_logs(result_time, QPOP);
 
-	pthread_cond_signal(&q->cond_non_full);
-	pthread_mutex_unlock(&q->mutex);
-	return img_src;
-
 exit_overload:
 	pthread_cond_signal(&q->cond_non_full);
 	pthread_mutex_unlock(&q->mutex);
-	return NULL;
+	return img_src;
 }
 
 // just reads the image from the queue. doesn't set up img-specific structures
@@ -359,7 +346,7 @@ void *writer_thread(void *arg)
 	char *filename = malloc(sizeof(char));
 	double start_time = 0;
 	double result_time = 0;
-	ssize_t current_wf = 0;
+	size_t current_wf = 0;
 
 	printf("File count: %d\n", qt_info->pargs->file_count);
 

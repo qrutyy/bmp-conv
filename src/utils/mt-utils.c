@@ -186,7 +186,6 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 	}
 }
 
-// if you are confused -> check header file
 struct img_dim *init_dimensions(uint16_t width, uint16_t height)
 {
 	struct img_dim *dim = malloc(sizeof(struct img_dim));

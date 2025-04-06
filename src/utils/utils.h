@@ -2,9 +2,13 @@
 
 #pragma once
 
+#define _POSIX_C_SOURCE 200809L // to use functions from posix 
+
 #include "../../libbmp/libbmp.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <sys/time.h>
+#include <time.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -15,6 +19,7 @@
 #define MAX_IMAGE_QUEUE_SIZE 20
 #define ST_LOG_FILE_PATH "tests/timing-results.dat"
 #define QT_LOG_FILE_PATH "tests/queue-timings.dat"
+#define NSEC_OFFSET (1000 * 1000000) // 1000 ms in nanoseconds
 
 enum LOG_TAG { QPOP, QPUSH, READER, WORKER, WRITER };
 
@@ -58,10 +63,19 @@ int selectKth(int *data, int s, int e, int k);
 void initialize_args(struct p_args *args_ptr);
 double get_time_in_seconds(void);
 const char *mode_to_str(int mode);
-void st_write_logs(struct p_args *args, double result_time);
-void qt_write_logs(double result_time, enum LOG_TAG tag);
 int check_mode_arg(char *mode_str);
 char *check_filter_arg(char *filter);
+
+void st_write_logs(struct p_args *args, double result_time);
+void qt_write_logs(double result_time, enum LOG_TAG tag);
+
+void set_wait_time(struct timespec *wait_time);
 int compare_images(const bmp_img *img1, const bmp_img *img2);
+
 void free_filters(struct filter_mix *filters);
 void init_filters(struct filter_mix *filters);
+
+int parse_mandatory_args(int argc, char *argv[], struct p_args *args);
+int parse_queue_mode_args(int argc, char *argv[], struct p_args *args); 
+int parse_normal_mode_args(int argc, char *argv[], struct p_args *args); 
+
