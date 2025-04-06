@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <limits.h>
 #include <sys/time.h>
 
 #define LOG_FILE_PATH "tests/timing-results.dat"
@@ -23,16 +22,9 @@ uint16_t next_x_block = 0;
 uint16_t next_y_block = 0;
 pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//shorten this up
-static int parse_args(int argc, char *argv[])
-{
-	uint8_t rww_found = 0;
-	uint8_t parsed_count = 0;
-	char *rww_values = NULL;
-	int wrt_temp, ret_temp, wot_temp = 0;
-
+static int parse_args(int argc, char *argv[]) {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <input_file.bmp> --mode=<compute_mode> --filter=<type>  --threadnum=<N> --block=<size> [--output=<file>]\n", argv[0]);
+		fprintf(stderr, "Usage: %s <input_file.bmp> --mode=<compute_mode> --filter=<type> --threadnum=<N> --block=<size> [--output=<file>]\n", argv[0]);
 		return -1;
 	}
 
@@ -41,105 +33,15 @@ static int parse_args(int argc, char *argv[])
 	if (strncmp(argv[1], "-queue-mode", 6) == 0)
 		args->queue_mode = 1;
 
-	// parsing mandatory args
-	for (int i = 2; i < argc; i++) {
-		if (strncmp(argv[i], "--filter=", 9) == 0) {
-			args->filter_type = check_filter_arg(argv[i] + 9);
-			if (!args->filter_type)
-				return -1;
-			argv[i] = "_";
-		} else if (strncmp(argv[i], "--mode=", 7) == 0) {
-			args->compute_mode = check_mode_arg(argv[i] + 7);
-			if (args->compute_mode < 0)
-				return -1;
-			argv[i] = "_";
-		} else if (strncmp(argv[i], "--block=", 8) == 0) {
-			args->block_size = atoi(argv[i] + 8);
-			if (args->block_size <= 0) {
-				fprintf(stderr, "Error: Block size must be >= 1.\n");
-				return -1;
-			}
-			argv[i] = "_";
-		}
-		// special character, that signifies for already parsed mandatory arg
-	}
+	if (parse_mandatory_args(argc, argv, args) < 0)
+		return -1;
 
 	if (args->queue_mode) {
-		for (int i = 2; i < argc; i++) {
-			if (strncmp(argv[i], "--log=", 6) == 0) {
-				args->log_enabled = atoi(argv[i] + 6);
-			} else if (strncmp(argv[i], "--lim=", 6) == 0) {
-				args->queue_memory_limit = atoi(argv[i] + 6) * 1024 * 1024;
-			} else if (strncmp(argv[i], "--output=", 9) == 0) {
-				args->output_filename = argv[i] + 9; // make save with template
-			} else if (strncmp(argv[i], "--rww=", 6) == 0) {
-				rww_values = argv[i] + 6;
-				parsed_count = sscanf(rww_values, "%d,%d,%d", &ret_temp, &wot_temp, &wrt_temp);
-
-				if (parsed_count != 3) {
-					fprintf(stderr, "Error: Invalid format for --rww. Expected --rww=W,R,T (e.g., --rww=2,1,4). Got: %s\n", rww_values);
-					return -1;
-				}
-				if (wrt_temp <= 0 || wrt_temp > UCHAR_MAX || ret_temp <= 0 || ret_temp > UCHAR_MAX || wot_temp <= 0 || wot_temp > UCHAR_MAX) {
-					fprintf(stderr, "Error: Thread counts in --rww must be between 0 and %d. Got: W=%d, R=%d, T=%d\n", UCHAR_MAX, wrt_temp, ret_temp, wot_temp);
-					return -1;
-				}
-
-				args->wrt_count = (uint8_t)wrt_temp;
-				args->ret_count = (uint8_t)ret_temp;
-				args->wot_count = (uint8_t)wot_temp;
-				rww_found = 1;
-				argv[i] = "_";
-			} else if (strncmp(argv[i], "_", 1) == 0) {
-				continue;
-
-			} else if (args->input_filename[args->file_count] == NULL) {
-				if (args->file_count == MAX_IMAGE_QUEUE_SIZE)
-					continue;
-				args->input_filename[args->file_count] = argv[i];
-				args->file_count++;
-			} else {
-				fprintf(stderr, "Error: Unknown argument %s\n", argv[i]);
-				return -1;
-			}
-		}
-		if ((args->ret_count + args->wot_count + args->wrt_count) < 3) {
-			fprintf(stderr, "Error: queue-based mode requires more than 3 threads all in all. see README\n");
-		}
-		if (!rww_found) {
-			fprintf(stderr, "Error: queue-based mode requires --rww=W,R,T argument.\n");
+		if (parse_queue_mode_args(argc, argv, args) < 0)
 			return -1;
-		}
-
 	} else {
-		for (int i = 1; i < argc; i++) {
-			//			printf("%d arg: %s\n", i, argv[i]);
-			if (strncmp(argv[i], "--threadnum=", 12) == 0) {
-				args->threadnum = atoi(argv[i] + 12);
-				if (args->threadnum <= 0) {
-					fprintf(stderr, "Error: Invalid threadnum.\n");
-					return -1;
-				}
-			} else if (strncmp(argv[i], "--log=", 6) == 0) {
-				args->log_enabled = atoi(argv[i] + 6);
-			} else if (strncmp(argv[i], "--output=", 9) == 0) {
-				args->output_filename = argv[i] + 9;
-				printf("1: %s\n", argv[i] + 9);
-			} else if (args->input_filename[0] == NULL && strncmp(argv[i], "_", 1)) {
-				args->input_filename[0] = argv[i];
-				args->file_count++;
-				printf("input filename %s\n", argv[i]);
-			} else if (strncmp(argv[i], "_", 1) == 0) {
-				continue;
-			} else {
-				fprintf(stderr, "Error: Unknown argument %s\n", argv[i]);
-				return -1;
-			}
-		}
-		if (args->file_count != 1) {
-			fprintf(stderr, "Error: not queued mode requires strictly 1 input image\n");
+		if (parse_normal_mode_args(argc, argv, args) < 0)
 			return -1;
-		}
 	}
 
 	if (!args->input_filename[0] || !args->filter_type || args->compute_mode == -1 || args->block_size == 0) {
@@ -221,7 +123,8 @@ static double execute_sthreads(int threadnum, struct img_dim *dim, struct img_sp
 			free(th);
 			goto mem_err;
 		}
-		// setup threadlocalc details before thread creation
+
+		// setup thread-locals details before thread creation
 		for (int i = 0; i < threadnum; i++) {
 			th_spec[i] = thread_spec_init();
 			if (!th_spec[i]) {
@@ -286,7 +189,7 @@ static double execute_sthreads(int threadnum, struct img_dim *dim, struct img_sp
 	return end_time - start_time;
 
 mem_err:
-	fprintf(stderr, "Memory allocation error\n");
+	fprintf(stderr, "Error: memory allocation error\n");
 	return 0;
 }
 
