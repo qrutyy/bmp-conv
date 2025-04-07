@@ -1,0 +1,126 @@
+#include <stdlib.h>
+#include <pthread.h>
+#include <string.h>
+#include "../utils/threads-general.h"
+#include "compute.h"
+
+uint16_t st_next_x_block = 0;
+uint16_t st_next_y_block = 0;
+pthread_mutex_t st_xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *sthread_function(void *arg)
+{
+	struct thread_spec *th_spec = (struct thread_spec *)arg;
+	int result = 0;
+
+	while (1) {
+		switch ((enum compute_mode)th_spec->st_gen_info->args->compute_mode) {
+		case BY_ROW:
+			result = process_by_row(th_spec, &st_next_x_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			break;
+		case BY_COLUMN:
+			result = process_by_column(th_spec, &st_next_y_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			break;
+		case BY_PIXEL:
+			result = process_by_pixel(th_spec, &st_next_x_block, &st_next_y_block, &st_xy_block_mutex);
+			break;
+		case BY_GRID:
+			result = process_by_grid(th_spec, &st_next_x_block, &st_next_y_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			break;
+		default:
+			fprintf(stderr, "Error: Invalid mode %d in thread function.\n", th_spec->st_gen_info->args->compute_mode);
+			result = 1;
+			break;
+		}
+
+		if (result != 0) 
+			goto exit;
+		
+		if (!th_spec || !th_spec->st_gen_info->args || !th_spec->st_gen_info->args->filter_type || !th_spec->st_gen_info->filters) {
+			fprintf(stderr, "Error: Invalid state before filter_part_computation.\n");
+			return NULL;
+		}
+
+		filter_part_computation(th_spec, th_spec->st_gen_info->args->filter_type, th_spec->st_gen_info->filters);
+	}
+
+exit:
+	free(th_spec);
+	return NULL;
+}
+
+
+double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters) {
+
+	pthread_t *th = NULL;
+	double start_time = 0, end_time = 0;
+	int create_error = 0;
+	struct thread_spec *th_spec[threadnum];
+
+	th = malloc(threadnum * sizeof(pthread_t));
+	if (!th) {
+		free(th);
+		goto mem_err;
+	}
+
+	// setup thread-locals details before thread creation
+	for (int i = 0; i < threadnum; i++) {
+		th_spec[i] = thread_spec_init(args, filters);
+		if (!th_spec[i]) {
+			create_error = 1;
+			fprintf(stderr, "Memory allocation error for thread_spec %d\n", i);
+			threadnum = i;
+			break;
+		}
+
+		th_spec[i]->dim = dim;
+		th_spec[i]->img = img_spec;
+	}
+
+	start_time = get_time_in_seconds();
+	for (int i = 0; i < threadnum; i++) {
+		if (pthread_create(&th[i], NULL, sthread_function, th_spec[i]) != 0) {
+			perror("Failed to create a thread");
+			free(th_spec[i]);
+			create_error = 1;
+			threadnum = i;
+			break;
+		}
+	}
+
+	for (int i = 0; i < threadnum; i++) {
+		if (pthread_join(th[i], NULL)) {
+			perror("Failed to join a thread");
+			break;
+		}
+	}
+
+	end_time = get_time_in_seconds();
+
+	if (create_error) {
+		free(th);
+		return 0;
+	}
+
+	free(th);
+	return end_time - start_time;
+
+mem_err:
+	fprintf(stderr, "Error: Memory allocation failed\n");
+	return 0;
+}
+
+void sthreads_save(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args)
+{
+	if (strcmp(args->output_filename, "") != 0) {
+		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
+	} else {
+		if (threadnum > 1)
+			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
+		else
+			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
+	}
+
+	printf("result out filepath %s\n", output_filepath);
+	bmp_img_write(img_result, output_filepath);
+}

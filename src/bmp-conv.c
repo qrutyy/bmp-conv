@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../libbmp/libbmp.h"
-#include "utils/mt-utils.h"
 #include "utils/utils.h"
-#include "utils/mt-queue.h"
+#include "mt-mode/exec.h"
+#include "st-mode/exec.h"
+#include "qmt-mode/exec.h"
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -15,12 +16,7 @@
 
 #define LOG_FILE_PATH "tests/timing-results.dat"
 
-struct filter_mix *filters = NULL;
 struct p_args *args = NULL;
-
-uint16_t next_x_block = 0;
-uint16_t next_y_block = 0;
-pthread_mutex_t xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int parse_args(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -52,148 +48,68 @@ static int parse_args(int argc, char *argv[]) {
 	return args->threadnum;
 }
 
-static void *sthread_function(void *arg)
-{
-	struct thread_spec *th_spec = (struct thread_spec *)arg;
-	int result = 0;
+static int run_non_queue_mode(int threadnum, struct filter_mix *filters) {
+    struct bmp_image img = {0};
+    struct bmp_image img_result = {0};
+    struct img_dim *dim = NULL;
+    struct img_spec *img_spec = NULL;
+    char input_filepath[256];
+    char output_filepath[256];
+    double result_time = 0;
+    int status = -1;
 
-	while (1) {
-		switch ((enum compute_mode)args->compute_mode) {
-		case BY_ROW:
-			result = process_by_row(th_spec, &next_x_block, args->block_size, &xy_block_mutex);
-			break;
-		case BY_COLUMN:
-			result = process_by_column(th_spec, &next_y_block, args->block_size, &xy_block_mutex);
-			break;
-		case BY_PIXEL:
-			result = process_by_pixel(th_spec, &next_x_block, &next_y_block, &xy_block_mutex);
-			break;
-		case BY_GRID:
-			result = process_by_grid(th_spec, &next_x_block, &next_y_block, args->block_size, &xy_block_mutex);
-			break;
-		default:
-			fprintf(stderr, "Error: Invalid mode %d in thread function.\n", args->compute_mode);
-			result = 1;
-			break;
-		}
+    snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
 
-		if (result != 0) {
-			goto exit;
-		}
-		if (!th_spec || !args || !args->filter_type || !filters) {
-			fprintf(stderr, "Error: Invalid state before filter_part_computation.\n");
-			return NULL;
-		}
+    if (bmp_img_read(&img, input_filepath)) {
+        fprintf(stderr, "Error: Could not open BMP image '%s'\n", input_filepath);
+        goto cleanup;
+    }
 
-		filter_part_computation(th_spec, args->filter_type, filters);
-	}
+    dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
+    if (!dim) {
+        fprintf(stderr, "Error: Failed to initialize dimensions.\n");
+        goto cleanup;
+    }
 
-exit:
-	free(th_spec);
-	return NULL;
+    bmp_img_init_df(&img_result, dim->width, dim->height);
+
+    img_spec = init_img_spec(&img, &img_result);
+     if (!img_spec) {
+         fprintf(stderr, "Error: Failed to initialize image spec.\n");
+         goto cleanup;
+    }
+
+    assert(threadnum > 0);
+
+    if (threadnum > 1) {
+        result_time = execute_mt_computation(threadnum, dim, img_spec, args, filters);
+    } else if (threadnum == 1) {
+        result_time = execute_st_computation(dim, img_spec, args, filters);
+    }
+
+    if (result_time <= 0) {
+        fprintf(stderr, "Error: Computation execution failed (returned time: %.4f).\n", result_time);
+        goto cleanup;
+    }
+
+    st_write_logs(args, result_time);
+    snprintf(output_filepath, sizeof(output_filepath), "output/result_%s", args->input_filename[0]); // Example output path
+    sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result);
+    status = 0;
+
+cleanup:
+    if (img_spec) {
+        // Consider if img_spec needs a dedicated free function: free_img_spec(img_spec);
+        free(img_spec);
+    }
+    bmp_img_free(&img_result);
+    free(dim);
+    bmp_img_free(&img);
+
+    return status;
 }
 
-static void sthreads_save(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result)
-{
-	if (strcmp(args->output_filename, "") != 0) {
-		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
-	} else {
-		if (threadnum > 1)
-			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
-		else
-			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
-	}
-
-	printf("result out filepath %s\n", output_filepath);
-	bmp_img_write(img_result, output_filepath);
-}
-
-static double execute_sthreads(int threadnum, struct img_dim *dim, struct img_spec *img_spec)
-{
-	assert(threadnum > 0);
-
-	pthread_t *th = NULL;
-	double start_time = 0, end_time = 0;
-	int create_error = 0;
-	struct thread_spec *th_spec[threadnum];
-
-	if (threadnum > 1) {
-		th = malloc(threadnum * sizeof(pthread_t));
-		if (!th) {
-			free(th);
-			goto mem_err;
-		}
-
-		// setup thread-locals details before thread creation
-		for (int i = 0; i < threadnum; i++) {
-			th_spec[i] = thread_spec_init();
-			if (!th_spec[i]) {
-				create_error = 1;
-				fprintf(stderr, "Memory allocation error for thread_spec %d\n", i);
-				threadnum = i;
-				break;
-			}
-
-			th_spec[i]->dim = dim;
-			th_spec[i]->img = img_spec;
-		}
-
-		start_time = get_time_in_seconds();
-		for (int i = 0; i < threadnum; i++) {
-			if (pthread_create(&th[i], NULL, sthread_function, th_spec[i]) != 0) {
-				perror("Failed to create a thread");
-				free(th_spec[i]);
-				create_error = 1;
-				threadnum = i;
-				break;
-			}
-		}
-
-		for (int i = 0; i < threadnum; i++) {
-			if (pthread_join(th[i], NULL)) {
-				perror("Failed to join a thread");
-				break;
-			}
-		}
-
-		end_time = get_time_in_seconds();
-
-		if (create_error) {
-			free(th);
-			return 0;
-		}
-
-		free(th);
-	} else if (threadnum == 1) {
-		start_time = get_time_in_seconds();
-
-		th_spec[0] = thread_spec_init();
-		if (!th_spec[0]) {
-			free(th_spec[0]);
-			goto mem_err;
-		}
-
-		th_spec[0]->dim = dim;
-		th_spec[0]->img = img_spec;
-		th_spec[0]->end_column = th_spec[0]->dim->width;
-		th_spec[0]->end_row = th_spec[0]->dim->height;
-		filter_part_computation(th_spec[0], args->filter_type, filters);
-		end_time = get_time_in_seconds();
-
-		free(th_spec[0]);
-	} else { // unreachable
-		fprintf(stderr, "Error: Invalid thread count in execute_sthreads.\n");
-		return 0;
-	}
-
-	return end_time - start_time;
-
-mem_err:
-	fprintf(stderr, "Error: memory allocation error\n");
-	return 0;
-}
-
-static double execute_qthreads(void)
+static double run_queue_mode(struct filter_mix *filters)
 {
 	double start_time, end_time = 0;
 	struct img_queue input_queue, output_queue;
@@ -227,67 +143,34 @@ mem_err:
 
 int main(int argc, char *argv[])
 {
-	bmp_img img, img_result;
-	pthread_t *th = NULL;
-	struct img_dim *dim = NULL;
-	struct img_spec *img_spec = NULL;
-	char input_filepath[MAX_PATH_LEN], output_filepath[MAX_PATH_LEN];
 	double result_time = 0;
 	int threadnum = 0;
+	struct filter_mix *filters = NULL;
 
 	args = malloc(sizeof(struct p_args));
+	if (!args) 
+		goto mem_err;
 
 	threadnum = parse_args(argc, argv);
-	if (threadnum < 0) {
-		fprintf(stderr, "Error: couldn't parse the args\n");
-		return -1;
-	}
-
-	if (!args->queue_mode) { // move to sep file
-		if (threadnum > 1) {
-			th = malloc(threadnum * sizeof(pthread_t));
-			if (!th) {
-				free(th);
-				goto mem_err;
-			}
-		}
-		snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
-		if (bmp_img_read(&img, input_filepath)) {
-			fprintf(stderr, "Error: Could not open BMP image\n");
-			return -1;
-		}
-
-		dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
-		if (!dim) {
-			bmp_img_free(&img);
-			goto mem_err;
-		}
-
-		bmp_img_init_df(&img_result, dim->width, dim->height);
-		img_spec = init_img_spec(&img, &img_result);
-	}
 
 	filters = malloc(sizeof(struct filter_mix));
 	if (!filters) {
-		free(th);
 		free(filters);
 		goto mem_err;
 	}
 	init_filters(filters);
 
-	result_time = (!args->queue_mode) ? execute_sthreads(threadnum, dim, img_spec) : execute_qthreads();
-	st_write_logs(args, result_time);
-
-	if (!args->queue_mode) {
-		sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result);
-		free(th);
-		bmp_img_free(&img_result);
-		free(dim);
-		bmp_img_free(&img);
+	if (threadnum < 0) {
+		fprintf(stderr, "Error: couldn't parse the args\n");
+		free(filters);
+		free(args);
+		return -2;
 	}
 
+	result_time = (!args->queue_mode) ? run_non_queue_mode(threadnum, filters) : run_queue_mode(filters);
+	st_write_logs(args, result_time);
+
 	free_filters(filters);
-	pthread_mutex_destroy(&xy_block_mutex);
 	return 0;
 
 mem_err:
