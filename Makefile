@@ -2,7 +2,7 @@ SHELL=/bin/sh
 
 # === Compiler and Flags ===
 CC = gcc
-CFLAGS = -Wall -Wpedantic -Wextra -g -std=c99
+CFLAGS = -Wall -Wpedantic -Wextra -O3 -DNDEBUG -std=c99
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
 LDLIBS = -lm 
 
