@@ -65,11 +65,15 @@ For future performance analysis of mutlithreaded mode - shell script for benchma
 ```
 ./tests/benchmark.sh
 ``` 
-To use it only as a testing-system (without plot generation) - use `-v|--verify` option.
 
-**(WIP)** To test the queued mode and its balancing - use:
+**(WIP)** To benchmark the queued mode and its balancing - use:
 ```
 ./tests/q-mode-benchmark.sh
+```
+
+To test the correctness of multithreaded part - use:
+```
+./tests/test.sh
 ```
 
 ### Logs

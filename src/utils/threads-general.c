@@ -97,7 +97,7 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 	int32_t x, y, filterX, filterY, imageX, imageY;
 	double weight = 0;
 	bmp_pixel orig_pixel;
-	double red_acc, green_acc, blue_acc; 
+	double red_acc, green_acc, blue_acc;
 	int padding = cfilter.size / 2;
 
 	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)", cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
@@ -148,7 +148,7 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 	}
 	int32_t half_size = filter_size / 2;
 	int32_t filter_area = filter_size * filter_size;
-	int32_t *red = NULL, *green = NULL, *blue = NULL; 
+	int32_t *red = NULL, *green = NULL, *blue = NULL;
 
 	red = malloc(filter_area * sizeof(*red));
 	green = malloc(filter_area * sizeof(*green));
