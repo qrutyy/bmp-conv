@@ -12,4 +12,3 @@ void free_qthread_resources(struct qthreads_gen_info *qt_info);
 
 void st_write_logs(struct p_args *args, double result_time);
 void qt_write_logs(double result_time, enum LOG_TAG tag);
-

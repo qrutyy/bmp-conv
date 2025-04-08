@@ -29,7 +29,7 @@ struct img_spec {
 };
 
 // simple threads general info
-struct sthreads_gen_info {	
+struct sthreads_gen_info {
 	struct p_args *args;
 	struct filter_mix *filters;
 };

@@ -5,7 +5,6 @@
 #include "../utils/threads-general.h"
 #include "compute.h"
 
-
 uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t block_size, pthread_mutex_t *x_block_mutex)
 {
 	pthread_mutex_lock(x_block_mutex);
@@ -81,4 +80,3 @@ uint8_t process_by_pixel(struct thread_spec *th_spec, uint16_t *next_x_block, ui
 {
 	return process_by_grid(th_spec, next_x_block, next_y_block, 1, xy_block_mutex);
 }
-

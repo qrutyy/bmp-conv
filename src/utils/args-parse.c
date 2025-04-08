@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <string.h>
-#include <stdio.h>  
-#include <limits.h> 
+#include <stdio.h>
+#include <limits.h>
 #include "args-parse.h"
-#include "utils.h" 
+#include "utils.h"
 #include "../../logger/log.h"
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
@@ -22,16 +22,19 @@ const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL
  * 
  * @return 0 on success, -1 on parsing or validation error.
  */
-int parse_mandatory_args(int argc, char *argv[], struct p_args *args) {
-	for (int i = 1; i < argc; i++) { 
+int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
+{
+	for (int i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "--filter=", 9) == 0) {
 			args->filter_type = check_filter_arg(argv[i] + 9);
-			if (!args->filter_type) return -1;
+			if (!args->filter_type)
+				return -1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--mode=", 7) == 0) {
 			args->compute_mode = check_mode_arg(argv[i] + 7);
-			if (args->compute_mode < 0) return -1;
-			argv[i] = "_"; 
+			if (args->compute_mode < 0)
+				return -1;
+			argv[i] = "_";
 		} else if (strncmp(argv[i], "--block=", 8) == 0) {
 			args->block_size = atoi(argv[i] + 8);
 			if (args->block_size <= 0) {
@@ -55,7 +58,8 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args) {
  * 
  * @return 0 on success, -1 on parsing or validation error.
  */
-int parse_queue_mode_args(int argc, char *argv[], struct p_args *args) {
+int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
+{
 	uint8_t rww_found = 0;
 	int wrt_temp = 0, ret_temp = 0, wot_temp = 0;
 	char *rww_values = NULL;
@@ -66,7 +70,7 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args) {
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--lim=", 6) == 0) {
 			args->queue_memory_limit = (size_t)atoi(argv[i] + 6) * 1024 * 1024; // Store as bytes
-			if (args->queue_memory_limit == 0 && strcmp(argv[i]+6, "0") != 0) {
+			if (args->queue_memory_limit == 0 && strcmp(argv[i] + 6, "0") != 0) {
 				log_error("Error: Invalid value for --lim.\n");
 				return -1;
 			}
@@ -91,11 +95,11 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args) {
 			rww_found = 1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "_", 1) == 0) {
-			continue; 
-		} else if (strncmp(argv[i], "-", 1) == 0) { 
-            log_error("Error: Unknown option in queue-mode: %s\n", argv[i]);
-            return -1;
-        } else if (args->file_count < MAX_IMAGE_QUEUE_SIZE) {
+			continue;
+		} else if (strncmp(argv[i], "-", 1) == 0) {
+			log_error("Error: Unknown option in queue-mode: %s\n", argv[i]);
+			return -1;
+		} else if (args->file_count < MAX_IMAGE_QUEUE_SIZE) {
 			// Assume remaining non-option args are input files
 			args->input_filename[args->file_count++] = argv[i];
 		} else {
@@ -117,7 +121,6 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args) {
 		return -1;
 	}
 
-
 	return 0;
 }
 
@@ -132,8 +135,9 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args) {
  * 
  * @return 0 on success, -1 on parsing or validation error.
  */
-int parse_normal_mode_args(int argc, char *argv[], struct p_args *args) {
-	for (int i = 1; i < argc; i++) { 
+int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
+{
+	for (int i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "--threadnum=", 12) == 0) {
 			args->threadnum = atoi(argv[i] + 12);
 			if (args->threadnum <= 0) {
@@ -149,10 +153,10 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args) {
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "_", 1) == 0) {
 			continue; // Skip already processed args
-		} else if (strncmp(argv[i], "-", 1) == 0) { 
-            log_error("Error: Unknown option in normal mode: %s\n", argv[i]);
-            return -1;
-        } else if (args->file_count == 0) {
+		} else if (strncmp(argv[i], "-", 1) == 0) {
+			log_error("Error: Unknown option in normal mode: %s\n", argv[i]);
+			return -1;
+		} else if (args->file_count == 0) {
 			// Assume the first non-option, non-processed arg is the input file
 			args->input_filename[0] = argv[i];
 			args->file_count++;
@@ -179,18 +183,18 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args) {
  */
 void initialize_args(struct p_args *args_ptr)
 {
-	args_ptr->threadnum = 1; 
-	args_ptr->block_size = 0; 
-	args_ptr->output_filename = ""; 
-	args_ptr->filter_type = NULL; 
-	args_ptr->compute_mode = -1; 
-	args_ptr->log_enabled = 0; 
-	args_ptr->queue_mode = 0; 
-	args_ptr->wrt_count = 0; 
-	args_ptr->ret_count = 0; 
-	args_ptr->wot_count = 0; 
-	args_ptr->file_count = 0; 
-	args_ptr->queue_memory_limit = QUEUE_MEM_LIMIT; 
+	args_ptr->threadnum = 1;
+	args_ptr->block_size = 0;
+	args_ptr->output_filename = "";
+	args_ptr->filter_type = NULL;
+	args_ptr->compute_mode = -1;
+	args_ptr->log_enabled = 0;
+	args_ptr->queue_mode = 0;
+	args_ptr->wrt_count = 0;
+	args_ptr->ret_count = 0;
+	args_ptr->wot_count = 0;
+	args_ptr->file_count = 0;
+	args_ptr->queue_memory_limit = QUEUE_MEM_LIMIT;
 
 	for (int i = 0; i < MAX_IMAGE_QUEUE_SIZE; ++i) {
 		args_ptr->input_filename[i] = NULL;
@@ -208,7 +212,7 @@ char *check_filter_arg(char *filter)
 {
 	for (int i = 0; valid_filters[i] != NULL; i++) {
 		if (strcmp(filter, valid_filters[i]) == 0) {
-			return filter; 
+			return filter;
 		}
 	}
 	log_error("Error: Invalid filter type '%s'. Valid types are: bb, mb, em, gg, gb, co, sh, mm, bo, mg\n", filter);
@@ -251,4 +255,3 @@ const char *mode_to_str(int mode)
 	}
 	return "unknown";
 }
-

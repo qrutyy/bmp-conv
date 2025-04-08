@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define _POSIX_C_SOURCE 200809L // to use functions from posix 
+#define _POSIX_C_SOURCE 200809L // to use functions from posix
 
 #include "../../libbmp/libbmp.h"
 #include <stdio.h>
@@ -35,4 +35,3 @@ void st_write_logs(struct p_args *args, double result_time);
 
 void set_wait_time(struct timespec *wait_time);
 int compare_images(const bmp_img *img1, const bmp_img *img2);
-

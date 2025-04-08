@@ -28,10 +28,10 @@ double execute_st_computation(struct img_dim *dim, struct img_spec *img_spec, st
 
 	spec->dim = dim;
 	spec->img = img_spec;
-    // Single thread handles the whole image
-	spec->start_row = 0; 
+	// Single thread handles the whole image
+	spec->start_row = 0;
 	spec->end_row = dim->height;
-	spec->start_column = 0; 
+	spec->start_column = 0;
 	spec->end_column = dim->width;
 
 	start_time = get_time_in_seconds();
@@ -45,5 +45,3 @@ double execute_st_computation(struct img_dim *dim, struct img_spec *img_spec, st
 
 	return end_time - start_time;
 }
-
-

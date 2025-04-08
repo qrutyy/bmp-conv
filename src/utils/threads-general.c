@@ -71,13 +71,13 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 	th_spec->end_row = 0;
 	th_spec->start_column = 0;
 	th_spec->end_column = 0;
-	
+
 	struct sthreads_gen_info *st_gen_info = malloc(sizeof(struct sthreads_gen_info));
 	if (!st_gen_info) {
 		log_error("Failed to allocate memory for thread_spec.");
 		return NULL;
 	}
-	
+
 	st_gen_info->args = args;
 	st_gen_info->filters = filters;
 
@@ -95,14 +95,12 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
 	int32_t x, y, filterX, filterY, imageX, imageY;
-	double weight = 0; // Use double for filter weights
+	double weight = 0;
 	bmp_pixel orig_pixel;
-	double red_acc, green_acc, blue_acc; // Use accumulators for precision
-
+	double red_acc, green_acc, blue_acc; 
 	int padding = cfilter.size / 2;
 
-	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)",
-	         cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
+	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)", cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
 	for (y = spec->start_row; y < spec->end_row; y++) {
 		for (x = spec->start_column; x < spec->end_column; x++) {
@@ -145,25 +143,26 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 {
 	if (filter_size % 2 == 0 || filter_size < 1) {
-        log_error("Median filter size must be odd and positive, got %u", filter_size);
-        return;
-    }
+		log_error("Median filter size must be odd and positive, got %u", filter_size);
+		return;
+	}
 	int32_t half_size = filter_size / 2;
 	int32_t filter_area = filter_size * filter_size;
-	int32_t *red = NULL, *green = NULL, *blue = NULL; // Use int32_t arrays for pixel values [0-255]
+	int32_t *red = NULL, *green = NULL, *blue = NULL; 
 
 	red = malloc(filter_area * sizeof(*red));
 	green = malloc(filter_area * sizeof(*green));
 	blue = malloc(filter_area * sizeof(*blue));
 
 	if (!red || !green || !blue) {
-        log_error("Failed to allocate memory for median filter arrays.");
-        free(red); free(green); free(blue);
-        return;
-    }
+		log_error("Failed to allocate memory for median filter arrays.");
+		free(red);
+		free(green);
+		free(blue);
+		return;
+	}
 
-	log_trace("Applying median filter size %u to region R[%d-%d) C[%d-%d)",
-	         filter_size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
+	log_trace("Applying median filter size %u to region R[%d-%d) C[%d-%d)", filter_size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
 	for (int y = spec->start_row; y < spec->end_row; y++) {
 		for (int x = spec->start_column; x < spec->end_column; x++) {
@@ -185,10 +184,10 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 			}
 
 			// Find the median value for each channel using the K'th smallest element algorithm
-            // The median is the element at index filter_area / 2 in the sorted array.
-			spec->img->output_img->img_pixels[y][x].red   = (unsigned char)selectKth(red, 0, filter_area, filter_area / 2);
+			// The median is the element at index filter_area / 2 in the sorted array.
+			spec->img->output_img->img_pixels[y][x].red = (unsigned char)selectKth(red, 0, filter_area, filter_area / 2);
 			spec->img->output_img->img_pixels[y][x].green = (unsigned char)selectKth(green, 0, filter_area, filter_area / 2);
-			spec->img->output_img->img_pixels[y][x].blue  = (unsigned char)selectKth(blue, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].blue = (unsigned char)selectKth(blue, 0, filter_area, filter_area / 2);
 		}
 	}
 
@@ -208,9 +207,9 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters)
 {
 	if (!filter_type || !filters || !spec) {
-        log_error("NULL parameter passed to filter_part_computation.");
-        return;
-    }
+		log_error("NULL parameter passed to filter_part_computation.");
+		return;
+	}
 
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
@@ -236,4 +235,3 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 		log_error("Unknown filter type parameter '%s' in filter_part_computation.", filter_type);
 	}
 }
-

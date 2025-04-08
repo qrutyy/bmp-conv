@@ -34,9 +34,9 @@ static void *sthread_function(void *arg)
 			break;
 		}
 
-		if (result != 0) 
+		if (result != 0)
 			goto exit;
-		
+
 		if (!th_spec || !th_spec->st_gen_info->args || !th_spec->st_gen_info->args->filter_type || !th_spec->st_gen_info->filters) {
 			log_error("Error: Invalid state before filter_part_computation.\n");
 			return NULL;
@@ -49,9 +49,8 @@ exit:
 	return NULL;
 }
 
-
-double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters) {
-
+double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters)
+{
 	pthread_t *th = NULL;
 	double start_time = 0, end_time = 0;
 	int8_t create_error = 0;
@@ -77,7 +76,7 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 		th_spec[i]->dim = dim;
 		th_spec[i]->img = img_spec;
 	}
-	if (create_error < 0) 
+	if (create_error < 0)
 		goto mem_th_err;
 
 	start_time = get_time_in_seconds();
@@ -113,7 +112,7 @@ mem_err:
 	return 0;
 
 mem_th_err:
-	for (i = 0; i < (size_t)threadnum; i ++) {
+	for (i = 0; i < (size_t)threadnum; i++) {
 		free(th_spec[i]);
 	}
 	return 0;

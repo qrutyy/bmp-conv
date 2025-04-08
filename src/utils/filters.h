@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once 
+#pragma once
 
 struct filter {
 	int size;

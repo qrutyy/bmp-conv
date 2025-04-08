@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdlib.h>
-#include <string.h> 
-#include <pthread.h> 
+#include <string.h>
+#include <pthread.h>
 #include "../../libbmp/libbmp.h"
 #include "../../logger/log.h"
-#include "../utils/threads-general.h" 
-#include "../mt-mode/compute.h" 
-#include "threads.h" 
-#include "queue.h"   
+#include "../utils/threads-general.h"
+#include "../mt-mode/compute.h"
+#include "threads.h"
+#include "queue.h"
 
 // Global counters for tracking file progress across threads
 size_t written_files = 0;
@@ -96,7 +96,8 @@ void *reader_thread(void *arg)
  * 
  * @return Pointer to the bmp_img task, or NULL if queue is empty/error/termination signal.
  */
-static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr) {
+static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr)
+{
 	bmp_img *img = queue_pop(input_q, filename_ptr, file_count, written_files_ptr);
 
 	if (!img) {
@@ -110,7 +111,7 @@ static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, 
 
 	if (img->img_header.biWidth == 0 && img->img_header.biHeight == 0) {
 		log_debug("Worker: Received termination signal.");
-        free(img);
+		free(img);
 		if (*filename_ptr) {
 			free(*filename_ptr);
 			*filename_ptr = NULL;
@@ -132,7 +133,8 @@ static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, 
  * 
  * @return Pointer to an initialized thread_spec structure containing all necessary data for processing, or NULL on allocation failure.
  */
-static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct p_args *pargs, struct filter_mix *filters) {
+static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct p_args *pargs, struct filter_mix *filters)
+{
 	bmp_img *img_result = NULL;
 	struct thread_spec *th_spec = NULL;
 	struct img_dim *dim = NULL;
@@ -149,7 +151,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 	if (!th_spec) {
 		log_error("Worker Error: thread_spec allocation failed");
 		bmp_img_free(img_result);
-        free(img_result);
+		free(img_result);
 		return NULL;
 	}
 
@@ -158,7 +160,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 		log_error("Worker Error: init_dimensions failed");
 		free(th_spec);
 		bmp_img_free(img_result);
-        free(img_result);
+		free(img_result);
 		return NULL;
 	}
 
@@ -168,7 +170,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 		free(dim);
 		free(th_spec);
 		bmp_img_free(img_result);
-        free(img_result);
+		free(img_result);
 		return NULL;
 	}
 
@@ -188,7 +190,8 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
  * 
  * @return 0 on successful processing of the entire image, < 0 on error.
  */
-static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs, struct filter_mix *filters) {
+static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs, struct filter_mix *filters)
+{
 	uint16_t next_x_block_local = 0;
 	uint16_t next_y_block_local = 0;
 	int process_status = 0;
@@ -217,12 +220,12 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
 		}
 
 		if (process_status != 0) {
-            if (process_status < 0) {
-                 log_error("Worker Error: Processing function returned error %d", process_status);
-            } else {
-                 log_debug("Worker: Finished processing chunks for this image.");
-                 process_status = 0;
-            }
+			if (process_status < 0) {
+				log_error("Worker Error: Processing function returned error %d", process_status);
+			} else {
+				log_debug("Worker: Finished processing chunks for this image.");
+				process_status = 0;
+			}
 			break;
 		}
 		filter_part_computation(th_spec, pargs->filter_type, filters);
@@ -239,23 +242,24 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
  * @param input_img The original input image structure (popped from queue).
  * @param th_spec The thread specification structure holding related resources.
  */
-static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spec *th_spec) {
+static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spec *th_spec)
+{
 	log_debug("Worker: Cleaning up resources for one image cycle.");
 
 	if (input_img) {
-        bmp_img_free(input_img);
-        free(input_img);
-    }
+		bmp_img_free(input_img);
+		free(input_img);
+	}
 
-    if (th_spec) {
-        if (th_spec->img) {
-            free(th_spec->img);
-        }
-        if (th_spec->dim) {
-            free(th_spec->dim);
-        }
-        free(th_spec);
-    }
+	if (th_spec) {
+		if (th_spec->img) {
+			free(th_spec->img);
+		}
+		if (th_spec->dim) {
+			free(th_spec->dim);
+		}
+		free(th_spec);
+	}
 }
 
 /**
@@ -291,7 +295,8 @@ void *worker_thread(void *arg)
 		th_spec = worker_allocate_resources(img, qt_info->pargs, qt_info->filters);
 		if (!th_spec) {
 			worker_cleanup_image_resources(img, NULL);
-			if (filename) free(filename);
+			if (filename)
+				free(filename);
 			continue;
 		}
 		img_result = th_spec->img->output_img;
@@ -316,13 +321,13 @@ void *worker_thread(void *arg)
 		}
 
 		worker_cleanup_image_resources(img, th_spec);
-		if (filename) free(filename);
+		if (filename)
+			free(filename);
 	}
 
 	log_debug("Worker: thread finished.");
 	return NULL;
 }
-
 
 /**
  * @brief Main function for writer threads. Enters a loop to get processed images (tasks) from the output queue, construct the output filename, write the image data to disk, log timing information, and free the image resources. Handles atomic updates to the global written file counter.
@@ -363,7 +368,8 @@ void *writer_thread(void *arg)
 		if (img->img_header.biWidth == 0 && img->img_header.biHeight == 0) {
 			log_warn("Writer: Received unexpected termination signal on output queue.");
 			free(img);
-			if(filename) free(filename);
+			if (filename)
+				free(filename);
 			continue;
 		}
 
@@ -386,10 +392,10 @@ void *writer_thread(void *arg)
 			current_wf_local = __atomic_add_fetch(&written_files, 1, __ATOMIC_RELEASE);
 			log_info("Writer: Successfully wrote '%s' (file %zu/%d)", output_filepath, current_wf_local, qt_info->pargs->file_count);
 
-            result_time = get_time_in_seconds() - start_time;
-            if (result_time > 0)
-                qt_write_logs(result_time, WRITER);
-        }
+			result_time = get_time_in_seconds() - start_time;
+			if (result_time > 0)
+				qt_write_logs(result_time, WRITER);
+		}
 
 		bmp_img_free(img);
 		free(img);
@@ -406,7 +412,8 @@ void *writer_thread(void *arg)
 	log_debug("Writer: signaling non-empty just in case others are waiting.");
 	pthread_cond_signal(&qt_info->output_q->cond_non_empty);
 
-	if (filename) free(filename);
+	if (filename)
+		free(filename);
 
 	log_debug("Writer: thread finished.");
 	return NULL;

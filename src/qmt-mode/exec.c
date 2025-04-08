@@ -16,7 +16,6 @@
  * 3. Memory usage per thread isn't a good metric in terms of metrics that directly depend on execution time. However, at first i won't depend on threadnum, block_size and other metrics that affect the execution time.
  */
 
-
 /**
  * Allocates memory for thread management structures (reader, worker, writer thread arrays)
  * and initializes the input and output image queues based on program arguments.
@@ -47,24 +46,27 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 		goto mem_err;
 	}
 
-    qt_info->ret_info->used_threads = 0;
-    qt_info->wrt_info->used_threads = 0;
-    qt_info->wot_info->used_threads = 0;
-    qt_info->ret_info->threads = NULL;
-    qt_info->wrt_info->threads = NULL;
-    qt_info->wot_info->threads = NULL;
+	qt_info->ret_info->used_threads = 0;
+	qt_info->wrt_info->used_threads = 0;
+	qt_info->wot_info->used_threads = 0;
+	qt_info->ret_info->threads = NULL;
+	qt_info->wrt_info->threads = NULL;
+	qt_info->wot_info->threads = NULL;
 
 	if (args_ptr->wot_count > 0) {
 		qt_info->wot_info->threads = malloc(args_ptr->wot_count * sizeof(pthread_t));
-		if (!qt_info->wot_info->threads) goto mem_err_cleanup;
+		if (!qt_info->wot_info->threads)
+			goto mem_err_cleanup;
 	}
 	if (args_ptr->ret_count > 0) {
 		qt_info->ret_info->threads = malloc(args_ptr->ret_count * sizeof(pthread_t));
-		if (!qt_info->ret_info->threads) goto mem_err_cleanup;
+		if (!qt_info->ret_info->threads)
+			goto mem_err_cleanup;
 	}
 	if (args_ptr->wrt_count > 0) {
 		qt_info->wrt_info->threads = malloc(args_ptr->wrt_count * sizeof(pthread_t));
-		if (!qt_info->wrt_info->threads) goto mem_err_cleanup;
+		if (!qt_info->wrt_info->threads)
+			goto mem_err_cleanup;
 	}
 
 	q_mem_limit = args_ptr->queue_memory_limit > 0 ? args_ptr->queue_memory_limit : MAX_QUEUE_MEMORY;
@@ -80,10 +82,10 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 	return 0;
 
 mem_err_cleanup: // Cleanup if thread arrays failed after info structs succeeded
-    free(qt_info->ret_info->threads);
-    free(qt_info->wot_info->threads);
-    free(qt_info->wrt_info->threads);
-    free(qt_info->ret_info);
+	free(qt_info->ret_info->threads);
+	free(qt_info->wot_info->threads);
+	free(qt_info->wrt_info->threads);
+	free(qt_info->ret_info);
 	free(qt_info->wrt_info);
 	free(qt_info->wot_info);
 
@@ -109,10 +111,9 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 	size_t i = 0;
 	int ret = 0;
 
-	log_info("Creating %hhu readers, %hhu workers, %hhu writers",
-             qt_info->pargs->ret_count, qt_info->pargs->wot_count, qt_info->pargs->wrt_count);
+	log_info("Creating %hhu readers, %hhu workers, %hhu writers", qt_info->pargs->ret_count, qt_info->pargs->wot_count, qt_info->pargs->wrt_count);
 
-	if(qt_info->pargs->ret_count > 0) {
+	if (qt_info->pargs->ret_count > 0) {
 		ret = pthread_barrier_init(qt_info->reader_barrier, NULL, qt_info->pargs->ret_count);
 		if (ret != 0) {
 			log_error("Failed to initialize reader barrier: %s", strerror(ret));
@@ -146,8 +147,7 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 		}
 		qt_info->wrt_info->used_threads++;
 	}
-	log_info("Launched %zu readers, %zu workers, %zu writers",
-             qt_info->ret_info->used_threads, qt_info->wot_info->used_threads, qt_info->wrt_info->used_threads);
+	log_info("Launched %zu readers, %zu workers, %zu writers", qt_info->ret_info->used_threads, qt_info->wot_info->used_threads, qt_info->wrt_info->used_threads);
 }
 
 /**
@@ -205,12 +205,16 @@ void join_qthreads(struct qthreads_gen_info *qt_info)
  */
 void free_qthread_resources(struct qthreads_gen_info *qt_info)
 {
-	if (!qt_info) return;
+	if (!qt_info)
+		return;
 
 	log_debug("Freeing qthread resources.");
-	if(qt_info->wot_info) free(qt_info->wot_info->threads);
-	if(qt_info->ret_info) free(qt_info->ret_info->threads);
-	if(qt_info->wrt_info) free(qt_info->wrt_info->threads);
+	if (qt_info->wot_info)
+		free(qt_info->wot_info->threads);
+	if (qt_info->ret_info)
+		free(qt_info->ret_info->threads);
+	if (qt_info->wrt_info)
+		free(qt_info->wrt_info->threads);
 
 	free(qt_info->wot_info);
 	free(qt_info->ret_info);
@@ -218,4 +222,3 @@ void free_qthread_resources(struct qthreads_gen_info *qt_info)
 
 	free(qt_info);
 }
-

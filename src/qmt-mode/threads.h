@@ -3,8 +3,9 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#pragma once 
+#pragma once
 
+#define _POSIX_C_SOURCE 200809L
 #define MAX_PATH_LEN 40
 
 // thread-work specific struct for better abstraction (#saynotoglobals)
@@ -28,4 +29,3 @@ struct qthreads_gen_info {
 void *reader_thread(void *arg);
 void *writer_thread(void *arg);
 void *worker_thread(void *arg);
-

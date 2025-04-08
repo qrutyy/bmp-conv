@@ -4,12 +4,12 @@
 #include "../../logger/log.h"
 #include "utils.h"
 #include "args-parse.h"
-#include <stdlib.h> 
-#include <string.h> 
-#include <stdio.h> 
-#include <time.h> 
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <time.h>
 #include <sys/time.h>
-#include <limits.h> 
+#include <limits.h>
 
 const char *valid_tags[] = { "QPOP", "QPUSH", "READER", "WORKER", "WRITER", NULL };
 
@@ -57,7 +57,6 @@ int selectKth(int *data, int s, int e, int k)
 		return selectKth(data, j + 1, e, k - (j - s + 1));
 }
 
-
 /**
  * Gets the current time as a double representing seconds since the epoch,
  * including microsecond precision. Returns the current time in seconds.
@@ -67,10 +66,10 @@ double get_time_in_seconds(void)
 	struct timespec ts;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1) {
-		log_error("clock_gettime(CLOCK_MONOTONIC) failed"); 
-		return 0.0; 
+		log_error("clock_gettime(CLOCK_MONOTONIC) failed");
+		return 0.0;
 	}
-	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9; 
+	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
 }
 
 /**
@@ -131,8 +130,7 @@ void st_write_logs(struct p_args *args, double result_time)
 		log_error("Error: could not open standard timing results file '%s' for appending.\n", ST_LOG_FILE_PATH);
 	}
 
-	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n",
-	       filter_str, args->threadnum, mode_str, args->block_size, result_time);
+	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->threadnum, mode_str, args->block_size, result_time);
 }
 
 /**
@@ -141,11 +139,12 @@ void st_write_logs(struct p_args *args, double result_time)
  * Populates the `timespec` structure pointed to by `wait_time` with the result.
  * Returns void.
  */
-void set_wait_time(struct timespec *wait_time) {
+void set_wait_time(struct timespec *wait_time)
+{
 	clock_gettime(CLOCK_REALTIME, wait_time);
-    wait_time->tv_nsec += NSEC_OFFSET;
-    wait_time->tv_sec += wait_time->tv_nsec / 1000000000L;
-    wait_time->tv_nsec %= 1000000000L;
+	wait_time->tv_nsec += NSEC_OFFSET;
+	wait_time->tv_sec += wait_time->tv_nsec / 1000000000L;
+	wait_time->tv_nsec %= 1000000000L;
 }
 
 /**
@@ -165,9 +164,8 @@ int compare_images(const bmp_img *img1, const bmp_img *img2)
 	}
 
 	if (img1->img_header.biWidth != img2->img_header.biWidth || img1->img_header.biHeight != img2->img_header.biHeight) {
-		log_debug("Image dimension mismatch: Img1(%ux%u) vs Img2(%ux%u)\n",
-		       img1->img_header.biWidth, img1->img_header.biHeight,
-		       img2->img_header.biWidth, img2->img_header.biHeight);
+		log_debug("Image dimension mismatch: Img1(%ux%u) vs Img2(%ux%u)\n", img1->img_header.biWidth, img1->img_header.biHeight, img2->img_header.biWidth,
+			  img2->img_header.biHeight);
 		return -1;
 	}
 
@@ -175,9 +173,9 @@ int compare_images(const bmp_img *img1, const bmp_img *img2)
 	height = img1->img_header.biHeight;
 
 	if (!img1->img_pixels || !img2->img_pixels) {
-        log_error("Error: Cannot compare images with NULL pixel data.\n");
-        return -1;
-    }
+		log_error("Error: Cannot compare images with NULL pixel data.\n");
+		return -1;
+	}
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
@@ -194,4 +192,3 @@ int compare_images(const bmp_img *img1, const bmp_img *img2)
 	}
 	return 0; // Images are identical
 }
-

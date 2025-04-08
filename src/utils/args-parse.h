@@ -5,7 +5,7 @@
 
 #define MAX_IMAGE_QUEUE_SIZE 20
 #define QUEUE_MEM_LIMIT (500 * 1024 * 1024)
-#pragma once 
+#pragma once
 
 // Structure for storing input arguments. Better described in README
 struct p_args {
@@ -30,6 +30,5 @@ int check_mode_arg(char *mode_str);
 char *check_filter_arg(char *filter);
 
 int parse_mandatory_args(int argc, char *argv[], struct p_args *args);
-int parse_queue_mode_args(int argc, char *argv[], struct p_args *args); 
-int parse_normal_mode_args(int argc, char *argv[], struct p_args *args); 
-
+int parse_queue_mode_args(int argc, char *argv[], struct p_args *args);
+int parse_normal_mode_args(int argc, char *argv[], struct p_args *args);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdlib.h>
-#include <stdio.h>  
+#include <stdio.h>
 #include <string.h>
 #include "filters.h"
 #include "../../logger/log.h"
@@ -40,7 +40,6 @@ const double box_blur_arr[15][15] = {
 	{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
 };
 
-
 /**
  * Allocates memory for a filter structure and its associated kernel matrix, then copies the provided kernel data, bias, and factor into the structure. Exits fatally if memory allocation fails.
  *
@@ -63,20 +62,21 @@ static void init_filter(struct filter **f, int size, double bias, double factor,
 
 	(*f)->filter_arr = malloc(size * sizeof(double *));
 	if (!(*f)->filter_arr) {
-        log_error("Memory allocation failed for filter_arr rows\n");
-        free(*f);
-        exit(1);
-    }
+		log_error("Memory allocation failed for filter_arr rows\n");
+		free(*f);
+		exit(1);
+	}
 	for (int i = 0; i < size; i++) {
 		(*f)->filter_arr[i] = malloc(size * sizeof(double));
 		if (!(*f)->filter_arr[i]) {
-            log_error("Memory allocation failed for filter_arr column %d\n", i);
-            // Cleanup previously allocated rows and the main struct
-            for(int j = 0; j < i; ++j) free((*f)->filter_arr[j]);
-            free((*f)->filter_arr);
-            free(*f);
-            exit(1);
-        }
+			log_error("Memory allocation failed for filter_arr column %d\n", i);
+			// Cleanup previously allocated rows and the main struct
+			for (int j = 0; j < i; ++j)
+				free((*f)->filter_arr[j]);
+			free((*f)->filter_arr);
+			free(*f);
+			exit(1);
+		}
 		memcpy((*f)->filter_arr[i], arr[i], size * sizeof(double));
 	}
 }
@@ -88,13 +88,14 @@ static void init_filter(struct filter **f, int size, double bias, double factor,
  */
 static void free_filter(struct filter *f)
 {
-    if (!f) return;
+	if (!f)
+		return;
 	if (f->filter_arr) {
-        for (int i = 0; i < f->size; i++) {
-            free(f->filter_arr[i]); 
-        }
-        free(f->filter_arr); 
-    }
+		for (int i = 0; i < f->size; i++) {
+			free(f->filter_arr[i]);
+		}
+		free(f->filter_arr);
+	}
 	free(f);
 }
 
@@ -110,9 +111,9 @@ void init_filters(struct filter_mix *filters)
 	init_filter(&filters->gaus_blur, 5, 0.0, 1.0 / 256.0, gaus_blur_arr);
 	init_filter(&filters->conv, 3, 0.0, 1.0, conv_arr);
 	init_filter(&filters->sharpen, 3, 0.0, 1.0, sharpen_arr);
-	init_filter(&filters->emboss, 5, 128.0, 1.0, emboss_arr); 
-	init_filter(&filters->big_gaus, 15, 0.0, 1.0 / 771.0, big_gaus_arr); 
-	init_filter(&filters->med_gaus, 9, 0.0, 1.0 / 213.0, med_gaus_arr); 
+	init_filter(&filters->emboss, 5, 128.0, 1.0, emboss_arr);
+	init_filter(&filters->big_gaus, 15, 0.0, 1.0 / 771.0, big_gaus_arr);
+	init_filter(&filters->med_gaus, 9, 0.0, 1.0 / 213.0, med_gaus_arr);
 	init_filter(&filters->box_blur, 15, 0.0, 1.0 / 225.0, box_blur_arr); // 15x15 = 225
 }
 
@@ -123,7 +124,8 @@ void init_filters(struct filter_mix *filters)
  */
 void free_filters(struct filter_mix *filters)
 {
-    if (!filters) return;
+	if (!filters)
+		return;
 	free_filter(filters->motion_blur);
 	free_filter(filters->blur);
 	free_filter(filters->gaus_blur);
@@ -143,4 +145,3 @@ void free_filters(struct filter_mix *filters)
 	filters->med_gaus = NULL;
 	filters->box_blur = NULL;
 }
-

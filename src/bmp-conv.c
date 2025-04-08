@@ -3,21 +3,22 @@
 #include "../libbmp/libbmp.h"
 #include "../logger/log.h"
 #include "utils/utils.h"
-#include "mt-mode/exec.h"  // For execute_mt_computation
-#include "st-mode/exec.h"  // For execute_st_computation
+#include "mt-mode/exec.h" // For execute_mt_computation
+#include "st-mode/exec.h" // For execute_st_computation
 #include "qmt-mode/exec.h" // For queue-mode functions
 #include "utils/filters.h" // For init_filters, free_filters, struct filter_mix
 #include "qmt-mode/threads.h" // for qthreads_gen_info
+#include "utils/threads-general.h"
 #include <stdbool.h>
-#include <pthread.h> 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 
-#define LOG_FILE_PATH "tests/timing-results.dat" 
+#define LOG_FILE_PATH "tests/timing-results.dat"
 
 // Global pointer to parsed arguments. Consider passing this instead of using global.
 struct p_args *args = NULL;
@@ -31,15 +32,16 @@ struct p_args *args = NULL;
  * @return number of worker threads for normal mode (or 1 if queue mode is active) on success, or
  * -1 on any parsing or validation error.
  */
-static int parse_args(int argc, char *argv[]) {
+static int parse_args(int argc, char *argv[])
+{
 	if (argc < 2) {
 		log_error("Usage: %s <input.bmp> --filter=<f> --mode=<m> --block=<b> [--threadnum=<N> | -queue-mode --rww=R,W,T] [options...]\n", argv[0]);
 		return -1;
 	}
 
 	if (!args) {
-	    log_error("Error: Global args structure not allocated before parse_args.\n");
-	    return -1;
+		log_error("Error: Global args structure not allocated before parse_args.\n");
+		return -1;
 	}
 	initialize_args(args);
 
@@ -49,34 +51,34 @@ static int parse_args(int argc, char *argv[]) {
 	}
 
 	if (parse_mandatory_args(argc, argv, args) < 0) {
-        log_error("Error parsing mandatory arguments.\n");
+		log_error("Error parsing mandatory arguments.\n");
 		return -1;
-    }
+	}
 
 	if (args->queue_mode) {
 		if (parse_queue_mode_args(argc, argv, args) < 0) {
-            log_error("Error parsing queue-mode specific arguments.\n");
+			log_error("Error parsing queue-mode specific arguments.\n");
 			return -1;
-        }
+		}
 	} else {
 		if (parse_normal_mode_args(argc, argv, args) < 0) {
-            log_error("Error parsing normal-mode specific arguments.\n");
+			log_error("Error parsing normal-mode specific arguments.\n");
 			return -1;
-        }
+		}
 	}
 
 	if (!args->filter_type || args->compute_mode < 0 || args->block_size == 0) {
 		log_error("Error: Missing required arguments: --filter, --mode, and --block must be set.\n");
 		return -1;
 	}
-    if (args->queue_mode && args->file_count == 0) {
-        log_error("Error: Queue mode requires at least one input filename.\n");
-        return -1;
-    }
-     if (!args->queue_mode && args->file_count != 1) {
-        log_error("Error: Normal mode requires exactly one input filename.\n");
-        return -1;
-    }
+	if (args->queue_mode && args->file_count == 0) {
+		log_error("Error: Queue mode requires at least one input filename.\n");
+		return -1;
+	}
+	if (!args->queue_mode && args->file_count != 1) {
+		log_error("Error: Normal mode requires exactly one input filename.\n");
+		return -1;
+	}
 
 	return args->threadnum;
 }
@@ -93,68 +95,69 @@ static int parse_args(int argc, char *argv[]) {
  *
  * @return result time.
  */
-static double run_non_queue_mode(int threadnum, struct filter_mix *filters) {
-    bmp_img img = {0};
-    bmp_img img_result = {0};
-    struct img_dim *dim = NULL;
-    struct img_spec *img_spec = NULL;
-    char input_filepath[256];
-    char output_filepath[256];
-    double result_time = 0;
+static double run_non_queue_mode(int threadnum, struct filter_mix *filters)
+{
+	bmp_img img = { 0 };
+	bmp_img img_result = { 0 };
+	struct img_dim *dim = NULL;
+	struct img_spec *img_spec = NULL;
+	char input_filepath[256];
+	char output_filepath[256];
+	double result_time = 0;
 
-    if (!args || !args->input_filename[0]) {
-        log_error("Error: Missing arguments/input filename for non-queue mode.\n");
-        return -1;
-    }
+	if (!args || !args->input_filename[0]) {
+		log_error("Error: Missing arguments/input filename for non-queue mode.\n");
+		return -1;
+	}
 
-    snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
+	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
 
-    if (bmp_img_read(&img, input_filepath) != 0) {
-        log_error("Error: Could not read BMP image '%s'\n", input_filepath);
-        goto cleanup;
-    }
+	if (bmp_img_read(&img, input_filepath) != 0) {
+		log_error("Error: Could not read BMP image '%s'\n", input_filepath);
+		goto cleanup;
+	}
 
-    dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
-    if (!dim) {
-        log_error("Error: Failed to initialize dimensions.\n");
-        goto cleanup;
-    }
+	dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
+	if (!dim) {
+		log_error("Error: Failed to initialize dimensions.\n");
+		goto cleanup;
+	}
 
-    bmp_img_init_df(&img_result, dim->width, dim->height);
+	bmp_img_init_df(&img_result, dim->width, dim->height);
 
-    img_spec = init_img_spec(&img, &img_result);
-    if (!img_spec) {
-         log_error("Error: Failed to initialize image spec.\n");
-         goto cleanup;
-    }
+	img_spec = init_img_spec(&img, &img_result);
+	if (!img_spec) {
+		log_error("Error: Failed to initialize image spec.\n");
+		goto cleanup;
+	}
 
-    assert(threadnum > 0);
+	assert(threadnum > 0);
 
-    if (threadnum > 1) {
-        log_info("Executing multi-threaded computation (%d threads)...", threadnum);
-        result_time = execute_mt_computation(threadnum, dim, img_spec, args, filters);
-    } else {
-        log_info("Executing single-threaded computation...");
-        result_time = execute_st_computation(dim, img_spec, args, filters);
-    }
+	if (threadnum > 1) {
+		log_info("Executing multi-threaded computation (%d threads)...", threadnum);
+		result_time = execute_mt_computation(threadnum, dim, img_spec, args, filters);
+	} else {
+		log_info("Executing single-threaded computation...");
+		result_time = execute_st_computation(dim, img_spec, args, filters);
+	}
 
-    if (result_time <= 0) {
-        log_error("Error: Computation execution failed or returned non-positive time (%.6f).\n", result_time);
-        goto cleanup;
-    }
+	if (result_time <= 0) {
+		log_error("Error: Computation execution failed or returned non-positive time (%.6f).\n", result_time);
+		goto cleanup;
+	}
 
-    sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result, args);
+	sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result, args);
 
 cleanup:
-    log_debug("Cleaning up non-queue mode resources...");
-    if (img_spec) {
-        free(img_spec);
-    }
-    bmp_img_free(&img_result);
-    free(dim);
-    bmp_img_free(&img);
+	log_debug("Cleaning up non-queue mode resources...");
+	if (img_spec) {
+		free(img_spec);
+	}
+	bmp_img_free(&img_result);
+	free(dim);
+	bmp_img_free(&img);
 
-    return result_time;
+	return result_time;
 }
 
 /**
@@ -174,7 +177,7 @@ static double run_queue_mode(struct filter_mix *filters)
 	struct img_queue input_queue, output_queue;
 	struct qthreads_gen_info *qt_info = NULL;
 
-    log_info("Executing queue-based computation...");
+	log_info("Executing queue-based computation...");
 
 	qt_info = malloc(sizeof(struct qthreads_gen_info));
 	if (!qt_info) {
@@ -190,7 +193,7 @@ static double run_queue_mode(struct filter_mix *filters)
 
 	start_time = get_time_in_seconds();
 
-	create_qthreads(qt_info, args);
+	create_qthreads(qt_info);
 
 	join_qthreads(qt_info);
 
@@ -219,18 +222,18 @@ int main(int argc, char *argv[])
 	double result_time = 0;
 	int threadnum = 0;
 	struct filter_mix *filters = NULL;
-    int return_code = 0;
+	int return_code = 0;
 
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
-        log_error("Fatal Error: Cannot allocate args structure.\n");
+		log_error("Fatal Error: Cannot allocate args structure.\n");
 		return -1;
-    }
+	}
 
 	threadnum = parse_args(argc, argv);
 	if (threadnum < 0) {
 		log_error("Error: Argument parsing failed.\n");
-        free(args);
+		free(args);
 		return -2;
 	}
 
@@ -246,7 +249,7 @@ int main(int argc, char *argv[])
 	st_write_logs(args, result_time);
 
 	free_filters(filters);
-    free(filters);
+	free(filters);
 	free(args);
 
 	return return_code;
