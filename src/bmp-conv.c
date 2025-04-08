@@ -8,7 +8,6 @@
 #include "qmt-mode/exec.h" // For queue-mode functions
 #include "utils/filters.h" // For init_filters, free_filters, struct filter_mix
 #include "qmt-mode/threads.h" // for qthreads_gen_info
-#include "utils/threads-general.h"
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -224,6 +223,8 @@ int main(int argc, char *argv[])
 	struct filter_mix *filters = NULL;
 	int return_code = 0;
 
+	log_set_quiet(true);
+	
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
 		log_error("Fatal Error: Cannot allocate args structure.\n");

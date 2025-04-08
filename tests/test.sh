@@ -8,6 +8,10 @@ THREADNUM=4
 MODES=("by_row" "by_column" "by_grid") # removed by_pixel due to too big execution time
 FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
 TEST_FILE="image5.bmp"
+BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
+
+make -C "$BD" clean
+make -C "$BD" build
 
 echo -e "\nRunning single-threaded verification tests"
 	for fil in "${FILTERS[@]}"; do
