@@ -97,3 +97,6 @@ Temporary Items
 clang-format.txt
 
 .vscode
+
+tests/*.dat
+venv_py/
