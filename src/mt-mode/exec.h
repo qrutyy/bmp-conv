@@ -1,6 +1,5 @@
 #include "../../libbmp/libbmp.h"
 #include "../qmt-mode/threads.h"
-#include "../utils/threads-general.h"
 
 #pragma once
 

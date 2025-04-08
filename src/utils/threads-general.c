@@ -91,7 +91,6 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
  *
  * @param spec Pointer to the thread_spec structure containing image data, dimensions, and the specific row/column range to process.
  * @param cfilter The filter structure containing the kernel matrix, size, bias, and factor.
- * @return void. Modifies the `spec->img->output_img` buffer directly.
  */
 void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
@@ -142,7 +141,6 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
  *
  * @param spec Pointer to the thread_spec structure containing image data, dimensions, and the specific row/column range to process.
  * @param filter_size The dimension (width and height) of the square median filter window (e.g., 3 for 3x3).
- * @return void. Modifies the `spec->img->output_img` buffer directly.
  */
 void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 {
@@ -214,7 +212,6 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
         return;
     }
 
-	// Use nested ifs or a lookup table for potentially better performance than many strcmp calls
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {

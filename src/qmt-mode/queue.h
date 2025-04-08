@@ -8,6 +8,7 @@
 
 #define MAX_QUEUE_SIZE 2
 #define MAX_QUEUE_MEMORY (50 * 1024 * 1024)
+#define RAW_MEM_OVERHEAD (512 * 1024) // Assumed overhead for non-pixel data per image
 
 struct queue_img_info {
 	bmp_img *image;

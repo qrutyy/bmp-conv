@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <stdlib.h> // For malloc, free, exit
-#include <stdio.h>  // For fprintf, stderr
-#include <string.h> // For memcpy
+#include <stdlib.h>
+#include <stdio.h>  
+#include <string.h>
 #include "filters.h"
-
-// --- Filter Kernels (Convolution Matrices) ---
+#include "../../logger/log.h"
 
 const double motion_blur_arr[9][9] = { { 1, 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 1, 0, 0, 0, 0, 0, 0, 0 }, { 0, 0, 1, 0, 0, 0, 0, 0, 0 },
 				       { 0, 0, 0, 1, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 1, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 1, 0, 0, 0 },
@@ -50,13 +49,12 @@ const double box_blur_arr[15][15] = {
  * @param bias A value added to the result of the convolution operation.
  * @param factor A scaling factor applied to the result of the convolution operation.
  * @param arr A 2D array of doubles representing the filter kernel matrix. Must have dimensions `size` x `size`.
- * @return void.
  */
 static void init_filter(struct filter **f, int size, double bias, double factor, const double arr[size][size])
 {
 	*f = malloc(sizeof(struct filter));
 	if (!*f) {
-		fprintf(stderr, "Memory allocation failed for filter struct\n");
+		log_error("Memory allocation failed for filter struct\n");
 		exit(1);
 	}
 	(*f)->size = size;
@@ -65,14 +63,14 @@ static void init_filter(struct filter **f, int size, double bias, double factor,
 
 	(*f)->filter_arr = malloc(size * sizeof(double *));
 	if (!(*f)->filter_arr) {
-        fprintf(stderr, "Memory allocation failed for filter_arr rows\n");
+        log_error("Memory allocation failed for filter_arr rows\n");
         free(*f);
         exit(1);
     }
 	for (int i = 0; i < size; i++) {
 		(*f)->filter_arr[i] = malloc(size * sizeof(double));
 		if (!(*f)->filter_arr[i]) {
-            fprintf(stderr, "Memory allocation failed for filter_arr column %d\n", i);
+            log_error("Memory allocation failed for filter_arr column %d\n", i);
             // Cleanup previously allocated rows and the main struct
             for(int j = 0; j < i; ++j) free((*f)->filter_arr[j]);
             free((*f)->filter_arr);
@@ -87,36 +85,34 @@ static void init_filter(struct filter **f, int size, double bias, double factor,
  * Frees the memory allocated for a filter structure, including its kernel matrix.
  *
  * @param f Pointer to the filter structure to be freed. Assumes `f` and its internal arrays were allocated by `init_filter` or equivalent.
- * @return void.
  */
 static void free_filter(struct filter *f)
 {
     if (!f) return;
 	if (f->filter_arr) {
         for (int i = 0; i < f->size; i++) {
-            free(f->filter_arr[i]); // Free each row
+            free(f->filter_arr[i]); 
         }
-        free(f->filter_arr); // Free the array of row pointers
+        free(f->filter_arr); 
     }
-	free(f); // Free the main filter struct
+	free(f);
 }
 
 /**
  * Initializes all predefined filter types within the filter_mix structure by calling init_filter for each one with its corresponding kernel matrix and parameters.
  *
  * @param filters Pointer to the filter_mix structure to be initialized. Assumes the structure itself is already allocated.
- * @return void.
  */
 void init_filters(struct filter_mix *filters)
 {
 	init_filter(&filters->motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
 	init_filter(&filters->blur, 5, 0.0, 1.0 / 13.0, blur_arr);
 	init_filter(&filters->gaus_blur, 5, 0.0, 1.0 / 256.0, gaus_blur_arr);
-	init_filter(&filters->conv, 3, 0.0, 1.0, conv_arr); // Identity filter
+	init_filter(&filters->conv, 3, 0.0, 1.0, conv_arr);
 	init_filter(&filters->sharpen, 3, 0.0, 1.0, sharpen_arr);
-	init_filter(&filters->emboss, 5, 128.0, 1.0, emboss_arr); // Bias for emboss effect
-	init_filter(&filters->big_gaus, 15, 0.0, 1.0 / 771.0, big_gaus_arr); // Approximate normalization factor
-	init_filter(&filters->med_gaus, 9, 0.0, 1.0 / 213.0, med_gaus_arr); // Approximate normalization factor
+	init_filter(&filters->emboss, 5, 128.0, 1.0, emboss_arr); 
+	init_filter(&filters->big_gaus, 15, 0.0, 1.0 / 771.0, big_gaus_arr); 
+	init_filter(&filters->med_gaus, 9, 0.0, 1.0 / 213.0, med_gaus_arr); 
 	init_filter(&filters->box_blur, 15, 0.0, 1.0 / 225.0, box_blur_arr); // 15x15 = 225
 }
 
@@ -124,7 +120,6 @@ void init_filters(struct filter_mix *filters)
  * Frees the memory associated with all predefined filter types stored within the filter_mix structure by calling free_filter for each one.
  *
  * @param filters Pointer to the filter_mix structure whose filters need freeing.
- * @return void.
  */
 void free_filters(struct filter_mix *filters)
 {
@@ -138,7 +133,6 @@ void free_filters(struct filter_mix *filters)
 	free_filter(filters->big_gaus);
 	free_filter(filters->med_gaus);
 	free_filter(filters->box_blur);
-	// Nullify pointers after freeing (optional, good practice)
 	filters->motion_blur = NULL;
 	filters->blur = NULL;
 	filters->gaus_blur = NULL;

@@ -16,13 +16,14 @@
  * 3. Memory usage per thread isn't a good metric in terms of metrics that directly depend on execution time. However, at first i won't depend on threadnum, block_size and other metrics that affect the execution time.
  */
 
-// yeah, its not that precise. baytik tuda syuda...
 
 /**
  * Allocates memory for thread management structures (reader, worker, writer thread arrays)
  * and initializes the input and output image queues based on program arguments.
  * Handles potential memory allocation failures gracefully by cleaning up partially
  * allocated resources.
+ *
+ * yeah, its not that precise. baytik tuda syuda...
  *
  * @param qt_info A pointer to the main qthreads_gen_info structure to be populated.
  * @param args_ptr A pointer to the parsed program arguments containing thread counts and queue memory limits.
@@ -76,7 +77,7 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 
 	qt_info->reader_barrier = malloc(sizeof(pthread_barrier_t));
 
-	return 0; // Success
+	return 0;
 
 mem_err_cleanup: // Cleanup if thread arrays failed after info structs succeeded
     free(qt_info->ret_info->threads);
@@ -105,8 +106,8 @@ mem_err: // General memory error entry point
  */
 void create_qthreads(struct qthreads_gen_info *qt_info)
 {
-	size_t i;
-	int ret;
+	size_t i = 0;
+	int ret = 0;
 
 	log_info("Creating %hhu readers, %hhu workers, %hhu writers",
              qt_info->pargs->ret_count, qt_info->pargs->wot_count, qt_info->pargs->wrt_count);
@@ -158,8 +159,8 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
  */
 void join_qthreads(struct qthreads_gen_info *qt_info)
 {
-	size_t i;
-	int ret;
+	size_t i = 0;
+	int ret = 0;
 
 	log_debug("Joining %zu reader threads...", qt_info->ret_info->used_threads);
 	for (i = 0; i < qt_info->ret_info->used_threads; i++) {

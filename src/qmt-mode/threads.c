@@ -20,6 +20,7 @@ size_t read_files = 0;
  * After processing all files, pushes termination signals onto the queue and waits on a barrier before sending signals.
  *
  * @param arg A pointer to a struct qthreads_gen_info containing shared information like program arguments, queues, and barriers.
+ * 
  * @return NULL after completion or in case of critical failure.
  */
 void *reader_thread(void *arg)
@@ -92,6 +93,7 @@ void *reader_thread(void *arg)
  * @param filename_ptr Pointer to a char pointer where the filename associated with the image will be stored (memory allocated by queue).
  * @param file_count Total expected file count (potentially used by queue logic).
  * @param written_files_ptr Pointer to counter for processed files (potentially used by queue logic).
+ * 
  * @return Pointer to the bmp_img task, or NULL if queue is empty/error/termination signal.
  */
 static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr) {
@@ -127,6 +129,7 @@ static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, 
  * @param input_img The input image popped from the queue.
  * @param pargs Pointer to the program arguments structure.
  * @param filters Pointer to the filter mix structure.
+ * 
  * @return Pointer to an initialized thread_spec structure containing all necessary data for processing, or NULL on allocation failure.
  */
 static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct p_args *pargs, struct filter_mix *filters) {
@@ -182,6 +185,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
  * @param th_spec The thread specification structure containing image data, dimensions, etc.
  * @param pargs Pointer to the program arguments structure containing compute mode, block size.
  * @param filters Pointer to the filter mix structure.
+ * 
  * @return 0 on successful processing of the entire image, < 0 on error.
  */
 static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs, struct filter_mix *filters) {
@@ -259,6 +263,7 @@ static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spe
  * Exits the loop upon receiving a termination signal or encountering a queue error.
  *
  * @param arg A void pointer to a struct qthreads_gen_info containing shared information like program arguments, queues, and filter settings.
+ * 
  * @return NULL upon completion or exit signal.
  */
 void *worker_thread(void *arg)
@@ -312,7 +317,6 @@ void *worker_thread(void *arg)
 
 		worker_cleanup_image_resources(img, th_spec);
 		if (filename) free(filename);
-
 	}
 
 	log_debug("Worker: thread finished.");
@@ -325,6 +329,7 @@ void *worker_thread(void *arg)
  * Exits when all expected files have been written or a queue error occurs.
  *
  * @param arg A void pointer to a struct qthreads_gen_info containing shared information like program arguments and the output queue.
+ * 
  * @return NULL upon completion or error.
  */
 void *writer_thread(void *arg)

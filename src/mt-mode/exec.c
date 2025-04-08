@@ -12,7 +12,7 @@ pthread_mutex_t st_xy_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *sthread_function(void *arg)
 {
 	struct thread_spec *th_spec = (struct thread_spec *)arg;
-	int result = 0;
+	int8_t result = 0;
 
 	while (1) {
 		switch ((enum compute_mode)th_spec->st_gen_info->args->compute_mode) {
@@ -54,7 +54,8 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 
 	pthread_t *th = NULL;
 	double start_time = 0, end_time = 0;
-	int create_error = 0;
+	int8_t create_error = 0;
+	size_t i = 0;
 	struct thread_spec *th_spec[threadnum];
 
 	th = malloc(threadnum * sizeof(pthread_t));
@@ -64,10 +65,10 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 	}
 
 	// setup thread-locals details before thread creation
-	for (int i = 0; i < threadnum; i++) {
+	for (i = 0; i < (size_t)threadnum; i++) {
 		th_spec[i] = init_thread_spec(args, filters);
 		if (!th_spec[i]) {
-			create_error = 1;
+			create_error = -1;
 			log_error("Memory allocation error for thread_spec %d\n", i);
 			threadnum = i;
 			break;
@@ -76,11 +77,13 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 		th_spec[i]->dim = dim;
 		th_spec[i]->img = img_spec;
 	}
+	if (create_error < 0) 
+		goto mem_th_err;
 
 	start_time = get_time_in_seconds();
-	for (int i = 0; i < threadnum; i++) {
+	for (i = 0; i < (size_t)threadnum; i++) {
 		if (pthread_create(&th[i], NULL, sthread_function, th_spec[i]) != 0) {
-			perror("Failed to create a thread");
+			log_error("Failed to create a thread");
 			free(th_spec[i]);
 			create_error = 1;
 			threadnum = i;
@@ -88,9 +91,9 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 		}
 	}
 
-	for (int i = 0; i < threadnum; i++) {
+	for (i = 0; i < (size_t)threadnum; i++) {
 		if (pthread_join(th[i], NULL)) {
-			perror("Failed to join a thread");
+			log_error("Failed to join a thread");
 			break;
 		}
 	}
@@ -107,6 +110,12 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 
 mem_err:
 	log_error("Error: Memory allocation failed\n");
+	return 0;
+
+mem_th_err:
+	for (i = 0; i < threadnum; i ++) {
+		free(th_spec[i]);
+	}
 	return 0;
 }
 

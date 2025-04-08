@@ -11,14 +11,13 @@
 #include <errno.h> 
 #include <time.h> 
 
-#define RAW_MEM_OVERHEAD (512 * 1024) // Assumed overhead for non-pixel data per image
-
 /**
  * Estimates the memory usage of a single BMP image structure and its pixel data.
  * Includes the size of the main struct, pixel data array, row pointers (if applicable),
  * and a fixed overhead assumption.
  *
  * @param img A pointer to the bmp_img structure whose memory usage is to be estimated.
+ * 
  * @return The estimated memory usage in bytes.
  */
 static size_t estimate_image_memory(const bmp_img *img)
@@ -47,7 +46,6 @@ static size_t estimate_image_memory(const bmp_img *img)
  *
  * @param q A pointer to the img_queue structure to be initialized.
  * @param max_mem The maximum total estimated memory (in bytes) the queue should hold across all images. If 0, a default maximum is used.
- * @return void.
  */
 void queue_init(struct img_queue *q, size_t max_mem)
 {
@@ -72,7 +70,6 @@ void queue_init(struct img_queue *q, size_t max_mem)
  * @param q A pointer to the img_queue structure.
  * @param img A pointer to the bmp_img structure to be added. Ownership is transferred.
  * @param filename A string containing the filename associated with the image. Ownership is transferred (the pointer itself, not usually a copy). Must not be NULL (function returns early if it is).
- * @return void. Exits fatally on internal memory allocation failure.
  */
 void queue_push(struct img_queue *q, bmp_img *img, char *filename)
 {
@@ -142,6 +139,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename)
  * @param filename A pointer to a char pointer (`char **`). On success, this will be updated to point to a newly allocated string containing the filename. The caller is responsible for freeing this memory.
  * @param file_count The total number of files expected to be processed by the system.
  * @param written_files A pointer to a global atomic counter tracking the number of files successfully processed (written). Used for termination check.
+ * 
  * @return A pointer to the popped bmp_img structure, or NULL if the queue is empty and processing should terminate, or on error during timed wait.
  */
 bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files)
@@ -204,20 +202,20 @@ restart_wait_loop:
     log_trace("Popped '%s'. New usage: %zu bytes, size: %zu", (iqi->filename ? iqi->filename : "NULL"), q->current_mem_usage, q->size);
 
 	if (iqi->filename) {
-		*filename = strdup(iqi->filename); // Caller must free this allocated string
+		*filename = strdup(iqi->filename);
 		if (!*filename) {
 			log_error("strdup failed for filename in queue_pop");
-            free(iqi); // Free the wrapper at least
-            pthread_cond_signal(&q->cond_non_full);
+            free(iqi);
+			pthread_cond_signal(&q->cond_non_full);
 	        pthread_mutex_unlock(&q->mutex);
-            return NULL; // Indicate error
+            return NULL; 
 		}
 	} else {
         *filename = NULL;
     }
 
 	img_src = iqi->image;
-	free(iqi); // Free the queue node wrapper struct
+	free(iqi);
 
 	pthread_cond_signal(&q->cond_non_full);
 	pthread_mutex_unlock(&q->mutex);
