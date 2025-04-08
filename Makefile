@@ -1,40 +1,91 @@
-WFLAGS := -Wall -Wpedantic -Wextra 
-CFLAGS := $(WFLAGS) -lm -O3
+SHELL=/bin/sh
 
-INPUT_TF?=image2.bmp
-FILTER_TYPE?=mb
-THREAD_NUM?=1
-COMPUTE_MODE?=by_column
-BLOCK_SIZE?=5
-OUTPUT_FILE?=""
-LOG?=1
-RWW_MIX?=1,1,1
+# === Compiler and Flags ===
+CC = gcc
+CFLAGS = -Wall -Wpedantic -Wextra -g -std=c99
+CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
+LDLIBS = -lm 
 
-UTILS_PATH = src/utils
-LIBBMP_PATH = libbmp
+# === Project Structure ===
+TARGET_EXEC := bmp-conv
 
-UTILS_SRC = $(UTILS_PATH)/utils.c $(UTILS_PATH)/mt-utils.c $(UTILS_PATH)/mt-queue.c
-LIBBMP_SRC = $(LIBBMP_PATH)/libbmp.c
+SRC_DIRS := src src/utils src/st-mode src/mt-mode src/qmt-mode logger libbmp
+VPATH := $(SRC_DIRS)
 
-build: src/bmp-conv.c
-	$(CC) -o src/bmp-conv src/bmp-conv.c $(LIBBMP_SRC) $(UTILS_SRC) $(CFLAGS)
+SRCS := bmp-conv.c args-parse.c filters.c threads-general.c utils.c \
+         st-mode/exec.c \
+         mt-mode/compute.c mt-mode/exec.c \
+         qmt-mode/exec.c qmt-mode/queue.c qmt-mode/threads.c \
+         log.c \
+         libbmp.c
 
-run:
-	./src/bmp-conv $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE) --block=$(BLOCK_SIZE) --output=$(OUTPUT_FILE) --log=$(LOG)
+BUILD_DIR := obj
+OBJS := $(addprefix $(BUILD_DIR)/, $(SRCS:.c=.o))
 
-run-mac-e-cores:
-#\ This task will be executed with minimal prioriy and on E-cores. Used for background tasks, which should not interfere with the user’s work.
-	taskpolicy -c background ./src/bmp-conv $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE) --block=$(BLOCK_SIZE) --log=$(LOG) --output=$(OUTPUT_FILE)
+RM := rm -f
 
-run-mac-p-cores:
-#\ By default (taskpolicy without -c), macOS automatically allocates the process to all available kernels, both P-cores and E-cores. I've noticed that it has the same performance as in taskset's 'utility' mode. There is no available way to lock process execution only to P-cores, its kinda wrongly.
-	make run
+# === Runtime Parameters (with defaults, can be overridden) ===
+INPUT_TF    ?= image2.bmp
+FILTER_TYPE ?= mb
+THREAD_NUM  ?= 1
+COMPUTE_MODE?= by_column
+BLOCK_SIZE  ?= 5
+OUTPUT_FILE ?= "" # Default to empty, let the program handle it
+LOG         ?= 1
+RWW_MIX     ?= 1,1,1
 
-run-q-mode:
-	./src/bmp-conv -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
+# === Build Targets ===
+.DEFAULT_GOAL := all
+all: $(TARGET_EXEC)
+
+# Link the executable from object files
+$(TARGET_EXEC): $(OBJS)
+	@echo "\nLinking $@..."
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+	@echo "Build complete: $(TARGET_EXEC)"
+
+# Pattern rule to compile .c files into .o files in the BUILD_DIR
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) # keep the order-only prerequisite for the top dir
+	@echo "\nCompiling $< -> $@"
+	@mkdir -p $(dir $@) # creating obj subdir 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	@mkdir -p $@
+
+# === Run Targets ===
+
+# Base run command arguments
+RUN_ARGS := $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE) --block=$(BLOCK_SIZE) --output=$(OUTPUT_FILE) --log=$(LOG)
+# Queue mode specific arguments
+RUN_Q_ARGS := -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
+
+# Run the program with standard arguments
+run: all
+	@echo "\nRunning: ./$(TARGET_EXEC) $(RUN_ARGS)"
+	./$(TARGET_EXEC) $(RUN_ARGS)
+
+# Run specifically on macOS E-cores
+run-mac-e-cores: all
+	@echo "\nRunning on E-cores: taskpolicy -c background ./$(TARGET_EXEC) $(RUN_ARGS)"
+	taskpolicy -c background ./$(TARGET_EXEC) $(RUN_ARGS)
+
+# Run on macOS P-cores (using default policy which often prioritizes P-cores or uses all)
+run-mac-p-cores: all
+	@echo "\nRunning on P-cores (default policy): ./$(TARGET_EXEC) $(RUN_ARGS)"
+	./$(TARGET_EXEC) $(RUN_ARGS)
+
+run-q-mode: all
+	@echo "\nRunning Queue Mode: ./$(TARGET_EXEC) $(RUN_Q_ARGS)"
+	./$(TARGET_EXEC) $(RUN_Q_ARGS)
 
 clean:
-	rm -rf src/*.out src/bmp-conv src/*.o tests/*.dat 
+	@echo "\nCleaning build artifacts..."
+	$(RM) $(TARGET_EXEC)
+	$(RM) -r $(BUILD_DIR)
+	$(RM) tests/*.dat src/*.out 
 
-.PHONY:
-	clean run
+.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode
+
+.SUFFIXES:
+

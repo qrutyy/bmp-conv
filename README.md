@@ -3,7 +3,7 @@
 This program applies various filters to a BMP image in a multi-threaded manner, allowing for efficient processing based on the selected filter type and computation mode.
 
 ## Usage
-At first, you should build the sources by `make build`.
+At first, you should build the sources by `make`.
 
 ### Command Line Arguments
 
@@ -46,17 +46,17 @@ Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N
 
 Apply Sharpen filter in single-threded (sequential) column mode with block size of 30 (minimum args required):
 ```bash
-./src/bmp-conv image1.bmp --mode=by_column --filter=sh --block=30
+./bmp-conv image1.bmp --mode=by_column --filter=sh --block=30
 ```
 
 Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ specified output):
 ```bash
-./src/bmp-conv image5.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
+./bmp-conv image5.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
 ```
 
 Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
 ```bash
-./src/bmp-conv -queue-mode image4.bmp image4.bmp image4.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
+./bmp-conv -queue-mode image4.bmp image4.bmp image4.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
 ```
 add queue-mode example
 
