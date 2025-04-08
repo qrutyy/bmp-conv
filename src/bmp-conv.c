@@ -113,9 +113,9 @@ static double run_queue_mode(struct filter_mix *filters)
 {
 	double start_time, end_time = 0;
 	struct img_queue input_queue, output_queue;
-	struct qthreads_info *qt_info = NULL;
+	struct qthreads_gen_info *qt_info = NULL;
 
-	qt_info = malloc(sizeof(struct qthreads_info));
+	qt_info = malloc(sizeof(struct qthreads_gen_info));
 	if (!qt_info)
 		goto mem_err;
 

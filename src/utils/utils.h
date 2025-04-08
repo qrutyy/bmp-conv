@@ -30,6 +30,9 @@ double get_time_in_seconds(void);
 const char *mode_to_str(int mode);
 const char *log_tag_to_str(enum LOG_TAG tag);
 
+void qt_write_logs(double result_time, enum LOG_TAG tag);
+void st_write_logs(struct p_args *args, double result_time);
+
 void set_wait_time(struct timespec *wait_time);
 int compare_images(const bmp_img *img1, const bmp_img *img2);
 

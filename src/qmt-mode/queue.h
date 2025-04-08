@@ -14,6 +14,7 @@ struct queue_img_info {
 	char *filename;
 };
 
+// queue_node struct
 struct img_queue {
 	struct queue_img_info *images[MAX_QUEUE_SIZE];
 	uint8_t front, rear, size;
@@ -26,4 +27,4 @@ struct img_queue {
 
 void queue_push(struct img_queue *q, bmp_img *img, char *filename);
 void queue_init(struct img_queue *q, size_t max_mem);
-bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count);
+bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files);
