@@ -64,9 +64,13 @@ int selectKth(int *data, int s, int e, int k)
  */
 double get_time_in_seconds(void)
 {
-	struct timeval time;
-	gettimeofday(&time, NULL);
-	return (double)time.tv_sec + (double)time.tv_usec * 1e-6;
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1) {
+		log_error("clock_gettime(CLOCK_MONOTONIC) failed"); 
+		return 0.0; 
+	}
+	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9; 
 }
 
 /**

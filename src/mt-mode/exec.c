@@ -113,7 +113,7 @@ mem_err:
 	return 0;
 
 mem_th_err:
-	for (i = 0; i < threadnum; i ++) {
+	for (i = 0; i < (size_t)threadnum; i ++) {
 		free(th_spec[i]);
 	}
 	return 0;
