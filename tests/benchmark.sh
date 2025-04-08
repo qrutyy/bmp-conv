@@ -35,7 +35,7 @@ compare_results() {
 }
 
 make -C "$BD" clean
-make -C "$BD" build
+make -C "$BD"
 
 echo "RunID Filter-type Thread-num Mode Block-size Result" > "$LOG_FILE"
 
