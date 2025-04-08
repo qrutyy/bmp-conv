@@ -21,3 +21,5 @@ struct filter_mix {
 	struct filter *box_blur;
 };
 
+void init_filters(struct filter_mix *filters);
+void free_filters(struct filter_mix *filters);

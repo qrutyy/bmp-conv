@@ -28,6 +28,12 @@ struct img_spec {
 	bmp_img *output_img;
 };
 
+// simple threads general info
+struct sthreads_gen_info {	
+	struct p_args *args;
+	struct filter_mix *filters;
+};
+
 struct img_dim *init_dimensions(uint16_t width, uint16_t height);
 struct img_spec *init_img_spec(bmp_img *input, bmp_img *output);
 void apply_filter(struct thread_spec *spec, struct filter cfilter);

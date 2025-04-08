@@ -36,6 +36,3 @@ void st_write_logs(struct p_args *args, double result_time);
 void set_wait_time(struct timespec *wait_time);
 int compare_images(const bmp_img *img1, const bmp_img *img2);
 
-void free_filters(struct filter_mix *filters);
-void init_filters(struct filter_mix *filters);
-

@@ -94,7 +94,7 @@ void *reader_thread(void *arg)
  * @param written_files_ptr Pointer to counter for processed files (potentially used by queue logic).
  * @return Pointer to the bmp_img task, or NULL if queue is empty/error/termination signal.
  */
-static bmp_img *worker_get_task(queue_t *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr) {
+static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr) {
 	bmp_img *img = queue_pop(input_q, filename_ptr, file_count, written_files_ptr);
 
 	if (!img) {
@@ -140,11 +140,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 		log_error("Worker Error: Result image allocation failed");
 		return NULL;
 	}
-	if (bmp_img_init_df(img_result, input_img->img_header.biWidth, input_img->img_header.biHeight) != 0) {
-        log_error("Worker Error: bmp_img_init_df failed");
-        free(img_result);
-        return NULL;
-    }
+	bmp_img_init_df(img_result, input_img->img_header.biWidth, input_img->img_header.biHeight);
 
 	th_spec = init_thread_spec(pargs, filters);
 	if (!th_spec) {

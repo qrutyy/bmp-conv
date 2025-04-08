@@ -7,86 +7,171 @@
 #include "args-parse.h"
 #include "filters.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
+/**
+ * Allocates and initializes an image dimensions structure.
+ *
+ * @param width The width of the image in pixels.
+ * @param height The height of the image in pixels.
+ * @return Pointer to the newly allocated img_dim structure, or NULL on failure.
+ */
 struct img_dim *init_dimensions(uint16_t width, uint16_t height)
 {
 	struct img_dim *dim = malloc(sizeof(struct img_dim));
-	if (!dim)
+	if (!dim) {
+		log_error("Failed to allocate memory for img_dim.");
 		return NULL;
+	}
 	dim->width = width;
 	dim->height = height;
-	log_debug("Width: %d, Height: %d\n", width, height);
+	log_debug("Initialized dimensions: Width=%u, Height=%u", width, height);
 	return dim;
 }
 
+/**
+ * Allocates and initializes an image specification structure, linking input and output image buffers.
+ *
+ * @param input Pointer to the bmp_img structure holding the input image data.
+ * @param output Pointer to the bmp_img structure where the output image data will be stored.
+ * @return Pointer to the newly allocated img_spec structure, or NULL on failure.
+ */
 struct img_spec *init_img_spec(bmp_img *input, bmp_img *output)
 {
 	struct img_spec *spec = malloc(sizeof(struct img_spec));
-	if (!spec)
+	if (!spec) {
+		log_error("Failed to allocate memory for img_spec.");
 		return NULL;
+	}
 	spec->input_img = input;
 	spec->output_img = output;
 	return spec;
 }
 
+/**
+ * Allocates memory for a thread specification structure. Note: This basic version only allocates the structure. Further initialization (linking dimensions, images, setting row/column ranges) happens elsewhere.
+ *
+ * @param args Pointer to the p_args structure (potentially unused in this basic init).
+ * @param filters Pointer to the filter_mix structure (potentially unused in this basic init).
+ * @return Pointer to the newly allocated thread_spec structure, or NULL on failure.
+ */
 void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 {
 	struct thread_spec *th_spec = malloc(sizeof(struct thread_spec));
-	if (!th_spec)
+	if (!th_spec) {
+		log_error("Failed to allocate memory for thread_spec.");
 		return NULL;
+	}
+
+	th_spec->dim = NULL;
+	th_spec->img = NULL;
+	th_spec->start_row = 0;
+	th_spec->end_row = 0;
+	th_spec->start_column = 0;
+	th_spec->end_column = 0;
+	
+	struct sthreads_gen_info *st_gen_info = malloc(sizeof(struct sthreads_gen_info));
+	if (!st_gen_info) {
+		log_error("Failed to allocate memory for thread_spec.");
+		return NULL;
+	}
+	
+	st_gen_info->args = args;
+	st_gen_info->filters = filters;
+
+	th_spec->st_gen_info = st_gen_info;
 
 	return th_spec;
 }
 
+/**
+ * Applies a convolution filter (defined by `cfilter`) to a specified portion of an image. Iterates through the pixel range defined in `spec` (start/end row/column). For each pixel, it calculates the weighted sum of neighboring pixels based on the filter kernel, applies bias and factor, clamps the result to [0, 255], and stores it in the output image buffer. Uses wrap-around (modulo) for boundary handling.
+ *
+ * @param spec Pointer to the thread_spec structure containing image data, dimensions, and the specific row/column range to process.
+ * @param cfilter The filter structure containing the kernel matrix, size, bias, and factor.
+ * @return void. Modifies the `spec->img->output_img` buffer directly.
+ */
 void apply_filter(struct thread_spec *spec, struct filter cfilter)
 {
-	int32_t x, y, filterX, filterY, imageX, imageY, weight = 0;
+	int32_t x, y, filterX, filterY, imageX, imageY;
+	double weight = 0; // Use double for filter weights
 	bmp_pixel orig_pixel;
-	//	printf("filter size %d start x:%d y:%d, end x:%d y:%d\n", cfilter.size, spec->start_column, spec->start_row, spec->end_column, spec->end_row);
+	double red_acc, green_acc, blue_acc; // Use accumulators for precision
+
+	int padding = cfilter.size / 2;
+
+	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)",
+	         cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
 	for (y = spec->start_row; y < spec->end_row; y++) {
 		for (x = spec->start_column; x < spec->end_column; x++) {
-			int red = 0, green = 0, blue = 0;
+			red_acc = 0.0;
+			green_acc = 0.0;
+			blue_acc = 0.0;
 
+			// Apply the filter kernel
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
 				for (filterX = 0; filterX < cfilter.size; filterX++) {
-					imageX = (x + filterX - PADDING + spec->dim->width) % spec->dim->width;
-					imageY = (y + filterY - PADDING + spec->dim->height) % spec->dim->height;
+					// Calculate source pixel coordinates with wrap-around
+					imageX = (x + filterX - padding + spec->dim->width) % spec->dim->width;
+					imageY = (y + filterY - padding + spec->dim->height) % spec->dim->height;
 
-					// Check if the pixel is within bounds
-					if (imageX >= 0 && imageX < spec->dim->width && imageY >= 0 && imageY < spec->dim->height) {
-						orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
-						weight = cfilter.filter_arr[filterY][filterX];
+					// No bounds check needed due to modulo arithmetic
 
-						// Multiply the pixel value with the filter weight
-						red += orig_pixel.red * weight;
-						green += orig_pixel.green * weight;
-						blue += orig_pixel.blue * weight;
-					}
+					orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
+					weight = cfilter.filter_arr[filterY][filterX];
+
+					red_acc += orig_pixel.red * weight;
+					green_acc += orig_pixel.green * weight;
+					blue_acc += orig_pixel.blue * weight;
 				}
 			}
 
-			spec->img->output_img->img_pixels[y][x].red = fmin(fmax((int)(red * cfilter.factor + cfilter.bias), 0), 255);
-			spec->img->output_img->img_pixels[y][x].green = fmin(fmax((int)(green * cfilter.factor + cfilter.bias), 0), 255);
-			spec->img->output_img->img_pixels[y][x].blue = fmin(fmax((int)(blue * cfilter.factor + cfilter.bias), 0), 255);
+			// Apply factor, bias, clamp to [0, 255], and cast to output type
+			spec->img->output_img->img_pixels[y][x].red = (unsigned char)fmin(fmax(round(red_acc * cfilter.factor + cfilter.bias), 0.0), 255.0);
+			spec->img->output_img->img_pixels[y][x].green = (unsigned char)fmin(fmax(round(green_acc * cfilter.factor + cfilter.bias), 0.0), 255.0);
+			spec->img->output_img->img_pixels[y][x].blue = (unsigned char)fmin(fmax(round(blue_acc * cfilter.factor + cfilter.bias), 0.0), 255.0);
 		}
 	}
 }
 
+/**
+ * Applies a median filter of a given square size to a specified portion of an image. Iterates through the pixel range defined in `spec`. For each pixel, it collects the color channel values (Red, Green, Blue) of its neighbors within the filter window, finds the median value for each channel using `selectKth`, and stores the median values in the output image buffer. Uses wrap-around for boundary handling.
+ *
+ * @param spec Pointer to the thread_spec structure containing image data, dimensions, and the specific row/column range to process.
+ * @param filter_size The dimension (width and height) of the square median filter window (e.g., 3 for 3x3).
+ * @return void. Modifies the `spec->img->output_img` buffer directly.
+ */
 void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 {
+	if (filter_size % 2 == 0 || filter_size < 1) {
+        log_error("Median filter size must be odd and positive, got %u", filter_size);
+        return;
+    }
 	int32_t half_size = filter_size / 2;
 	int32_t filter_area = filter_size * filter_size;
+	int32_t *red = NULL, *green = NULL, *blue = NULL; // Use int32_t arrays for pixel values [0-255]
 
-	int32_t *red = malloc(filter_area * sizeof(int));
-	int32_t *green = malloc(filter_area * sizeof(int));
-	int32_t *blue = malloc(filter_area * sizeof(int));
+	red = malloc(filter_area * sizeof(*red));
+	green = malloc(filter_area * sizeof(*green));
+	blue = malloc(filter_area * sizeof(*blue));
+
+	if (!red || !green || !blue) {
+        log_error("Failed to allocate memory for median filter arrays.");
+        free(red); free(green); free(blue);
+        return;
+    }
+
+	log_trace("Applying median filter size %u to region R[%d-%d) C[%d-%d)",
+	         filter_size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
 	for (int y = spec->start_row; y < spec->end_row; y++) {
 		for (int x = spec->start_column; x < spec->end_column; x++) {
-			int n = 0;
+			int n = 0; // Index for neighborhood arrays
 
+			// Collect neighboring pixel values
 			for (int filterY = -half_size; filterY <= half_size; filterY++) {
 				for (int filterX = -half_size; filterX <= half_size; filterX++) {
 					int imageX = (x + filterX + spec->dim->width) % spec->dim->width;
@@ -101,10 +186,11 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 				}
 			}
 
-			// Apply median filter using selectKth to get the middle value
-			spec->img->output_img->img_pixels[y][x].red = selectKth(red, 0, filter_area, filter_area / 2);
-			spec->img->output_img->img_pixels[y][x].green = selectKth(green, 0, filter_area, filter_area / 2);
-			spec->img->output_img->img_pixels[y][x].blue = selectKth(blue, 0, filter_area, filter_area / 2);
+			// Find the median value for each channel using the K'th smallest element algorithm
+            // The median is the element at index filter_area / 2 in the sorted array.
+			spec->img->output_img->img_pixels[y][x].red   = (unsigned char)selectKth(red, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].green = (unsigned char)selectKth(green, 0, filter_area, filter_area / 2);
+			spec->img->output_img->img_pixels[y][x].blue  = (unsigned char)selectKth(blue, 0, filter_area, filter_area / 2);
 		}
 	}
 
@@ -113,8 +199,22 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size)
 	free(blue);
 }
 
+/**
+ * Selects and applies the appropriate filter based on the filter_type string. Compares filter_type against known filter identifiers and calls either `apply_filter` (for convolution filters) or `apply_median_filter`.
+ *
+ * @param spec Pointer to the thread_spec structure containing image data and processing range.
+ * @param filter_type A string identifier for the desired filter (e.g., "mb", "mm", "sh").
+ * @param filters Pointer to the filter_mix structure containing pre-initialized filter data.
+ * @return void. Calls the relevant filter application function.
+ */
 void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters)
 {
+	if (!filter_type || !filters || !spec) {
+        log_error("NULL parameter passed to filter_part_computation.");
+        return;
+    }
+
+	// Use nested ifs or a lookup table for potentially better performance than many strcmp calls
 	if (strcmp(filter_type, "mb") == 0) {
 		apply_filter(spec, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0) {
@@ -127,8 +227,8 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 		apply_filter(spec, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0) {
 		apply_filter(spec, *filters->emboss);
-	} else if (strcmp(filter_type, "mm") == 0) {
-		apply_median_filter(spec, 15);
+	} else if (strcmp(filter_type, "mm") == 0) { // Median Filter
+		apply_median_filter(spec, 15); // Using fixed size 15x15 for "mm"
 	} else if (strcmp(filter_type, "gg") == 0) {
 		apply_filter(spec, *filters->big_gaus);
 	} else if (strcmp(filter_type, "bo") == 0) {
@@ -136,6 +236,7 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 	} else if (strcmp(filter_type, "mg") == 0) {
 		apply_filter(spec, *filters->med_gaus);
 	} else {
-		fprintf(stderr, "Error: Wrong filter type parameter '%s'\n", filter_type);
+		log_error("Unknown filter type parameter '%s' in filter_part_computation.", filter_type);
 	}
 }
+

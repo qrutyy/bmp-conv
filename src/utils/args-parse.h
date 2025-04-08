@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #define MAX_IMAGE_QUEUE_SIZE 20
-
+#define QUEUE_MEM_LIMIT (500 * 1024 * 1024)
 #pragma once 
 
+// Structure for storing input arguments. Better described in README
 struct p_args {
 	uint8_t block_size;
 	char *input_filename[MAX_IMAGE_QUEUE_SIZE];

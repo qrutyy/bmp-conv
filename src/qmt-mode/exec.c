@@ -74,6 +74,8 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 	qt_info->input_q = input_queue;
 	qt_info->output_q = output_queue;
 
+	qt_info->reader_barrier = malloc(sizeof(pthread_barrier_t));
+
 	return 0; // Success
 
 mem_err_cleanup: // Cleanup if thread arrays failed after info structs succeeded
@@ -101,7 +103,7 @@ mem_err: // General memory error entry point
  * @param args_ptr A pointer to the parsed program arguments (potentially redundant).
  * @return void. Errors during thread creation are logged.
  */
-void create_qthreads(struct qthreads_gen_info *qt_info, struct p_args *args_ptr)
+void create_qthreads(struct qthreads_gen_info *qt_info)
 {
 	size_t i;
 	int ret;

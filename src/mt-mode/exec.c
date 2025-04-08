@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
+#include "../../logger/log.h"
 #include "../utils/threads-general.h"
 #include "compute.h"
 
@@ -28,7 +29,7 @@ static void *sthread_function(void *arg)
 			result = process_by_grid(th_spec, &st_next_x_block, &st_next_y_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
 			break;
 		default:
-			fprintf(stderr, "Error: Invalid mode %d in thread function.\n", th_spec->st_gen_info->args->compute_mode);
+			log_error("Error: Invalid mode %d in thread function.\n", th_spec->st_gen_info->args->compute_mode);
 			result = 1;
 			break;
 		}
@@ -37,10 +38,9 @@ static void *sthread_function(void *arg)
 			goto exit;
 		
 		if (!th_spec || !th_spec->st_gen_info->args || !th_spec->st_gen_info->args->filter_type || !th_spec->st_gen_info->filters) {
-			fprintf(stderr, "Error: Invalid state before filter_part_computation.\n");
+			log_error("Error: Invalid state before filter_part_computation.\n");
 			return NULL;
 		}
-
 		filter_part_computation(th_spec, th_spec->st_gen_info->args->filter_type, th_spec->st_gen_info->filters);
 	}
 
@@ -65,10 +65,10 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 
 	// setup thread-locals details before thread creation
 	for (int i = 0; i < threadnum; i++) {
-		th_spec[i] = thread_spec_init(args, filters);
+		th_spec[i] = init_thread_spec(args, filters);
 		if (!th_spec[i]) {
 			create_error = 1;
-			fprintf(stderr, "Memory allocation error for thread_spec %d\n", i);
+			log_error("Memory allocation error for thread_spec %d\n", i);
 			threadnum = i;
 			break;
 		}
@@ -106,7 +106,7 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 	return end_time - start_time;
 
 mem_err:
-	fprintf(stderr, "Error: Memory allocation failed\n");
+	log_error("Error: Memory allocation failed\n");
 	return 0;
 }
 
@@ -121,6 +121,6 @@ void sthreads_save(char *output_filepath, size_t path_len, int threadnum, bmp_im
 			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
 	}
 
-	printf("result out filepath %s\n", output_filepath);
+	log_debug("Result out filepath %s\n", output_filepath);
 	bmp_img_write(img_result, output_filepath);
 }
