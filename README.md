@@ -61,7 +61,7 @@ Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2
 add queue-mode example
 
 ### Testing
-For future performance analysis of mutlithreaded mode - shell script for benchmarking and plot gen were implemented. To execute tests - simply run:
+For future performance analysis of mutlithreaded mode - shell script for benchmarking and plot gen were implemented. At first - install dependencies (see [Benchmark-setup](https://github.com/qrutyy/bmp-conv/blob/main/Benchmark-setup.md))To execute tests - simply run:
 ```
 ./tests/benchmark.sh
 ``` 
