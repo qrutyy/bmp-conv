@@ -1,4 +1,4 @@
-# Multithreaded Convolution benchmarking
+# Multithreaded convolution benchmarking & analysis
 
 ## Содержание
 1. [Введение](#введение)
