@@ -1,10 +1,18 @@
-/**
- * Rank0 'broadcasts' distributed parts of image to the specified processes. 
- * Allocates local_buffers for each process, that will be the receive buffers.
- *
- * @return 0 on success, -1 on error
- */
-static int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data,
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "../../logger/log.h"
+#include "../../libbmp/libbmp.h"
+#include "../utils/threads-general.h"
+#include "mpi-types.h"
+#include "utils.h"
+#include "rank0-proc.h"
+#include <cstdint>
+#include <mpi.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+
+int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data,
                                   struct mpi_local_data *local_data, unsigned char *global_send_buffer,
                                   const struct mpi_comm_arr *comm_arrays)
 {
@@ -52,7 +60,6 @@ static int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct im
 
     return 0;
 }
-
 
 int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data,
                                  const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
@@ -124,13 +131,13 @@ int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_d
 }
 
 // simply sents img dim to all the prcesses (from rank0)
-static void mpi_broadcast_metadata(struct img_comm_data *comm_data) {
-    int mpi_width = (int)comm_data->dim->width;
-    int mpi_height = (int)comm_data->dim->height;
+void mpi_broadcast_metadata(struct img_comm_data *comm_data) {
+    uint16_t mpi_width = comm_data->dim->width;
+    uint16_t mpi_height = comm_data->dim->height;
 
-    MPI_Bcast(&mpi_width, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&mpi_height, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&mpi_width, 1, MPI_UINT16_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&mpi_height, 1, MPI_UINT16_T, 0, MPI_COMM_WORLD);
 
-    comm_data->dim->width = (uint32_t)mpi_width;
-    comm_data->dim->height = (uint32_t)mpi_height;
+    comm_data->dim->width = mpi_width;
+    comm_data->dim->height = mpi_height;
 }
