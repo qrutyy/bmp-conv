@@ -16,7 +16,7 @@ struct p_args {
 	char *filter_type;
 	int8_t compute_mode;
 	uint8_t log_enabled;
-	uint8_t queue_mode;
+	uint8_t mt_mode; // 0 - non-queue-mode, 1 - queue-mode, 2 - MPI mode
 	int8_t threadnum;
 	uint8_t wrt_count; // writer threads count
 	uint8_t ret_count; // reader threads count

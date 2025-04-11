@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
@@ -118,17 +120,3 @@ mem_th_err:
 	return 0;
 }
 
-void sthreads_save(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args)
-{
-	if (strcmp(args->output_filename, "") != 0) {
-		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
-	} else {
-		if (threadnum > 1)
-			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
-		else
-			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
-	}
-
-	log_debug("Result out filepath %s\n", output_filepath);
-	bmp_img_write(img_result, output_filepath);
-}
