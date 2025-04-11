@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include <stdlib.h>
 #include "../../libbmp/libbmp.h"
 #include "utils.h"
@@ -40,3 +42,4 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter);
 void apply_median_filter(struct thread_spec *spec, uint16_t filter_size);
 void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters);
 void *init_thread_spec(struct p_args *args, struct filter_mix *filters);
+void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args);

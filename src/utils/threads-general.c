@@ -235,3 +235,21 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 		log_error("Unknown filter type parameter '%s' in filter_part_computation.", filter_type);
 	}
 }
+
+void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args)
+{
+	if (strcmp(args->output_filename, "") != 0) {
+		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
+	} else {
+		if (threadnum > 1) {
+			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
+		} else if (threadnum == 0) {
+			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
+		} else {
+			snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->input_filename[0]);
+		}
+	}
+
+	log_debug("Result out filepath %s\n", output_filepath);
+	bmp_img_write(img_result, output_filepath);
+}
