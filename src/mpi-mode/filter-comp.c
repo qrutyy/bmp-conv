@@ -20,44 +20,40 @@
  * @param cfilter - the filter structure containing the kernel matrix, size, bias, and factor.
  * @param halo_size (default: 1) - the size of the halo region used (needed to calculate offsets correctly, though implicit in comm_data).
  */
-static void mpi_apply_filter(const struct mpi_local_data *local_data,
-                             const struct img_comm_data *comm_data,
-                             struct filter cfilter)
+static void mpi_apply_filter(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, struct filter cfilter)
 {
-    uint32_t x = 0;
-    uint32_t y = 0;
-    int32_t filterX = 0, filterY = 0;
-    int32_t imageX_global = 0, imageY_global = 0;
-    uint32_t imageY_local = 0;
-    uint32_t global_y = 0;
-    double weight = 0.0;
-    double red_acc = 0, green_acc = 0, blue_acc = 0;
-    int padding = cfilter.size / 2;
-    const unsigned char *input_pixel_ptr = NULL;
-    unsigned char *output_pixel_ptr = NULL;
-    const unsigned char *input_row_base = NULL;
-    unsigned char *output_row_base = NULL;
-    const uint32_t width = comm_data->dim->width;
-    const uint32_t height = comm_data->dim->height;
-    const size_t row_stride = comm_data->row_stride_bytes;
+	uint32_t x = 0;
+	uint32_t y = 0;
+	int32_t filterX = 0, filterY = 0;
+	int32_t imageX_global = 0, imageY_global = 0;
+	uint32_t imageY_local = 0;
+	uint32_t global_y = 0;
+	double weight = 0.0;
+	double red_acc = 0, green_acc = 0, blue_acc = 0;
+	int padding = cfilter.size / 2;
+	const unsigned char *input_pixel_ptr = NULL;
+	unsigned char *output_pixel_ptr = NULL;
+	const unsigned char *input_row_base = NULL;
+	unsigned char *output_row_base = NULL;
+	const uint32_t width = comm_data->dim->width;
+	const uint32_t height = comm_data->dim->height;
+	const size_t row_stride = comm_data->row_stride_bytes;
 
-    if (!local_data || !local_data->input_pixels || !local_data->output_pixels ||
-        !comm_data || !comm_data->dim || cfilter.size <= 0 || !cfilter.filter_arr)
-    {
-        log_error("Rank ?: Invalid arguments passed to mpi_apply_filter. Skipping.");
-        return;
-    }
-     if (comm_data->my_num_rows == 0) {
-         log_trace("Rank ?: No rows to process in mpi_apply_filter.");
-         return;
-     }
+	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || cfilter.size <= 0 || !cfilter.filter_arr) {
+		log_error("Rank ?: Invalid arguments passed to mpi_apply_filter. Skipping.");
+		return;
+	}
+	if (comm_data->my_num_rows == 0) {
+		log_trace("Rank ?: No rows to process in mpi_apply_filter.");
+		return;
+	}
 
-	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)",
-              cfilter.size, comm_data->my_start_row, comm_data->my_start_row + comm_data->my_num_rows, width);
+	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_row,
+		  comm_data->my_start_row + comm_data->my_num_rows, width);
 
 	for (y = 0; y < comm_data->my_num_rows; ++y) {
-        output_row_base = local_data->output_pixels + y * row_stride;
-        global_y = comm_data->my_start_row + y;
+		output_row_base = local_data->output_pixels + y * row_stride;
+		global_y = comm_data->my_start_row + y;
 
 		for (x = 0; x < width; ++x) {
 			red_acc = 0.0;
@@ -70,30 +66,28 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data,
 					imageY_global = (global_y + filterY - padding + height) % height;
 
 					// comm_data->send_start_row is the global index of the first row in our input buffer
-                    imageY_local = imageY_global - comm_data->send_start_row;
+					imageY_local = imageY_global - comm_data->send_start_row;
 
-                    if (imageY_local >= comm_data->send_num_rows) {
-                         log_error("Rank %u: Calc local input row %u (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
-                                   comm_data->my_start_row,
-                                   imageY_local, imageY_global, comm_data->send_num_rows,
-                                   global_y, x);
-                         MPI_Abort(MPI_COMM_WORLD, 1);
-                         return;
-                    }
+					if (imageY_local >= comm_data->send_num_rows) {
+						log_error("Rank %u: Calc local input row %u (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
+							  comm_data->my_start_row, imageY_local, imageY_global, comm_data->send_num_rows, global_y, x);
+						MPI_Abort(MPI_COMM_WORLD, 1);
+						return;
+					}
 					// start of the array + ammount of el * row_stride (the total number of bytes from the beginning of one row of pixels in memory to the beginning of the next row)
 					// its just a safer and more correct version of the width * BYTES_PER_PIXEL, bc of alignment
-                    input_row_base = local_data->input_pixels + imageY_local * row_stride;
-                    input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL;
+					input_row_base = local_data->input_pixels + imageY_local * row_stride;
+					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL;
 
 					weight = cfilter.filter_arr[filterY][filterX];
 
-					blue_acc  += input_pixel_ptr[0] * weight;
+					blue_acc += input_pixel_ptr[0] * weight;
 					green_acc += input_pixel_ptr[1] * weight;
-					red_acc   += input_pixel_ptr[2] * weight;
+					red_acc += input_pixel_ptr[2] * weight;
 				}
 			}
 
-            output_pixel_ptr = output_row_base + x * BYTES_PER_PIXEL;
+			output_pixel_ptr = output_row_base + x * BYTES_PER_PIXEL;
 
 			output_pixel_ptr[0] = (unsigned char)fmin(fmax(round(blue_acc * cfilter.factor + cfilter.bias), 0.0), 255.0);
 			output_pixel_ptr[1] = (unsigned char)fmin(fmax(round(green_acc * cfilter.factor + cfilter.bias), 0.0), 255.0);
@@ -109,9 +103,8 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data,
  * @param filter_size - the size of median filter
  * @param halo_size (default: 1)- the size of the halo region used (needed to calculate offsets correctly, though implicit in comm_data).
  */
-static void mpi_apply_median_filter(const struct mpi_local_data *local_data,
-                             const struct img_comm_data *comm_data,
-                             uint16_t filter_size) {
+static void mpi_apply_median_filter(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, uint16_t filter_size)
+{
 	if (filter_size % 2 == 0 || filter_size < 1) {
 		log_error("Median filter size must be odd and positive, got %u", filter_size);
 		return;
@@ -122,17 +115,17 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data,
 	int32_t filter_area = filter_size * filter_size;
 	int32_t *red = NULL, *green = NULL, *blue = NULL;
 	int32_t filterX = 0, filterY = 0;
-    int32_t imageX_global = 0, imageY_global = 0;
-    uint32_t imageY_local = 0;
-    uint32_t global_y = 0;
-    const unsigned char *input_row_base = NULL;
+	int32_t imageX_global = 0, imageY_global = 0;
+	uint32_t imageY_local = 0;
+	uint32_t global_y = 0;
+	const unsigned char *input_row_base = NULL;
 	const unsigned char *input_pixel_ptr = NULL;
-    unsigned char *output_row_base = NULL;
+	unsigned char *output_row_base = NULL;
 	unsigned char *output_pixel_ptr = NULL;
 
 	const uint32_t width = comm_data->dim->width;
-    const uint32_t height = comm_data->dim->height;
-    const size_t row_stride = comm_data->row_stride_bytes;
+	const uint32_t height = comm_data->dim->height;
+	const size_t row_stride = comm_data->row_stride_bytes;
 
 	red = malloc(filter_area * sizeof(*red));
 	green = malloc(filter_area * sizeof(*green));
@@ -146,13 +139,13 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data,
 		return;
 	}
 
-	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)",
-              filter_size, comm_data->my_start_row, comm_data->my_start_row + comm_data->my_num_rows, width);
+	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", filter_size, comm_data->my_start_row,
+		  comm_data->my_start_row + comm_data->my_num_rows, width);
 
 	for (y = 0; y < comm_data->my_num_rows; y++) {
 		output_row_base = local_data->output_pixels + y * row_stride;
 		global_y = comm_data->my_start_row + y;
-		
+
 		for (x = 0; x < width; x++) {
 			int n = 0; // index for neighborhood arrays
 
@@ -161,7 +154,7 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data,
 				for (filterX = -half_size; filterX <= half_size; filterX++) {
 					imageX_global = (x + filterX + width) % width;
 					imageY_global = (y + filterY + height) % height;
-					
+
 					imageY_local = imageY_global - comm_data->send_start_row;
 
 					// see this part apply_filter
@@ -189,24 +182,19 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data,
 	free(blue);
 }
 
-void mpi_compute_local_region(const struct mpi_local_data *local_data,
-                                     const struct img_comm_data *comm_data, 
-                                     const char* filter_type, 
-                                     const struct filter_mix *filters)
+void mpi_compute_local_region(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, const char *filter_type, const struct filter_mix *filters)
 {
-    if (!local_data || !local_data->input_pixels || !local_data->output_pixels ||
-        !comm_data || !comm_data->dim || !filter_type || !filters)
-    {
-        log_error("Rank ?: Invalid NULL parameters in mpi_process_local_region. Skipping.");
-        return; 
+	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || !filter_type || !filters) {
+		log_error("Rank ?: Invalid NULL parameters in mpi_process_local_region. Skipping.");
+		return;
 	}
 
-    if (comm_data->my_num_rows <= 0 || comm_data->dim->width <= 0) {
-        log_trace("Rank ?: Skipping local processing due to zero rows/width for rank starting at %u.", comm_data->my_start_row);
-        return;
-    }
+	if (comm_data->my_num_rows <= 0 || comm_data->dim->width <= 0) {
+		log_trace("Rank ?: Skipping local processing due to zero rows/width for rank starting at %u.", comm_data->my_start_row);
+		return;
+	}
 
-    // dispatch based on filter type
+	// dispatch based on filter type
 	if (strcmp(filter_type, "mb") == 0 && filters->motion_blur) {
 		mpi_apply_filter(local_data, comm_data, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0 && filters->blur) {
@@ -214,21 +202,21 @@ void mpi_compute_local_region(const struct mpi_local_data *local_data,
 	} else if (strcmp(filter_type, "gb") == 0 && filters->gaus_blur) {
 		mpi_apply_filter(local_data, comm_data, *filters->gaus_blur);
 	} else if (strcmp(filter_type, "co") == 0 && filters->conv) {
-        mpi_apply_filter(local_data, comm_data, *filters->conv);
-    } else if (strcmp(filter_type, "sh") == 0 && filters->sharpen) {
+		mpi_apply_filter(local_data, comm_data, *filters->conv);
+	} else if (strcmp(filter_type, "sh") == 0 && filters->sharpen) {
 		mpi_apply_filter(local_data, comm_data, *filters->sharpen);
 	} else if (strcmp(filter_type, "em") == 0 && filters->emboss) {
 		mpi_apply_filter(local_data, comm_data, *filters->emboss);
 	} else if (strcmp(filter_type, "mm") == 0) { // Median Filter
 		mpi_apply_median_filter(local_data, comm_data, 15); // Using fixed size 15x15 for "mm"
 	} else if (strcmp(filter_type, "gg") == 0 && filters->big_gaus) {
-        mpi_apply_filter(local_data, comm_data, *filters->big_gaus);
-    } else if (strcmp(filter_type, "bo") == 0 && filters->box_blur) {
-        mpi_apply_filter(local_data, comm_data, *filters->box_blur);
-    } else if (strcmp(filter_type, "mg") == 0 && filters->med_gaus) {
-        mpi_apply_filter(local_data, comm_data, *filters->med_gaus);
-    } else {
+		mpi_apply_filter(local_data, comm_data, *filters->big_gaus);
+	} else if (strcmp(filter_type, "bo") == 0 && filters->box_blur) {
+		mpi_apply_filter(local_data, comm_data, *filters->box_blur);
+	} else if (strcmp(filter_type, "mg") == 0 && filters->med_gaus) {
+		mpi_apply_filter(local_data, comm_data, *filters->med_gaus);
+	} else {
 		log_error("Rank ?: Unknown or unsupported filter type '%s' in mpi_process_local_region.", filter_type);
-        MPI_Abort(MPI_COMM_WORLD, 1);
+		MPI_Abort(MPI_COMM_WORLD, 1);
 	}
 }

@@ -52,8 +52,8 @@ static int parse_args(int argc, char *argv[])
 	if (argc > 1 && strncmp(argv[1], "-queue-mode", 11) == 0) {
 		args->mt_mode = 1;
 		argv[1] = "_";
-	} else if (argc > 1 && strncmp(argv[1], "-proc-mode", 10) == 0) {
-		args->mt_mode = 1;
+	} else if (argc > 1 && strncmp(argv[1], "-mpi-mode", 10) == 0) {
+		args->mt_mode = 2;
 		argv[1] = "_";
 	}
 
@@ -63,7 +63,7 @@ static int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
-	if (args->mt_mode) {
+	if (args->mt_mode == 1) {
 		if (parse_queue_mode_args(argc, argv, args) < 0) {
 			log_error("Error parsing queue-mode specific arguments.\n");
 			return -1;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 	struct filter_mix *filters = NULL;
 	int return_code = 0;
 
-	log_set_quiet(true);
+	log_set_quiet(false);
 	
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
@@ -262,8 +262,8 @@ int main(int argc, char *argv[])
 	} 
 	#ifdef USE_MPI
 	else if (args->mt_mode == 2){
-		int rank = 0;
-		int size = 1;
+		int rank;
+		int size;
 		/**
 		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine 
 			*/
@@ -271,6 +271,8 @@ int main(int argc, char *argv[])
 
 	    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+		log_warn("SIZE = %d", size);
 		// immediatly jumps to execute_... 
 		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)	
 		result_time = execute_mpi_computation(size, rank, args, filters);

@@ -14,5 +14,4 @@
  *
  * @return Consumed time.
  */
-double mpi_process_by_rows(int rank, int size, const struct p_args *args, const struct filter_mix *filters); 
-
+double mpi_process_by_rows(int rank, int size, const struct p_args *args, const struct filter_mix *filters);

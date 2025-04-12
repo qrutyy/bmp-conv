@@ -119,4 +119,3 @@ mem_th_err:
 	}
 	return 0;
 }
-

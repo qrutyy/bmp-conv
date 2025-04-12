@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once 
+#pragma once
 
 #include "../utils/threads-general.h"
 #include "mpi-types.h"
@@ -21,7 +21,8 @@
  * 
  * @return 0 on success, -1 on error .
  */
-int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer, const struct mpi_comm_arr *comm_arrays);
+int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
+			   const struct mpi_comm_arr *comm_arrays);
 
 /**
  * Each rank sends its computed data from `local_data->output_pixels` via `MPI_Gatherv`.
@@ -37,7 +38,8 @@ int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_
  *
  * @return 0 on success, -1 on error
  */
-int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays, struct img_spec *img_data);
+int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
+			  struct img_spec *img_data);
 
 /**
  * This function is typically called after rank 0 has determined the image
@@ -51,5 +53,4 @@ int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_d
  * @note The function returns void; MPI errors during broadcast are typically fatal
  * and might lead to hangs or termination if not handled by MPI itself or by setting MPI error handlers.
  */
-void mpi_broadcast_metadata(struct img_comm_data *comm_data); 
-
+void mpi_broadcast_metadata(struct img_comm_data *comm_data);

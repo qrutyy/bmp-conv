@@ -189,7 +189,6 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->filter_type = NULL;
 	args_ptr->compute_mode = -1;
 	args_ptr->log_enabled = 0;
-	args_ptr->queue_mode = 0;
 	args_ptr->wrt_count = 0;
 	args_ptr->ret_count = 0;
 	args_ptr->wot_count = 0;

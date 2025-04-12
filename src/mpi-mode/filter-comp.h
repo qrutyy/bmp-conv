@@ -14,7 +14,4 @@
  * @param filters - pointer to the structure containing pre-initialized filter kernels.
  * @param halo_size - the size of the halo (ghost rows) included in the input buffer.
  */
-void mpi_compute_local_region(const struct mpi_local_data *local_data,
-                                     const struct img_comm_data *comm_data, 
-                                     const char* filter_type, 
-                                     const struct filter_mix *filters);
+void mpi_compute_local_region(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, const char *filter_type, const struct filter_mix *filters);

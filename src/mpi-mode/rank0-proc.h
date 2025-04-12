@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once 
+#pragma once
 
 #include "../utils/args-parse.h"
 #include <stdint.h>
@@ -14,8 +14,7 @@
  *
  * @return 0 on success, -1 on error
  */
-int8_t mpi_rank0_initialize(struct img_spec *img_data, struct img_comm_data *comm_data, double *start_time, const char *input_filename_base); 
-	
+int8_t mpi_rank0_initialize(struct img_spec *img_data, struct img_comm_data *comm_data, double *start_time, const char *input_filename_base);
 
 /**
  * Finalises the computation by getting 'end_time', saving the image and freeing some allocated data.
@@ -40,7 +39,8 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
  *
  * @return 0 on success, -1 on error
  */
-int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const struct mpi_pack_params *params, unsigned char **packed_buffer); 
+int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const struct mpi_pack_params *params,
+				       unsigned char **packed_buffer);
 
 /**
  * Takes the contiguous buffer (gathered_buffer) received from an MPI_Gatherv operation (which contains processed image data chunks from all MPI processes) and unpacks/reassembles it into the final result image structure (img_data->img_result):
@@ -56,5 +56,5 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
  * @return 0 on success, -1 on error
  */
 
-int8_t mpi_rank0_unpack_data_from_gather(const unsigned char *gathered_buffer, struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const struct mpi_comm_arr *comm_arrays);
-
+int8_t mpi_rank0_unpack_data_from_gather(const unsigned char *gathered_buffer, struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx,
+					 const struct mpi_comm_arr *comm_arrays);

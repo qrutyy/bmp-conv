@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once 
+#pragma once
 
 #include "mpi-types.h"
 
 // simply frees the mpi_comm_arr struct data
-void free_comm_arr(struct mpi_comm_arr comm_arrays); 
+void free_comm_arr(struct mpi_comm_arr comm_arrays);
 
 /**
  * Frees the mpi_comm_arr and mpi_local_data structuresp

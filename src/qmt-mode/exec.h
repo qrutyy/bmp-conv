@@ -3,6 +3,7 @@
 #include "../../libbmp/libbmp.h"
 #include "../utils/args-parse.h"
 #include "../utils/utils.h"
+#include "threads.h"
 #include "queue.h"
 
 int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args *args_ptr, struct img_queue *input_queue, struct img_queue *output_queue);
