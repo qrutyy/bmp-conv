@@ -41,7 +41,7 @@ int8_t mpi_rank0_initialize(struct img_spec *img_data, struct img_comm_data *com
     return 0;
 }
 
-double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, struct p_args *args) {
+double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, const struct p_args *args) {
     double end_time = 0.0;
     double total_time = -1.0;
     char output_filepath[256] = {0};

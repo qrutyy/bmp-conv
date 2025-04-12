@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "../utils/threads-general.h"
+#pragma once 
+
 #include "../utils/args-parse.h"
-#include "mpi-types.h"
 #include <stdint.h>
 
 /**
@@ -25,7 +25,7 @@ int8_t mpi_rank0_initialize(struct img_spec *img_data, struct img_comm_data *com
  *
  * @return total computation time (double)
  */
-double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, struct p_args *args);
+double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, const struct p_args *args);
 
 /**
  * Packing data for scatter by reforming the pixels 2d array into a continuous buffer. Made as a preparation for MPI_Scatterv.

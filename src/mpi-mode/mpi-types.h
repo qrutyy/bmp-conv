@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#pragma once
+
 #include "../../libbmp/libbmp.h" 
 #include <stdint.h>
 #include <stddef.h> 
@@ -25,11 +29,11 @@ struct mpi_context {
  * relevant for communication and local processing within an MPI process.
  */
 struct img_comm_data {
-    size_t row_stride_bytes; // The number of bytes in a single row of the image data (width * bytes_per_pixel + padding, if any). Crucial for calculating memory offsets.
+    size_t row_stride_bytes; // The number of bytes in a single row of the image data. Crucial for calculating memory offsets.
     uint32_t my_start_row;   
     uint32_t my_num_rows;    // The number of rows this process is responsible for computing and writing to the output.
-    uint32_t send_start_row; // The starting row index (inclusive, in the *original* image dimensions) of the chunk of data this process needs to receive (including halo/ghost rows).
-    uint32_t send_num_rows;  // The total number of rows (including halo/ghost rows) this process needs to receive from the original image to perform its computation.
+    uint32_t send_start_row; // The starting row index of the chunk of data this process needs to receive.
+    uint32_t send_num_rows;  // The total number of rows this process needs to receive from the original image to perform its computation.
 	struct img_dim *dim;
 };
 
@@ -38,9 +42,9 @@ struct img_comm_data {
  * These arrays specify sizes and displacements for data segments being sent or received.
  */
 struct mpi_comm_arr{
-    int *sendcounts;    // Array: sendcounts[i] is the number of elements (e.g., bytes) to send to rank i. Used by root in Scatterv, by all in Gatherv/Alltoallv.
-    int *displs;        // Array: displs[i] is the displacement (offset in elements from the start of the send buffer) for data going to rank i. Used by root in Scatterv, by all in Gatherv/Alltoallv.
-    int *recvcounts;   
+    int *sendcounts;    // sendcounts[i] is the number of elements to send to rank i. 
+    int *displs;        // displs[i] is the displacement for data going to rank i. 
+			 int *recvcounts;   
     int *recvdispls;    
 };
 
@@ -59,8 +63,7 @@ struct mpi_local_data {
  * back to the original, complete data source.
  */
 struct mpi_pack_params {
-	const int *sendcounts;     // Array: sendcounts[i] is the number of elements to be packed and eventually sent to rank i. Same as used in MPI_Scatterv sendcounts
-    const int *displs_original; // Array: displs_original[i] is the displacement (offset in elements, e.g., bytes) from the start of the original, complete data buffer where the data chunk for rank i begins. This is used before packing into the contiguous scatter buffer.
+	const int *sendcounts;     // sendcounts[i] is the number of elements to be packed and eventually sent to rank i. Same as used in MPI_Scatterv sendcounts
+    const int *displs_original; // displs_original[i] is the displacement (offset in elements, e.g., bytes) from the start of the original, complete data buffer where the data chunk for rank i begins. This is used before packing into the contiguous scatter buffer.
 };
-
 

@@ -1,5 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#pragma once
+
 #include "../utils/args-parse.h"
 #include "../utils/filters.h"
+#include "mpi-types.h"
 
 /**
  * Main orchestrator function. Processes the computation with 'by_row' distribution mode.

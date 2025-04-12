@@ -27,7 +27,7 @@ double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *comput
             MPI_Abort(MPI_COMM_WORLD, 1); // End all processes in case of error 
             return -1.0;
     }
-
+	return total_time;
 }
 
 

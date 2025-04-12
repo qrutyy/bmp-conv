@@ -89,13 +89,11 @@ void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_co
 
     comm_data->my_start_row = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
     comm_data->my_num_rows = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
-
+	log_debug("comm_data start row %d rows per proc %d", comm_data->my_start_row, rows_per_proc);
     mpi_verify_distribution_range(comm_data);
 }
 
 int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays) {
-    uint32_t proc_start_row = 0;
-    uint32_t proc_num_rows = 0;
     int proc_send_start = 0;
     uint32_t proc_send_end = 0;
     uint32_t proc_send_rows = 0;
@@ -128,6 +126,8 @@ int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const str
     for (int i = 0; i < ctx->size; ++i) {
         struct img_comm_data temp_comm_data = {0};
         struct mpi_context temp_ctx = {i, ctx->size};
+
+		temp_comm_data.dim = comm_data->dim;
         mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data); // Calculate for rank i
 
         proc_send_start = (int)temp_comm_data.my_start_row - MPI_HALO_SIZE;
@@ -137,7 +137,6 @@ int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const str
         if (proc_send_end > comm_data->dim->height) proc_send_end = comm_data->dim->height;
 
         proc_send_rows = ( (uint32_t)proc_send_start < proc_send_end ) ? (proc_send_end - (uint32_t)proc_send_start) : 0;
-
 
         comm_arrays->sendcounts[i] = (int)(proc_send_rows * comm_data->row_stride_bytes);
         // Store original offset temporarily before adjusting for packing

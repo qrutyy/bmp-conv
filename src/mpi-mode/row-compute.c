@@ -2,12 +2,11 @@
 
 #include "../../libbmp/libbmp.h" 
 #include "../../logger/log.h"
-#include "../utils/args-parse.h"
-#include "../utils/filters.h" 
 #include "row-compute.h"
+#include "data-transfer.h"
+#include "filter-comp.h"
 #include "rank0-proc.h"
 #include "utils.h"
-#include <mpi.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +33,8 @@ static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_ar
         if (ctx->rank == 0) log_error("Rank 0: Error: Missing input filename for MPI mode.");
         return -1;
     }
+
+	comm_data->dim = malloc(sizeof(struct img_dim)); 
 
     if (ctx->rank == 0) {
         setup_status = mpi_rank0_initialize(img_data, comm_data, start_time, args->input_filename[0]);
@@ -96,12 +97,13 @@ static int mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct im
     if (ctx->rank == 0) {
         for(i = 0; i < ctx->size; ++i) {
              struct img_comm_data temp_comm_data = {0}; // create temporary to avoid modifying original
-             temp_comm_data.height = comm_data->dim->height; // copy necessary fields
+             temp_comm_data.dim = comm_data->dim; // copy necessary fields
              struct mpi_context temp_ctx = {i, ctx->size};
              mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data); // calculate for rank i
              int temp_send_start = (int)temp_comm_data.my_start_row - MPI_HALO_SIZE;
              if (temp_send_start < 0) temp_send_start = 0;
              displs_original[i] = (int)((uint32_t)temp_send_start * comm_data->row_stride_bytes);
+			log_debug("Rank %ux: displs %d, my_start_row %d\n", i, displs_original[i], temp_comm_data.my_start_row);
         }
 
         pack_params.sendcounts = comm_arrays->sendcounts;
@@ -120,17 +122,18 @@ static int mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct im
 }
 
 // just verifies the input and calls mpi_process_local_region
-static void mpi_phase_process_local_region(const struct mpi_context *ctx, const struct img_comm_data *comm_data,
+static void mpi_phase_process_region(const struct mpi_context *ctx, const struct img_comm_data *comm_data,
                                     const struct mpi_local_data *local_data,
                                     const struct p_args *args, const struct filter_mix *filters)
 {
     if (comm_data->my_num_rows > 0) {
-        mpi_compute_local_region(local_data, comm_data, args, filters, MPI_HALO_SIZE);
+        mpi_compute_local_region(local_data, comm_data, args->filter_type, filters);
     } else {
         log_debug("Rank %d: Skipping local processing as my_num_rows is 0.", ctx->rank);
     }
 }
 
+// see `mpi_rank0_finalize_and_save` doc
 static double mpi_phase_finalize_and_broadcast(const struct mpi_context *ctx, double start_time,
                                                struct img_spec *img_data,
                                                const struct p_args *args)
@@ -151,6 +154,7 @@ static double mpi_phase_finalize_and_broadcast(const struct mpi_context *ctx, do
 double mpi_process_by_rows(int rank, int size, const struct p_args *args, const struct filter_mix *filters) {
 
     struct mpi_context ctx = {rank, size};
+	log_debug("SIZE %d", size);
     struct img_spec img_data = {0}; 
     struct img_comm_data comm_data = {0};
     struct mpi_comm_arr comm_arrays = {0};
@@ -162,50 +166,48 @@ double mpi_process_by_rows(int rank, int size, const struct p_args *args, const 
 
     img_data.input_img = (bmp_img*)calloc(1, sizeof(bmp_img));
     img_data.output_img = (bmp_img*)calloc(1, sizeof(bmp_img));
+	
     if (!img_data.input_img || !img_data.output_img) {
         log_error("Rank %d: Failed to allocate top-level bmp_img structs.", rank);
-        free(img_data.input_img);
-        free(img_data.output_img);
+		free_img_spec(&img_data);
         ABORT_AND_RETURN(-1.0);
     }
 
     status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
     if (status != 0) {
-        free(img_data.input_img);
-        free(img_data.output_img);
+		free_img_spec(&img_data);
         ABORT_AND_RETURN(-1.0);
     }
+
 
     status = mpi_phase_prepare_comm(&ctx, &comm_data, &img_data, &comm_arrays, &global_send_buffer);
     if (status != 0) {
         if (ctx.rank == 0) {
 			free_comm_arr(comm_arrays);
-            bmp_img_free(img_data.input_img); 
-			bmp_img_free(img_data.output_img);
+			bmp_free_img_spec(&img_data);
         }
-        free(img_data.input_img); free(img_data.output_img);
+		free_img_spec(&img_data);
         ABORT_AND_RETURN(-1.0);
     }
 
     status = mpi_phase_scatter_data(&ctx, &comm_data, &local_data, global_send_buffer, &comm_arrays);
     if (status != 0) {
         mpi_phase_cleanup_resources(&ctx, &local_data, &comm_arrays);
-        if (ctx.rank == 0) { 
-			bmp_img_free(img_data.input_img); 
-			bmp_img_free(img_data.output_img); 
-		}
-        free(img_data.input_img); 
-		free(img_data.output_img);
+        if (ctx.rank == 0)
+			bmp_free_img_spec(&img_data);
+        free_img_spec(&img_data);
         ABORT_AND_RETURN(-1.0);
     }
 
-    mpi_phase_local_compute(&ctx, &comm_data, &local_data, args, filters);
+    mpi_phase_process_region(&ctx, &comm_data, &local_data, args, filters);
 
     status = mpi_phase_gather_data(&ctx, &comm_data, &local_data, &comm_arrays, &img_data);
     if (status != 0) {
          mpi_phase_cleanup_resources(&ctx, &local_data, &comm_arrays);
-         if (ctx.rank == 0) { bmp_img_free(img_data.input_img); bmp_img_free(img_data.output_img); }
-         free(img_data.input_img); free(img_data.output_img);
+        if (ctx.rank == 0)
+			bmp_free_img_spec(&img_data);
+        free_img_spec(&img_data);
+
          ABORT_AND_RETURN(-1.0);
     }
 

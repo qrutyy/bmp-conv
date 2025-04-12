@@ -3,10 +3,8 @@
 #include "../../logger/log.h"
 #include "../../libbmp/libbmp.h"
 #include "../utils/threads-general.h"
-#include "mpi-types.h"
 #include "utils.h"
 #include "rank0-proc.h"
-#include <cstdint>
 #include <mpi.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -140,4 +138,6 @@ void mpi_broadcast_metadata(struct img_comm_data *comm_data) {
 
     comm_data->dim->width = mpi_width;
     comm_data->dim->height = mpi_height;
+
+	log_debug("Successfully broadcasted dim");
 }
