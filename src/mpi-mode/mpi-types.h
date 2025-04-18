@@ -42,10 +42,11 @@ struct img_comm_data {
  * These arrays specify sizes and displacements for data segments being sent or received.
  */
 struct mpi_comm_arr {
-	int *sendcounts; // sendcounts[i] is the number of elements to send to rank i.
-	int *displs; // displs[i] is the displacement for data going to rank i.
-	int *recvcounts;
-	int *recvdispls;
+	int *sendcounts; // sendcounts[i] is the number of elements (bytes) to send to every rank i.
+	int *displs; // displs[i] is the displacement for data going to rank i in the packed buffer.
+	int *recvcounts; // recvcounts[i] shows how much data were waiting getting back.
+	int *recvdispls; // displacement of the i-th gather in the output root buffer.
+	int *origdispls; // in comparison with displs[i] - stores the original displacement in the input buffer.
 };
 
 /**
@@ -55,15 +56,4 @@ struct mpi_comm_arr {
 struct mpi_local_data {
 	unsigned char *input_pixels;
 	unsigned char *output_pixels;
-};
-
-/**
- * Parameters specifically for packing data on the root process (rank 0)
- * before performing an MPI_Scatterv operation. It relates the scatter chunks
- * back to the original, complete data source.
- */
-struct mpi_pack_params {
-	const int *sendcounts; // sendcounts[i] is the number of elements to be packed and eventually sent to rank i. Same as used in MPI_Scatterv sendcounts
-	const int *
-		displs_original; // displs_original[i] is the displacement (offset in elements, e.g., bytes) from the start of the original, complete data buffer where the data chunk for rank i begins. This is used before packing into the contiguous scatter buffer.
 };
