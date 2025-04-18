@@ -40,6 +40,9 @@ int mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct img_c
 
 	input_buf_size = (size_t)comm_data->send_num_rows * comm_data->row_stride_bytes;
 	output_buf_size = (size_t)comm_data->my_num_rows * comm_data->row_stride_bytes;
+	
+	log_debug("Rank %d: Attempting to allocate input: %zu bytes, output: %zu bytes",
+           ctx->rank, input_buf_size, output_buf_size);
 
 	local_data->input_pixels = (unsigned char *)malloc(input_buf_size > 0 ? input_buf_size : 1);
 	local_data->output_pixels = (unsigned char *)malloc(output_buf_size > 0 ? output_buf_size : 1);
@@ -51,6 +54,7 @@ int mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct img_c
 		local_data->input_pixels = local_data->output_pixels = NULL;
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -58,7 +62,7 @@ void mpi_verify_distribution_range(struct img_comm_data *comm_data)
 {
 	uint32_t send_end_row = 0;
 	comm_data->send_start_row = (uint32_t)((int)comm_data->my_start_row - MPI_HALO_SIZE);
-	send_end_row = comm_data->my_start_row + comm_data->my_num_rows + MPI_HALO_SIZE;
+	send_end_row = comm_data->my_start_row + comm_data->my_num_rows;
 
 	if ((int)comm_data->send_start_row < 0)
 		comm_data->send_start_row = 0;
@@ -90,7 +94,7 @@ void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_co
 
 	comm_data->my_start_row = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
 	comm_data->my_num_rows = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
-	log_debug("comm_data start row %d rows per proc %d", comm_data->my_start_row, rows_per_proc);
+	log_debug("comm_data start row %d rows per proc %d, i = %d", comm_data->my_start_row, rows_per_proc, ctx->rank);
 	mpi_verify_distribution_range(comm_data);
 }
 
@@ -110,10 +114,11 @@ int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const str
 		return 0;
 	}
 
-	comm_arrays->sendcounts = (int *)malloc((size_t)ctx->size * sizeof(int));
-	comm_arrays->displs = (int *)malloc((size_t)ctx->size * sizeof(int));
-	comm_arrays->recvcounts = (int *)malloc((size_t)ctx->size * sizeof(int));
-	comm_arrays->recvdispls = (int *)malloc((size_t)ctx->size * sizeof(int));
+	comm_arrays->sendcounts = malloc((size_t)ctx->size * sizeof(int));
+	comm_arrays->displs = malloc((size_t)ctx->size * sizeof(int));
+	comm_arrays->recvcounts = malloc((size_t)ctx->size * sizeof(int));
+	comm_arrays->recvdispls = malloc((size_t)ctx->size * sizeof(int));
+	comm_arrays->origdispls = malloc((size_t)ctx->size * sizeof(int));
 
 	if (!comm_arrays->sendcounts || !comm_arrays->displs || !comm_arrays->recvcounts || !comm_arrays->recvdispls) {
 		log_error("Rank 0: Failed to allocate memory for scatter/gather arrays.");
@@ -130,6 +135,8 @@ int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const str
 		struct mpi_context temp_ctx = { i, ctx->size };
 
 		temp_comm_data.dim = comm_data->dim;
+		log_debug("Calling calc_row_distr with rank = %d",temp_ctx.rank);
+		// For configuring the scatterv and gatterv operations (etc. array setting) - we need to calculate it another time for each process but only from the root perspective. 
 		mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data); // Calculate for rank i
 
 		proc_send_start = (int)temp_comm_data.my_start_row - MPI_HALO_SIZE;
@@ -140,22 +147,20 @@ int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const str
 		if (proc_send_end > comm_data->dim->height)
 			proc_send_end = comm_data->dim->height;
 
-		proc_send_rows = ((uint32_t)proc_send_start < proc_send_end) ? (proc_send_end - (uint32_t)proc_send_start) : 0;
+		proc_send_rows = proc_send_end - (uint32_t)proc_send_start;
 
 		comm_arrays->sendcounts[i] = (int)(proc_send_rows * comm_data->row_stride_bytes);
-		// Store original offset temporarily before adjusting for packing
-		comm_arrays->displs[i] = (int)((uint32_t)proc_send_start * comm_data->row_stride_bytes);
+		comm_arrays->origdispls[i] = (int)((uint32_t)proc_send_start * comm_data->row_stride_bytes);
 
 		comm_arrays->recvcounts[i] = (int)(temp_comm_data.my_num_rows * comm_data->row_stride_bytes);
 		comm_arrays->recvdispls[i] = (int)(temp_comm_data.my_start_row * comm_data->row_stride_bytes);
 	}
 
 	current_packed_offset = 0;
-	for (int i = 0; i < ctx->size; ++i) {
-		int displacement_in_packed_buffer = current_packed_offset;
-		current_packed_offset += comm_arrays->sendcounts[i];
-		comm_arrays->displs[i] = displacement_in_packed_buffer; // Overwrite with packed displacement
-	}
+    for (int i = 0; i < ctx->size; ++i) {
+        comm_arrays->displs[i] = current_packed_offset; 
+        current_packed_offset += comm_arrays->sendcounts[i];
+    }
 
 	return 0;
 }

@@ -46,6 +46,7 @@ void mpi_verify_distribution_range(struct img_comm_data *comm_data);
 /**
  * Sets up the comm_data and comm_data for each process. 
  * More specifically - calculates the distribution range for each process and sets all the auxilialry info.
+ * See mpi-types.h for better type description.
  *
  * @param ctx - process-specific mpi_context
  * @param comm_data - process-specific img_comm_data (that stores the resulst of distr calc)
