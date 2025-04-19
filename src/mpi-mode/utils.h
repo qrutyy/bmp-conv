@@ -3,6 +3,20 @@
 #pragma once
 
 #include "mpi-types.h"
+#include <stdint.h>
+
+/**
+ * Determines the required halo size based on the selected filter type.
+ *
+ * The halo size is typically half the filter kernel size (integer division).
+ * For the median filter ('mm'), a fixed size is assumed if not provided otherwise.
+ *
+ * @param filter_type A string representing the chosen filter (e.g., "mb", "gb", "mm").
+ * @param filters A pointer to the structure containing all initialized filter kernels.
+ * @return The required halo size (padding) for the given filter, or 0 if the filter is invalid or requires no halo.
+ */
+uint8_t get_halo_size(const char* filter_type, const struct filter_mix *filters); 
+
 
 // simply frees the mpi_comm_arr struct data
 void free_comm_arr(struct mpi_comm_arr comm_arrays);
@@ -25,7 +39,7 @@ void mpi_phase_cleanup_resources(const struct mpi_context *ctx, struct mpi_local
  * @param comm_data - process-specific img_comm_data (that stores the resulst of distr calc)
  * @return 0 on success, -1 on error
  */
-int mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data);
+int8_t mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data);
 
 /**
  * Calculates the distribution based on row_method and mpi process context.
@@ -54,4 +68,4 @@ void mpi_verify_distribution_range(struct img_comm_data *comm_data);
  *
  * @return 0 on success, -1 on error
  */
-int mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays);
+int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays);

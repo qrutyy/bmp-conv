@@ -26,7 +26,7 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 
 	int8_t setup_status = 0;
 	int8_t mpi_rc = MPI_SUCCESS;
-	uint16_t my_recv_size_scatter = 0;
+	int my_recv_size_scatter = 0;
 
 	log_trace("SCATTER DATA PHASE: \n");
 
@@ -37,7 +37,7 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 	}
 	log_debug("Successfully allocated all buffers");
 
-	my_recv_size_scatter = comm_data->send_num_rows * comm_data->row_stride_bytes;
+	my_recv_size_scatter = (int)(comm_data->send_num_rows * comm_data->row_stride_bytes);
 	if (my_recv_size_scatter <= 0) {
 		log_warn("Rank %d: Calculated zero receive size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->send_num_rows);
 		my_recv_size_scatter = (comm_data->send_num_rows == 0) ? 0 : 1;
@@ -75,7 +75,7 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 	unsigned char *global_recv_buffer = NULL;
 	int8_t mpi_rc = MPI_SUCCESS;
 	int8_t unpack_status = 0;
-	uint16_t my_send_size_gather = 0;
+	int my_send_size_gather = 0;
 
 	if (ctx->rank == 0) {
 		size_t total_gathered_size = 0;
@@ -95,7 +95,7 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 		}
 	}
 
-	my_send_size_gather = (comm_data->my_num_rows * comm_data->row_stride_bytes);
+	my_send_size_gather = (int)(comm_data->my_num_rows * comm_data->row_stride_bytes);
 	if (my_send_size_gather <= 0 && comm_data->my_num_rows > 0) {
 		log_warn("Rank %d: Calculated zero send size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->my_num_rows);
 		my_send_size_gather = 1;
