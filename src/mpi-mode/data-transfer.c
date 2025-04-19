@@ -8,30 +8,43 @@
 #include <mpi.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <assert.h>
 
-int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
+static inline void mpi_verify_sg_data_size(const int8_t *sendcounts, const struct mpi_context *ctx, int8_t scatter_size) {
+	assert(sendcounts[ctx->rank] == scatter_size);
+}
+
+
+int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
 			   const struct mpi_comm_arr *comm_arrays)
 {
-	int setup_status = 0;
-	int mpi_rc = MPI_SUCCESS;
-	int my_recv_size_scatter = 0;
+	if (!ctx->rank) {
+		assert(global_send_buffer);
+		assert(comm_arrays->sendcounts);
+		assert(comm_arrays->displs);
+	}
+
+	int8_t setup_status = 0;
+	int8_t mpi_rc = MPI_SUCCESS;
+	uint16_t my_recv_size_scatter = 0;
+
+	log_trace("SCATTER DATA PHASE: \n");
 
 	setup_status = mpi_allocate_local_buffers(ctx, comm_data, local_data);
 	if (setup_status != 0) {
+		MPI_Abort(MPI_COMM_WORLD, 1);
 		return -1;
 	}
+	log_debug("Successfully allocated all buffers");
 
-	my_recv_size_scatter = (int)(comm_data->send_num_rows * comm_data->row_stride_bytes);
-	if (my_recv_size_scatter <= 0 && comm_data->send_num_rows > 0) {
+	my_recv_size_scatter = comm_data->send_num_rows * comm_data->row_stride_bytes;
+	if (my_recv_size_scatter <= 0) {
 		log_warn("Rank %d: Calculated zero receive size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->send_num_rows);
-		my_recv_size_scatter = 1;
-	}
-	if (my_recv_size_scatter <= 0 && comm_data->send_num_rows == 0) {
-		my_recv_size_scatter = 0;
+		my_recv_size_scatter = (comm_data->send_num_rows == 0) ? 0 : 1;
 	}
 
 	log_debug("Rank %d: Scattering. Expecting %d bytes (%u rows).", ctx->rank, my_recv_size_scatter, comm_data->send_num_rows);
-
+	
 	mpi_rc = MPI_Scatterv(global_send_buffer, // buffer with continuous image we are scattering from
 			      comm_arrays->sendcounts, // number of items we are seding for each proc
 			      comm_arrays->displs, // displacement in buffer for each ith
@@ -41,6 +54,8 @@ int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_
 			      MPI_UNSIGNED_CHAR, // recv type
 			      0, // rank of sending process
 			      MPI_COMM_WORLD);
+
+	log_trace("Finished ScatterV\n");
 
 	if (ctx->rank == 0) {
 		free(global_send_buffer);
@@ -54,18 +69,18 @@ int mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_
 	return 0;
 }
 
-int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
+int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
 			  struct img_spec *img_data)
 {
 	unsigned char *global_recv_buffer = NULL;
-	int mpi_rc = MPI_SUCCESS;
-	int unpack_status = 0;
-	int my_send_size_gather = 0;
+	int8_t mpi_rc = MPI_SUCCESS;
+	int8_t unpack_status = 0;
+	uint16_t my_send_size_gather = 0;
 
 	if (ctx->rank == 0) {
 		size_t total_gathered_size = 0;
 		if (comm_arrays->recvcounts) { // Check pointer validity
-			for (int i = 0; i < ctx->size; ++i) {
+			for (int8_t i = 0; i < ctx->size; ++i) {
 				total_gathered_size += (size_t)comm_arrays->recvcounts[i];
 			}
 		}
@@ -80,7 +95,7 @@ int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_d
 		}
 	}
 
-	my_send_size_gather = (int)(comm_data->my_num_rows * comm_data->row_stride_bytes);
+	my_send_size_gather = (comm_data->my_num_rows * comm_data->row_stride_bytes);
 	if (my_send_size_gather <= 0 && comm_data->my_num_rows > 0) {
 		log_warn("Rank %d: Calculated zero send size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->my_num_rows);
 		my_send_size_gather = 1;
@@ -91,8 +106,15 @@ int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_d
 
 	log_debug("Rank %d: Gathering. Sending %d bytes (%u rows).", ctx->rank, my_send_size_gather, comm_data->my_num_rows);
 
-	mpi_rc = MPI_Gatherv(local_data->output_pixels, my_send_size_gather, MPI_UNSIGNED_CHAR, global_recv_buffer, comm_arrays->recvcounts, comm_arrays->recvdispls,
-			     MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	mpi_rc = MPI_Gatherv(local_data->output_pixels, 
+					  my_send_size_gather, 
+					  MPI_UNSIGNED_CHAR, 
+					  global_recv_buffer, 
+					  comm_arrays->recvcounts, 
+					  comm_arrays->recvdispls,
+					  MPI_UNSIGNED_CHAR, 
+					  0, 
+					  MPI_COMM_WORLD);
 
 	if (mpi_rc != MPI_SUCCESS) {
 		log_error("Rank %d: MPI_Gatherv failed with code %d.", ctx->rank, mpi_rc);
@@ -112,7 +134,7 @@ int mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_d
 	return 0;
 }
 
-// simply sents img dim to all the prcesses (from rank0)
+// Simply sents img dim to all the prcesses (from rank0)
 void mpi_broadcast_metadata(struct img_comm_data *comm_data)
 {
 	uint16_t mpi_width = comm_data->dim->width;
