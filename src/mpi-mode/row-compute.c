@@ -23,9 +23,9 @@
  *
  * @return 0 on success, other way -1
  */
-static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *args, struct img_spec *img_data, struct img_comm_data *comm_data, double *start_time)
+static int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *args, struct img_spec *img_data, struct img_comm_data *comm_data, double *start_time)
 {
-	int setup_status = 0;
+	int8_t setup_status = 0;
 
 	if (!args || !args->input_filename[0]) {
 		if (ctx->rank == 0)
@@ -33,7 +33,13 @@ static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_ar
 		return -1;
 	}
 
+	log_trace("INIT PHASE:\n");
+
 	comm_data->dim = malloc(sizeof(struct img_dim));
+	if (!comm_data) {
+		log_error("Memory allocation failed");
+		return -1;
+	}
 
 	if (ctx->rank == 0) {
 		setup_status = mpi_rank0_initialize(img_data, comm_data, start_time, args->input_filename[0]);
@@ -42,7 +48,7 @@ static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_ar
 		comm_data->row_stride_bytes = (size_t)(comm_data->dim->width * BYTES_PER_PIXEL);
 	}
 
-	mpi_broadcast_metadata(comm_data); // idk if all the processes should call it
+	mpi_broadcast_metadata(comm_data); // Idk if all the processes should call it
 	if (ctx->rank != 0) {
 		comm_data->row_stride_bytes = (size_t)(comm_data->dim->width * BYTES_PER_PIXEL);
 	}
@@ -51,7 +57,7 @@ static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_ar
 		log_error("Rank %d: Received invalid image dimensions (%ux%u).", ctx->rank, comm_data->dim->width, comm_data->dim->height);
 		return -1;
 	}
-
+	// Here we calculate distribution of image for every process.
 	mpi_calculate_row_distribution(ctx, comm_data);
 
 	return 0;
@@ -67,19 +73,20 @@ static int mpi_phase_initialize(const struct mpi_context *ctx, const struct p_ar
  * @param comm_arrays - pointer to structure, that bundles together the arrays required for variable-count MPI collective communication operations, specifically those like MPI_Scatterv and MPI_Gatherv. 
  * @param global_send_buffer - continuous buffer
  */
-static int mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct img_spec *img_data, struct mpi_comm_arr *comm_arrays,
-				  unsigned char **global_send_buffer)
+static int8_t mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct img_spec *img_data, struct mpi_comm_arr *comm_arrays,
+				     unsigned char **global_send_buffer)
 {
-	int setup_status = 0;
-	int pack_status = 0;
-	int *displs_original = NULL;
-	struct mpi_pack_params pack_params = { 0 };
-	size_t i = 0;
+	int8_t setup_status = 0;
+	int8_t pack_status = 0;
+	int8_t i = 0;
+	int16_t *displs_original = NULL;
 
 	*global_send_buffer = NULL;
 
+	log_trace("PREPARE COMM PHASE:\n");
+
 	if (ctx->rank == 0) {
-		displs_original = (int *)malloc((size_t)ctx->size * sizeof(int));
+		displs_original = malloc((size_t)ctx->size * sizeof(int16_t));
 		if (!displs_original) {
 			log_error("Rank 0: Failed to allocate memory for original displacement array.");
 			return -1;
@@ -92,24 +99,20 @@ static int mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct im
 		return -1;
 	}
 
-	if (ctx->rank == 0) {
+	if (setup_status == 0 && ctx->rank == 0) {
 		for (i = 0; i < ctx->size; ++i) {
-			struct img_comm_data temp_comm_data = { 0 }; // create temporary to avoid modifying original
-			temp_comm_data.dim = comm_data->dim; // copy necessary fields
-			struct mpi_context temp_ctx = { i, ctx->size };
-			mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data); // calculate for rank i
-			int temp_send_start = (int)temp_comm_data.my_start_row - MPI_HALO_SIZE;
-			if (temp_send_start < 0)
-				temp_send_start = 0;
-			displs_original[i] = (int)((uint32_t)temp_send_start * comm_data->row_stride_bytes);
-			log_debug("Rank %ux: displs %d, my_start_row %d\n", i, displs_original[i], temp_comm_data.my_start_row);
+			log_debug("Rank 0: For rank %d: sendcount=%d, disp=%d, origdisp=%d, recvcount=%d, recvdisp=%d", i,
+				  comm_arrays->sendcounts ? comm_arrays->sendcounts[i] : -1, comm_arrays->displs ? comm_arrays->displs[i] : -1,
+				  comm_arrays->origdispls ? comm_arrays->origdispls[i] : -1, comm_arrays->recvcounts ? comm_arrays->recvcounts[i] : -1,
+				  comm_arrays->recvdispls ? comm_arrays->recvdispls[i] : -1);
 		}
+		if (ctx->size > 1 && comm_arrays->sendcounts) {
+			log_debug("Rank 0: Specifically, sendcounts[1] = %d (Rank 1 expects 4117230)", comm_arrays->sendcounts[1]);
+		}
+	}
 
-		pack_params.sendcounts = comm_arrays->sendcounts;
-		pack_params.displs_original = displs_original;
-
-		pack_status = mpi_rank0_pack_data_for_scatter(img_data, comm_data, ctx, &pack_params, global_send_buffer);
-		free(displs_original);
+	if (ctx->rank == 0) {
+		pack_status = mpi_rank0_pack_data_for_scatter(img_data, comm_data, ctx, comm_arrays->sendcounts, comm_arrays->origdispls, global_send_buffer);
 		if (pack_status != 0) {
 			// Caller should free comm_arrays
 			return -1;
@@ -119,7 +122,7 @@ static int mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct im
 	return 0;
 }
 
-// just verifies the input and calls mpi_process_local_region
+// Just verifies the input and calls mpi_process_local_region
 static void mpi_phase_process_region(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct p_args *args,
 				     const struct filter_mix *filters)
 {
@@ -130,7 +133,7 @@ static void mpi_phase_process_region(const struct mpi_context *ctx, const struct
 	}
 }
 
-// see `mpi_rank0_finalize_and_save` doc
+// (see `mpi_rank0_finalize_and_save` doc)
 static double mpi_phase_finalize_and_broadcast(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, const struct p_args *args)
 {
 	double total_time = -1.0;
@@ -141,15 +144,16 @@ static double mpi_phase_finalize_and_broadcast(const struct mpi_context *ctx, do
 
 	MPI_Bcast(&total_time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	log_debug("Rank %d: Final phase complete. Broadcast time: %.6f", ctx->rank, total_time);
+	if (!ctx->rank)
+		log_debug("Rank %d: Final phase complete. Broadcast time: %.6f", ctx->rank, total_time);
+
 	return total_time;
 }
 
 //doc'd in header
-double mpi_process_by_rows(int rank, int size, const struct p_args *args, const struct filter_mix *filters)
+double mpi_process_by_rows(int8_t rank, int8_t size, const struct p_args *args, const struct filter_mix *filters)
 {
 	struct mpi_context ctx = { rank, size };
-	log_debug("SIZE %d", size);
 	struct img_spec img_data = { 0 };
 	struct img_comm_data comm_data = { 0 };
 	struct mpi_comm_arr comm_arrays = { 0 };
@@ -157,7 +161,10 @@ double mpi_process_by_rows(int rank, int size, const struct p_args *args, const 
 	unsigned char *global_send_buffer = NULL;
 	double start_time = 0.0;
 	double final_time = -1.0;
-	int status = 0;
+	int8_t status = 0;
+
+	if (!ctx.rank)
+		log_debug("SIZE %d", size);
 
 	img_data.input_img = (bmp_img *)calloc(1, sizeof(bmp_img));
 	img_data.output_img = (bmp_img *)calloc(1, sizeof(bmp_img));
@@ -168,7 +175,10 @@ double mpi_process_by_rows(int rank, int size, const struct p_args *args, const 
 		ABORT_AND_RETURN(-1.0);
 	}
 
+	comm_data.halo_size = get_halo_size(args->filter_type, filters);
+	log_debug("halo size %u", comm_data.halo_size);
 	status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
+
 	if (status != 0) {
 		free_img_spec(&img_data);
 		ABORT_AND_RETURN(-1.0);

@@ -15,8 +15,7 @@
  * @param filters A pointer to the structure containing all initialized filter kernels.
  * @return The required halo size (padding) for the given filter, or 0 if the filter is invalid or requires no halo.
  */
-uint8_t get_halo_size(const char* filter_type, const struct filter_mix *filters); 
-
+uint8_t get_halo_size(const char *filter_type, const struct filter_mix *filters);
 
 // simply frees the mpi_comm_arr struct data
 void free_comm_arr(struct mpi_comm_arr comm_arrays);

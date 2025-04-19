@@ -22,7 +22,7 @@
  * @return 0 on success, -1 on error .
  */
 int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
-			   const struct mpi_comm_arr *comm_arrays);
+			      const struct mpi_comm_arr *comm_arrays);
 
 /**
  * Each rank sends its computed data from local_data->output_pixels via MPI_Gatherv.
@@ -39,7 +39,7 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
  * @return 0 on success, -1 on error
  */
 int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
-			  struct img_spec *img_data);
+			     struct img_spec *img_data);
 
 /**
  * This function is typically called after rank 0 has determined the image

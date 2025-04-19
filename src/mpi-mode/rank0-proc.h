@@ -28,19 +28,18 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 
 /**
  * Packing data for scatter by reforming the pixels 2d array into a continuous buffer. Made as a preparation for MPI_Scatterv.
- * Determines the specific rows of the original input image (img_data) that need to be sent to that process, using pre-calculated counts (params->sendcounts) and displacements (params->displs_original).
+ * Determines the specific rows of the original input image (img_data) that need to be sent to that process, using pre-calculated 'counts' (params->sendcounts) and displacements (params->displs_original).
  * Copyies those rows sequentially into the allocated packed_buffer.
  *
  * @param comm_data - process-specific img_comm_data distr data
  * @param ctx - process-specific mpi_context
- * @param params - structure with pre-transfer data description (amount of el. + shift from start of the packed_buffer)
  * @param parcked_buffer - continuous buffer 
  * + other known params
  *
  * @return 0 on success, -1 on error
  */
-int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const struct mpi_pack_params *params,
-				       unsigned char **packed_buffer);
+int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const int *sendcounts,
+				       const int *displs_original, unsigned char **packed_buffer);
 
 /**
  * Takes the contiguous buffer (gathered_buffer) received from an MPI_Gatherv operation (which contains processed image data chunks from all MPI processes) and unpacks/reassembles it into the final result image structure (img_data->img_result):

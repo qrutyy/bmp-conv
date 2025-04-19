@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <mpi.h>
 
-#define MPI_HALO_SIZE 1
 #define BYTES_PER_PIXEL 3
 #define ABORT_AND_RETURN(retval)                                                                                                                                                   \
 	do {                                                                                                                                                                       \
@@ -29,6 +28,7 @@ struct mpi_context {
  * relevant for communication and local processing within an MPI process.
  */
 struct img_comm_data {
+	uint8_t halo_size;
 	size_t row_stride_bytes; // The number of bytes in a single row of the image data. Crucial for calculating memory offsets.
 	uint32_t my_start_row;
 	uint32_t my_num_rows; // The number of rows this process is responsible for computing and writing to the output.

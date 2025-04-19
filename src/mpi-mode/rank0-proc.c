@@ -68,8 +68,8 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 	return total_time;
 }
 
-int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const struct mpi_pack_params *params,
-				       unsigned char **packed_buffer)
+int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx, const int *sendcounts,
+				       const int *displs_original, unsigned char **packed_buffer)
 {
 	size_t total_packed_size = 0;
 	unsigned char *current_pack_ptr = NULL;
@@ -81,7 +81,7 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
 	*packed_buffer = NULL;
 
 	for (i = 0; i < ctx->size; ++i) {
-		total_packed_size += (size_t)params->sendcounts[i];
+		total_packed_size += (size_t)sendcounts[i];
 	}
 
 	if (total_packed_size == 0) {
@@ -97,12 +97,15 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
 
 	current_pack_ptr = *packed_buffer;
 	for (i = 0; i < ctx->size; ++i) {
-		if (params->sendcounts[i] > 0) {
-			proc_start_row = (uint32_t)(params->displs_original[i] / comm_data->row_stride_bytes);
-			proc_send_rows = (uint32_t)(params->sendcounts[i] / comm_data->row_stride_bytes);
+		if (sendcounts[i] > 0) {
+			proc_start_row = (uint32_t)(displs_original[i] / comm_data->row_stride_bytes);
+			proc_send_rows = (uint32_t)(sendcounts[i] / comm_data->row_stride_bytes);
 
 			if (proc_start_row + proc_send_rows > comm_data->dim->height) {
-				log_error("Rank 0: Packing error - calculated rows exceed image height for rank %d.", i);
+				log_error("Rank 0: Packing error - calculated rows exceed image height for rank %d. Height %d and end_row %lu", i, comm_data->dim->height,
+					  proc_start_row + proc_send_rows);
+				log_error("Rank 0: start %lu, count %lu", proc_start_row, proc_send_rows);
+
 				free(*packed_buffer);
 				*packed_buffer = NULL;
 				return -1;

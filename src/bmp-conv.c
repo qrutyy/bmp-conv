@@ -57,7 +57,6 @@ static int parse_args(int argc, char *argv[])
 		argv[1] = "_";
 	}
 
-
 	if (parse_mandatory_args(argc, argv, args) < 0) {
 		log_error("Error parsing mandatory arguments.\n");
 		return -1;
@@ -234,7 +233,7 @@ int main(int argc, char *argv[])
 
 	log_set_quiet(false);
 	log_set_level(LOG_INFO);
-	
+
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
 		log_error("Fatal Error: Cannot allocate args structure.\n");
@@ -260,27 +259,27 @@ int main(int argc, char *argv[])
 		result_time = run_non_queue_mode(threadnum, filters);
 	} else if (args->mt_mode == 1) {
 		result_time = run_queue_mode(filters);
-	} 
-	#ifdef USE_MPI
-	else if (args->mt_mode == 2){
-		int rank;
-		int size;
+	}
+#ifdef USE_MPI
+	else if (args->mt_mode == 2) {
+		int rank = 0;
+		int size = 0;
 		/**
 		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine 
 			*/
 		MPI_Init(&argc, &argv);
 
-	    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 		log_info("SIZE = %d", size);
-		// immediatly jumps to execute_... 
-		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)	
+		// immediatly jumps to execute_...
+		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)
 		result_time = execute_mpi_computation(size, rank, args, filters);
-		
+
 		MPI_Finalize();
 	}
-	#endif 
+#endif
 	else { // should be unreachable, just a plug
 		log_error("Error: invalid mode = %d", args->mt_mode);
 	}

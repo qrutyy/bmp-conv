@@ -36,7 +36,7 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 	const unsigned char *input_row_base = NULL;
 	unsigned char *output_row_base = NULL;
 	const size_t row_stride = comm_data->row_stride_bytes;
-	uint32_t potential_imageY_global = 0;
+	int32_t potential_imageY_global = 0;
 
 	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || cfilter.size <= 0 || !cfilter.filter_arr) {
 		log_error("Rank ?: Invalid arguments passed to mpi_apply_filter. Skipping.");
@@ -47,10 +47,14 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 		return;
 	}
 
-	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_row, comm_data->my_start_row + comm_data->my_num_rows, comm_data->dim->width);
+	log_debug("halo size %u", comm_data->halo_size);
+
+	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_row,
+		  comm_data->my_start_row + comm_data->my_num_rows, comm_data->dim->width);
+	log_debug("Filter size = %d, padding = %d", cfilter.size, padding);
 
 	for (y = 0; y < comm_data->my_num_rows; ++y) {
-		output_row_base = local_data->output_pixels + y * row_stride; // Address of yth row start 
+		output_row_base = local_data->output_pixels + y * row_stride; // Address of yth row start
 		global_y = comm_data->my_start_row + y;
 
 		log_debug("y = %u, global_y = %lu", y, global_y);
@@ -62,22 +66,23 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 				for (filterX = 0; filterX < cfilter.size; ++filterX) {
 					imageX_global = (x + filterX - padding + comm_data->dim->width) % comm_data->dim->width;
 					potential_imageY_global = global_y + filterY - padding;
-
-					// Better border handling 
-                    if (potential_imageY_global < 0) {
-                        imageY_global = 0;
-                    } else if (potential_imageY_global >= comm_data->dim->height) {
-                        imageY_global = comm_data->dim->height - 1;
-                    } else {
-                        imageY_global = potential_imageY_global;
-                    }
-
-					// comm_data->send_start_row is the global index of the first row in our input buffer				
-					imageY_local = imageY_global - comm_data->send_start_row; // get local address (in buffer) of current Y 
+					log_debug("Pre-Clamp: potential_imageY_global = %d", potential_imageY_global);
+					// Better border handling
+					if (potential_imageY_global < 0) {
+						imageY_global = 0;
+					} else if (potential_imageY_global >= comm_data->dim->height) {
+						imageY_global = comm_data->dim->height - 1;
+					} else {
+						imageY_global = potential_imageY_global;
+					}
+					log_debug("Post-Clamp: imageY_global = %d", imageY_global);
+					// comm_data->send_start_row is the global index of the first row in our input buffer
+					imageY_local = imageY_global - comm_data->send_start_row; // get local address (in buffer) of current Y
 
 					log_debug("send_start_row %lu my_start_row %lu", comm_data->send_start_row, comm_data->my_start_row);
-					log_debug("filter x:y %" PRIu32 ":%" PRIu32 ", imagex %" PRId32 ", imagey %" PRId32 ", local %" PRIu32 "", filterX, filterY, imageX_global, imageY_global, imageY_local);
-					
+					log_debug("filter x:y %" PRIu32 ":%" PRIu32 ", imagex %" PRId32 ", imagey %" PRId32 ", local %" PRIu32 "", filterX, filterY, imageX_global,
+						  imageY_global, imageY_local);
+
 					if (imageY_local >= comm_data->send_num_rows) {
 						log_error("Rank %u: Calc local input row %" PRIu32 " (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
 							  comm_data->my_start_row, imageY_local, imageY_global, comm_data->send_num_rows, global_y, x);
@@ -88,9 +93,9 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 					// Start of the array + ammount of el * row_stride (the total number of bytes from the beginning of one row of pixels in memory to the beginning of the next row)
 					// Its just a safer and more correct version of the width * BYTES_PER_PIXEL, bc of alignment
 					input_row_base = local_data->input_pixels + imageY_local * row_stride;
-					
+
 					// Address of current pixel
-					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL; 
+					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL;
 
 					weight = cfilter.filter_arr[filterY][filterX];
 
@@ -132,6 +137,7 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 	int32_t imageX_global = 0, imageY_global = 0;
 	uint32_t imageY_local = 0;
 	uint32_t global_y = 0;
+	uint8_t n = 0;
 	const unsigned char *input_row_base = NULL;
 	const unsigned char *input_pixel_ptr = NULL;
 	unsigned char *output_row_base = NULL;
@@ -161,9 +167,9 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 		global_y = comm_data->my_start_row + y;
 
 		for (x = 0; x < width; x++) {
-			int n = 0; // index for neighborhood arrays
+			n = 0; // Index for neighborhood arrays
 
-			// collect neighboring pixel values
+			// Collect neighboring pixel values
 			for (filterY = -half_size; filterY <= half_size; filterY++) {
 				for (filterX = -half_size; filterX <= half_size; filterX++) {
 					imageX_global = (x + filterX + width) % width;
@@ -171,7 +177,7 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 
 					imageY_local = imageY_global - comm_data->send_start_row;
 
-					// see this part apply_filter
+					// See this part apply_filter
 					input_row_base = local_data->input_pixels + imageY_local * row_stride;
 					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL;
 
@@ -183,8 +189,8 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 			}
 			output_pixel_ptr = output_row_base + x * BYTES_PER_PIXEL;
 
-			// find the median value for each channel using the K'th smallest element algorithm
-			// the median is the element at index filter_area / 2 in the sorted array.
+			// Find the median value for each channel using the K'th smallest element algorithm
+			// The median is the element at index filter_area / 2 in the sorted array.
 			output_pixel_ptr[0] = (unsigned char)selectKth(red, 0, filter_area, filter_area / 2);
 			output_pixel_ptr[1] = (unsigned char)selectKth(green, 0, filter_area, filter_area / 2);
 			output_pixel_ptr[2] = (unsigned char)selectKth(blue, 0, filter_area, filter_area / 2);
@@ -208,7 +214,7 @@ void mpi_compute_local_region(const struct mpi_local_data *local_data, const str
 		return;
 	}
 
-	// dispatch based on filter type
+	// Dispatch based on filter type
 	if (strcmp(filter_type, "mb") == 0 && filters->motion_blur) {
 		mpi_apply_filter(local_data, comm_data, *filters->motion_blur);
 	} else if (strcmp(filter_type, "bb") == 0 && filters->blur) {

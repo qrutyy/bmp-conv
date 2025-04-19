@@ -10,13 +10,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
-static inline void mpi_verify_sg_data_size(const int8_t *sendcounts, const struct mpi_context *ctx, int8_t scatter_size) {
+static inline void mpi_verify_sg_data_size(const int8_t *sendcounts, const struct mpi_context *ctx, int8_t scatter_size)
+{
 	assert(sendcounts[ctx->rank] == scatter_size);
 }
 
-
 int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
-			   const struct mpi_comm_arr *comm_arrays)
+			      const struct mpi_comm_arr *comm_arrays)
 {
 	if (!ctx->rank) {
 		assert(global_send_buffer);
@@ -44,7 +44,7 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 	}
 
 	log_debug("Rank %d: Scattering. Expecting %d bytes (%u rows).", ctx->rank, my_recv_size_scatter, comm_data->send_num_rows);
-	
+
 	mpi_rc = MPI_Scatterv(global_send_buffer, // buffer with continuous image we are scattering from
 			      comm_arrays->sendcounts, // number of items we are seding for each proc
 			      comm_arrays->displs, // displacement in buffer for each ith
@@ -70,7 +70,7 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 }
 
 int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct mpi_comm_arr *comm_arrays,
-			  struct img_spec *img_data)
+			     struct img_spec *img_data)
 {
 	unsigned char *global_recv_buffer = NULL;
 	int8_t mpi_rc = MPI_SUCCESS;
@@ -106,15 +106,8 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 
 	log_debug("Rank %d: Gathering. Sending %d bytes (%u rows).", ctx->rank, my_send_size_gather, comm_data->my_num_rows);
 
-	mpi_rc = MPI_Gatherv(local_data->output_pixels, 
-					  my_send_size_gather, 
-					  MPI_UNSIGNED_CHAR, 
-					  global_recv_buffer, 
-					  comm_arrays->recvcounts, 
-					  comm_arrays->recvdispls,
-					  MPI_UNSIGNED_CHAR, 
-					  0, 
-					  MPI_COMM_WORLD);
+	mpi_rc = MPI_Gatherv(local_data->output_pixels, my_send_size_gather, MPI_UNSIGNED_CHAR, global_recv_buffer, comm_arrays->recvcounts, comm_arrays->recvdispls,
+			     MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
 	if (mpi_rc != MPI_SUCCESS) {
 		log_error("Rank %d: MPI_Gatherv failed with code %d.", ctx->rank, mpi_rc);
