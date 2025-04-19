@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
 	int return_code = 0;
 
 	log_set_quiet(false);
+	log_set_level(LOG_INFO);
 	
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
@@ -272,7 +273,7 @@ int main(int argc, char *argv[])
 	    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-		log_warn("SIZE = %d", size);
+		log_info("SIZE = %d", size);
 		// immediatly jumps to execute_... 
 		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)	
 		result_time = execute_mpi_computation(size, rank, args, filters);
