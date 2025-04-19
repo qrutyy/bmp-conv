@@ -3,8 +3,8 @@ SHELL=/bin/sh
 # === Compiler and Flags ===
 CC = gcc
 MPICC = mpicc
-CFLAGS = -Wall -Wpedantic -Wextra -O3 -DNDEBUG -std=c99
-MPICFLAGS = $(CFLAGS) -DUSE_MPI
+CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -O3 -DNDEBUG
+MPICFLAGS = $(CFLAGS) -DUSE_MPI -DLOG_USE_COLOR
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
 LDLIBS = -lm 
 
@@ -108,6 +108,9 @@ run-mpi-mode: $(TARGET_MPI)
 	@echo "\nRunning MPI mode (NP=$(MPI_NP)): mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)"
 	mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
 
+build-f: $(TARGET_NO_MPI) $(TARGET_MPI)
+	rm -rf build/
+	make
 
 clean:
 	@echo "\nCleaning build artifacts..."
