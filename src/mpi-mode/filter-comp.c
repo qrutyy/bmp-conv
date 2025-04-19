@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <inttypes.h>
 
 /**
  * Operates directly on raw byte buffers (`local_data`) using MPI communication
@@ -22,10 +23,9 @@
  */
 static void mpi_apply_filter(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, struct filter cfilter)
 {
-	uint32_t x = 0;
-	uint32_t y = 0;
-	int32_t filterX = 0, filterY = 0;
-	int32_t imageX_global = 0, imageY_global = 0;
+	uint32_t x = 0, y = 0;
+	int32_t filterX = 0, filterY = 0; // coordinate variables of kernel
+	int32_t imageX_global = 0, imageY_global = 0; // global coords in input image
 	uint32_t imageY_local = 0;
 	uint32_t global_y = 0;
 	double weight = 0.0;
@@ -35,9 +35,8 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 	unsigned char *output_pixel_ptr = NULL;
 	const unsigned char *input_row_base = NULL;
 	unsigned char *output_row_base = NULL;
-	const uint32_t width = comm_data->dim->width;
-	const uint32_t height = comm_data->dim->height;
 	const size_t row_stride = comm_data->row_stride_bytes;
+	uint32_t potential_imageY_global = 0;
 
 	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || cfilter.size <= 0 || !cfilter.filter_arr) {
 		log_error("Rank ?: Invalid arguments passed to mpi_apply_filter. Skipping.");
@@ -48,36 +47,50 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 		return;
 	}
 
-	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_row,
-		  comm_data->my_start_row + comm_data->my_num_rows, width);
+	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_row, comm_data->my_start_row + comm_data->my_num_rows, comm_data->dim->width);
 
 	for (y = 0; y < comm_data->my_num_rows; ++y) {
-		output_row_base = local_data->output_pixels + y * row_stride;
+		output_row_base = local_data->output_pixels + y * row_stride; // Address of yth row start 
 		global_y = comm_data->my_start_row + y;
 
-		for (x = 0; x < width; ++x) {
-			red_acc = 0.0;
-			green_acc = 0.0;
-			blue_acc = 0.0;
+		log_debug("y = %u, global_y = %lu", y, global_y);
+
+		for (x = 0; x < comm_data->dim->width; ++x) {
+			red_acc = green_acc = blue_acc = 0.0;
 
 			for (filterY = 0; filterY < cfilter.size; ++filterY) {
 				for (filterX = 0; filterX < cfilter.size; ++filterX) {
-					imageX_global = (x + filterX - padding + width) % width;
-					imageY_global = (global_y + filterY - padding + height) % height;
+					imageX_global = (x + filterX - padding + comm_data->dim->width) % comm_data->dim->width;
+					potential_imageY_global = global_y + filterY - padding;
 
-					// comm_data->send_start_row is the global index of the first row in our input buffer
-					imageY_local = imageY_global - comm_data->send_start_row;
+					// Better border handling 
+                    if (potential_imageY_global < 0) {
+                        imageY_global = 0;
+                    } else if (potential_imageY_global >= comm_data->dim->height) {
+                        imageY_global = comm_data->dim->height - 1;
+                    } else {
+                        imageY_global = potential_imageY_global;
+                    }
 
+					// comm_data->send_start_row is the global index of the first row in our input buffer				
+					imageY_local = imageY_global - comm_data->send_start_row; // get local address (in buffer) of current Y 
+
+					log_debug("send_start_row %lu my_start_row %lu", comm_data->send_start_row, comm_data->my_start_row);
+					log_debug("filter x:y %" PRIu32 ":%" PRIu32 ", imagex %" PRId32 ", imagey %" PRId32 ", local %" PRIu32 "", filterX, filterY, imageX_global, imageY_global, imageY_local);
+					
 					if (imageY_local >= comm_data->send_num_rows) {
-						log_error("Rank %u: Calc local input row %u (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
+						log_error("Rank %u: Calc local input row %" PRIu32 " (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
 							  comm_data->my_start_row, imageY_local, imageY_global, comm_data->send_num_rows, global_y, x);
 						MPI_Abort(MPI_COMM_WORLD, 1);
 						return;
 					}
-					// start of the array + ammount of el * row_stride (the total number of bytes from the beginning of one row of pixels in memory to the beginning of the next row)
-					// its just a safer and more correct version of the width * BYTES_PER_PIXEL, bc of alignment
+
+					// Start of the array + ammount of el * row_stride (the total number of bytes from the beginning of one row of pixels in memory to the beginning of the next row)
+					// Its just a safer and more correct version of the width * BYTES_PER_PIXEL, bc of alignment
 					input_row_base = local_data->input_pixels + imageY_local * row_stride;
-					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL;
+					
+					// Address of current pixel
+					input_pixel_ptr = input_row_base + imageX_global * BYTES_PER_PIXEL; 
 
 					weight = cfilter.filter_arr[filterY][filterX];
 
@@ -97,7 +110,8 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 }
 
 /**
- * Same as `mpi_apply_filter` but for median filter.
+ * Same as `mpi_apply_filter` but for median filter. (see implementation in utils/threads-general)
+ *
  * @param local_data - pointer to the structure holding local input/output pixel buffers (unsigned char*).
  * @param comm_data - pointer to the structure holding MPI communication geometry (rows, dimensions, stride).
  * @param filter_size - the size of median filter
