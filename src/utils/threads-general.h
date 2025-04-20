@@ -48,3 +48,5 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 
 void free_img_spec(struct img_spec *img_data);
 void bmp_free_img_spec(struct img_spec *img_data);
+void bmp_img_pixel_free(bmp_pixel **pixels_to_free, const struct img_dim *original_dim);
+bmp_pixel** transpose_matrix(bmp_pixel **img_pixels, const struct img_dim *dim);

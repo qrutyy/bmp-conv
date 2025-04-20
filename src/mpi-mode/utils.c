@@ -150,6 +150,28 @@ void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_co
 	mpi_verify_distribution_range(comm_data);
 }
 
+void mpi_calculate_column_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data)
+{
+	uint32_t rows_per_proc = 0;
+	uint32_t remainder_rows = 0;
+	uint32_t u_height = comm_data->dim->height;
+
+	if (ctx->size == 0) { // kinda an error
+		log_warn("MPI: size in context == %lu\n", ctx->size);
+		comm_data->my_start_row = 0;
+		comm_data->my_num_rows = (ctx->rank == 0) ? u_height : 0;
+		return;
+	}
+
+	rows_per_proc = u_height / (uint32_t)ctx->size;
+	remainder_rows = u_height % (uint32_t)ctx->size;
+
+	comm_data->my_start_row = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
+	comm_data->my_num_rows = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
+	log_debug("comm_data start row %d rows per proc %d, i = %d", comm_data->my_start_row, rows_per_proc, ctx->rank);
+	log_debug("end row %d", comm_data->my_start_row + comm_data->my_num_rows);
+	mpi_verify_distribution_range(comm_data);
+}
 int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays)
 {
 	int proc_send_start = 0;

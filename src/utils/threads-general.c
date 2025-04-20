@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "args-parse.h"
 #include "filters.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -252,6 +253,7 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 // TODO: fix mpi.
 void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, const struct p_args *args)
 {
+	int8_t status = 0;
 	if (strcmp(args->output_filename, "") != 0) {
 		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
 	} else if (args->mt_mode == 2){
@@ -265,7 +267,11 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 	}
 
 	log_debug("Result out filepath %s\n", output_filepath);
-	bmp_img_write(img_result, output_filepath);
+	if (!img_result->img_pixels) 
+		log_error("Pointer to images pixel array is NULL");
+	status = bmp_img_write(img_result, output_filepath);
+	
+	log_debug("status %d", status);	
 }
 
 void free_img_spec(struct img_spec *img_data)
@@ -279,3 +285,50 @@ void bmp_free_img_spec(struct img_spec *img_data)
 	bmp_img_free(img_data->input_img);
 	bmp_img_free(img_data->output_img);
 }
+
+
+void bmp_img_pixel_free(bmp_pixel **pixels_to_free, const struct img_dim *original_dim) {
+	uint32_t i = 0, num_allocated_rows = 0;
+
+    if (!pixels_to_free || !original_dim) 
+        return; 
+
+    num_allocated_rows = original_dim->width;
+
+    for (i = 0; i < num_allocated_rows; i++) {
+        free(pixels_to_free[i]);
+        pixels_to_free[i] = NULL; 
+    }
+
+    free(pixels_to_free);
+}
+
+bmp_pixel** transpose_matrix(bmp_pixel **img_pixels, const struct img_dim *dim) {
+    if (!img_pixels || !dim) {
+        return NULL;
+    }
+    uint32_t original_height = dim->height; // H
+    uint32_t original_width = dim->width;   // W
+
+    if (original_height == 0 || original_width == 0) {
+        return NULL; 
+    }
+
+    bmp_pixel **transposed_matrix = bmp_img_pixel_alloc(original_width, original_height); // Allocate W rows, H columns
+    if (!transposed_matrix) {
+        return NULL;
+    }
+
+    for (uint32_t y = 0; y < original_height; ++y) { // Iterate rows of original (0 to H-1)
+        if (!img_pixels[y]) {
+             bmp_img_pixel_free(transposed_matrix, dim); // Free using the height it was allocated with (W)
+             return NULL;
+        }
+        for (uint32_t x = 0; x < original_width; ++x) { 
+            transposed_matrix[x][y] = img_pixels[y][x];
+        }
+    }
+
+    return transposed_matrix; 
+}
+

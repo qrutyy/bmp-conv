@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 	int return_code = 0;
 
 	log_set_quiet(false);
-	log_set_level(LOG_INFO);
+	log_set_level(LOG_TRACE);
 
 	args = malloc(sizeof(struct p_args));
 	if (!args) {

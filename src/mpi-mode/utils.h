@@ -68,3 +68,4 @@ void mpi_verify_distribution_range(struct img_comm_data *comm_data);
  * @return 0 on success, -1 on error
  */
 int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays);
+
