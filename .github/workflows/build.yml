@@ -13,9 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: install_deps
         run: |
-            sudo apt install mpich mpich-devel
-            source /etc/profile.d/modules.sh 
-            module load mpi/mpich-aarch64
+            sudo apt update
+            sudo apt install -y mpich libmpich-dev
 
       - name: build
         run: |
