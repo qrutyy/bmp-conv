@@ -82,26 +82,26 @@ RUN_ARGS := $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode
 # Queue mode specific arguments
 RUN_Q_ARGS := -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
 # Arguments  for MPI mode (same as basic, except mpi-mode)
-MPI_RUN_ARGS := $(BASE_RUN_ARGS) -mpi-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --threadnum=$(THREAD_NUM) --block=$(BLOCK_SIZE) --filter=$(FILTER_TYPE)
+MPI_RUN_ARGS := $(BASE_RUN_ARGS) -mpi-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --threadnum=1 --block=$(BLOCK_SIZE) --filter=$(FILTER_TYPE)
 
 # Run the program with standard arguments
 run: $(TARGET_NO_MPI)
-	@echo "\nRunning: ./$(TARGET_EXEC) $(RUN_ARGS)"
-	./$(TARGET_EXEC) $(RUN_ARGS)
+	@echo "\nRunning: ./$(TARGET_NO_MPI) $(RUN_ARGS)"
+	./$(TARGET_NO_MPI) $(RUN_ARGS)
 
 # Run specifically on macOS E-cores
 run-mac-e-cores: $(TARGET_NO_MPI)
-	@echo "\nRunning on E-cores: taskpolicy -c background ./$(TARGET_EXEC) $(RUN_ARGS)"
-	taskpolicy -c background ./$(TARGET_EXEC) $(RUN_ARGS)
+	@echo "\nRunning on E-cores: taskpolicy -c background ./$(TARGET_NO_MPI) $(RUN_ARGS)"
+	taskpolicy -c background ./$(TARGET_NO_MPI) $(RUN_ARGS)
 
 # Run on macOS P-cores (using default policy which often prioritizes P-cores or uses all)
 run-mac-p-cores: $(TARGET_NO_MPI)
-	@echo "\nRunning on P-cores (default policy): ./$(TARGET_EXEC) $(RUN_ARGS)"
-	./$(TARGET_EXEC) $(RUN_ARGS)
+	@echo "\nRunning on P-cores (default policy): ./$(TARGET_NO_MPI) $(RUN_ARGS)"
+	./$(TARGET_NO_MPI) $(RUN_ARGS)
 
 run-q-mode: $(TARGET_NO_MPI)
-	@echo "\nRunning Queue Mode: ./$(TARGET_EXEC) $(RUN_Q_ARGS)"
-	./$(TARGET_EXEC) $(RUN_Q_ARGS)
+	@echo "\nRunning Queue Mode: ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)"
+	./$(TARGET_NO_MPI) $(RUN_Q_ARGS)
 
 # Run the MPI target using mpirun
 run-mpi-mode: $(TARGET_MPI)
@@ -114,7 +114,7 @@ build-f: $(TARGET_NO_MPI) $(TARGET_MPI)
 
 clean:
 	@echo "\nCleaning build artifacts..."
-	$(RM) $(TARGET_EXEC)
+	$(RM) $(TARGET_NO_MPI)
 	$(RM) -r $(BUILD_DIR_MPI)
 	$(RM) -r $(BUILD_DIR_NO_MPI)
 	$(RM) tests/*.dat src/*.out 
