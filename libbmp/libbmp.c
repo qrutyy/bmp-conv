@@ -107,6 +107,26 @@ bmp_img_alloc (bmp_img *img)
 	}
 }
 
+void*
+bmp_img_pixel_alloc (size_t height, size_t width)
+{
+	bmp_pixel **img_pixels = malloc (sizeof (bmp_pixel*) * height);
+	if (!img_pixels) {
+		fprintf(stderr, "Memory allocation failed");
+		return NULL; 
+	}
+	
+	for (size_t y = 0; y < height; y++)
+	{
+		img_pixels[y] = malloc (sizeof (bmp_pixel) * width);
+		if (!img_pixels[y])	{
+			fprintf(stderr, "Memory allocation failed");
+			return NULL; 
+		}
+	}
+	return img_pixels;
+}
+
 void
 bmp_img_init_df (bmp_img   *img,
                  const int  width,

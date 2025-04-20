@@ -73,6 +73,9 @@ void            bmp_img_alloc                  (bmp_img*);
 void            bmp_img_init_df                (bmp_img*,
                                                 const int,
                                                 const int);
+void*           bmp_img_pixel_alloc			   (size_t height,
+                                                size_t width);
+
 void            bmp_img_free                   (bmp_img*);
 
 enum bmp_error  bmp_img_write                  (const bmp_img*,
