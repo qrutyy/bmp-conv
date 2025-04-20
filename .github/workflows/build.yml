@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      -name: install_deps
+      - name: install_deps
         run: |
         sudo apt install mpich mpich-devel
         source /etc/profile.d/modules.sh 
