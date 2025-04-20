@@ -87,9 +87,16 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 }
 
 /**
- * Applies a convolution filter (defined by `cfilter`) to a specified portion of an image. Iterates through the pixel range defined in `spec` (start/end row/column). For each pixel, it calculates the weighted sum of neighboring pixels based on the filter kernel, applies bias and factor, clamps the result to [0, 255], and stores it in the output image buffer. Uses wrap-around (modulo) for boundary handling.
+ * Applies a convolution filter (defined by `cfilter`) to a specified portion of an image.
+ * Iterates through the pixel range defined in `spec` (start/end row/column).
+ * For each pixel, it calculates the weighted sum of neighboring pixels based on
+ * the filter kernel, applies bias and factor, clamps the result to [0, 255],
+ * and stores it in the output image buffer.
+ * Uses wrap-around (modulo) for horizontal boundary handling and
+ * clamping for vertical boundary handling (to match MPI implementation).
  *
- * @param spec Pointer to the thread_spec structure containing image data, dimensions, and the specific row/column range to process.
+ * @param spec Pointer to the thread_spec structure containing image data, dimensions,
+ *             and the specific row/column range to process.
  * @param cfilter The filter structure containing the kernel matrix, size, bias, and factor.
  */
 void apply_filter(struct thread_spec *spec, struct filter cfilter)
@@ -99,6 +106,7 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 	bmp_pixel orig_pixel;
 	double red_acc, green_acc, blue_acc;
 	int padding = cfilter.size / 2;
+	int32_t potential_imageY = 0; 
 
 	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)", cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
@@ -111,11 +119,17 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 			// Apply the filter kernel
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
 				for (filterX = 0; filterX < cfilter.size; filterX++) {
-					// Calculate source pixel coordinates with wrap-around
+					// Calculate source pixel coordinates
 					imageX = (x + filterX - padding + spec->dim->width) % spec->dim->width;
-					imageY = (y + filterY - padding + spec->dim->height) % spec->dim->height;
 
-					// No bounds check needed due to modulo arithmetic
+					potential_imageY = y + filterY - padding;
+					if (potential_imageY < 0) {
+						imageY = 0;
+					} else if (potential_imageY >= spec->dim->height) {
+						imageY = spec->dim->height - 1;
+					} else {
+						imageY = potential_imageY;
+					}
 
 					orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
 					weight = cfilter.filter_arr[filterY][filterX];
@@ -235,18 +249,18 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 		log_error("Unknown filter type parameter '%s' in filter_part_computation.", filter_type);
 	}
 }
-
+// TODO: fix mpi.
 void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, const struct p_args *args)
 {
 	if (strcmp(args->output_filename, "") != 0) {
 		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
+	} else if (args->mt_mode == 2){
+			snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->input_filename[0]);
 	} else {
 		if (threadnum > 1) {
 			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
-		} else if (threadnum == 0) {
+		} else if (threadnum == 1) {
 			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
-		} else {
-			snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->input_filename[0]);
 		}
 	}
 
