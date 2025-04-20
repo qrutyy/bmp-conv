@@ -11,9 +11,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      -name: install_deps
+        run: |
+        sudo apt install mpich mpich-devel
+        source /etc/profile.d/modules.sh 
+        module load mpi/mpich-aarch64
+
       - name: build
         run: |
             make
+
       - name: test
         run: |
              ./tests/test.sh
