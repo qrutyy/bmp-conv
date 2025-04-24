@@ -3,10 +3,11 @@
 #pragma once
 
 #include "../utils/args-parse.h"
+#include "../../libbmp/libbmp.h"
 #include <stdint.h>
 
 /**
- * Initialises main data for root process (rank0). Reads the input file, initialises result image structure.
+ * Initialises main data for root process (rank0). Reads the input file, initialises result image structure and comm_data's dimensions.
  * Starts the MPI timer.
  *
  * @param comm_data - pointer to root0 img_comm_data structure (made for saving the dimensions)
@@ -28,7 +29,7 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 
 /**
  * Packing data for scatter by reforming the pixels 2d array into a continuous buffer. Made as a preparation for MPI_Scatterv.
- * Determines the specific rows of the original input image (img_data) that need to be sent to that process, using pre-calculated 'counts' (params->sendcounts) and displacements (params->displs_original).
+ * Determines the specific rows of the original input image (img_data) that need to be sent to that (ith) process, using pre-calculated 'counts' (params->sendcounts) and displacements (params->displs_original).
  * Copyies those rows sequentially into the allocated packed_buffer.
  *
  * @param comm_data - process-specific img_comm_data distr data
@@ -55,5 +56,23 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
  * @return 0 on success, -1 on error
  */
 
-int8_t mpi_rank0_unpack_data_from_gather(const unsigned char *gathered_buffer, struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx,
-					 const struct mpi_comm_arr *comm_arrays);
+int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_spec *img_data, const struct img_comm_data *comm_data, const struct mpi_context *ctx,
+			     const struct mpi_comm_arr *comm_arrays);
+
+/**
+ * Reinits the buffer by allocating output pixel buffer with transposed dimenstions
+ *
+ * @param u know...
+ *
+ * @return 0 on success, -1 on error
+ */
+int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height); 
+
+/**
+ * Transposes the image back (pixel array). Updates the dimensions.
+ * @param same as in mpi_rank0_unpack_data
+ *
+ * @return 0 on success, -1 on error
+ */ 
+int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height);
+int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height);

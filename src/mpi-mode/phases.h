@@ -26,12 +26,11 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
  * @param global_send_buffer - continuous buffer
  */
 int8_t mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct img_spec *img_data, struct mpi_comm_arr *comm_arrays,
-				     unsigned char **global_send_buffer);
+			      unsigned char **global_send_buffer);
 
 // Just verifies the input and calls mpi_process_local_region
 void mpi_phase_process_region(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct p_args *args,
-				     const struct filter_mix *filters);
+			      const struct filter_mix *filters);
 
 // (see `mpi_rank0_finalize_and_save` doc)
 double mpi_phase_finalize_and_broadcast(const struct mpi_context *ctx, double start_time, struct img_spec *img_data, const struct p_args *args);
-

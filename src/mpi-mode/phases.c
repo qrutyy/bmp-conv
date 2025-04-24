@@ -4,6 +4,7 @@
 #include "../../logger/log.h"
 #include "data-transfer.h"
 #include "filter-comp.h"
+#include "../mt-mode/mt-types.h"
 #include "rank0-proc.h"
 #include "utils.h"
 #include <stdint.h>
@@ -30,10 +31,12 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
 		log_error("Memory allocation failed");
 		return -1;
 	}
+	comm_data->compute_mode = args->compute_mode;
 
 	if (ctx->rank == 0) {
 		setup_status = mpi_rank0_initialize(img_data, comm_data, start_time, args->input_filename[0]);
 		if (setup_status != 0)
+
 			return -1;
 		comm_data->row_stride_bytes = (size_t)(comm_data->dim->width * BYTES_PER_PIXEL);
 	}
@@ -47,35 +50,40 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
 		log_error("Rank %d: Received invalid image dimensions (%ux%u).", ctx->rank, comm_data->dim->width, comm_data->dim->height);
 		return -1;
 	}
-	// Here we calculate distribution of image for every process.
-	mpi_calculate_row_distribution(ctx, comm_data);
+	if (args->compute_mode == BY_ROW) { // Here we calculate distribution of image for every process.
+		mpi_calculate_row_distribution(ctx, comm_data);
+	} else {
+		mpi_calculate_column_distribution(ctx, comm_data);
+	}
 
 	return 0;
 }
 
 int8_t mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct img_spec *img_data, struct mpi_comm_arr *comm_arrays,
-				     unsigned char **global_send_buffer)
+			      unsigned char **global_send_buffer)
 {
 	int8_t setup_status = 0;
 	int8_t pack_status = 0;
 	int8_t i = 0;
-	int16_t *displs_original = NULL;
+	int16_t *displs_orig = NULL;
 
 	*global_send_buffer = NULL;
 
 	log_trace("PREPARE COMM PHASE:\n");
 
 	if (ctx->rank == 0) {
-		displs_original = malloc((size_t)ctx->size * sizeof(int16_t));
-		if (!displs_original) {
-			log_error("Rank 0: Failed to allocate memory for original displacement array.");
+		displs_orig = malloc((size_t)ctx->size * sizeof(int16_t));
+		if (!displs_orig) {
+			log_error("Rank 0: Failed to allocate memory for orig displacement array.");
 			return -1;
 		}
 	}
 
+	log_info("comm_data height %u, width %u", comm_data->dim->height, comm_data->dim->width);
+
 	setup_status = mpi_setup_scatter_gather_row_arrays(ctx, comm_data, comm_arrays);
 	if (setup_status != 0) {
-		free(displs_original);
+		free(displs_orig);
 		return -1;
 	}
 
@@ -103,12 +111,12 @@ int8_t mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_co
 }
 
 void mpi_phase_process_region(const struct mpi_context *ctx, const struct img_comm_data *comm_data, const struct mpi_local_data *local_data, const struct p_args *args,
-				     const struct filter_mix *filters)
+			      const struct filter_mix *filters)
 {
-	if (comm_data->my_num_rows > 0) {
-		mpi_compute_local_region(local_data, comm_data, args, filters);
+	if (comm_data->my_num_rc > 0) {
+		mpi_compute_local_region(local_data, comm_data, args, filters, ctx);
 	} else {
-		log_debug("Rank %d: Skipping local processing as my_num_rows is 0.", ctx->rank);
+		log_debug("Rank %d: Skipping local processing as my_num_rc is 0.", ctx->rank);
 	}
 }
 
