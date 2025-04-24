@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "libbmp.h"
+#include "../logger/log.h"
 
 // BMP_HEADER
 
@@ -112,7 +113,7 @@ bmp_img_pixel_alloc (size_t height, size_t width)
 {
 	bmp_pixel **img_pixels = malloc (sizeof (bmp_pixel*) * height);
 	if (!img_pixels) {
-		fprintf(stderr, "Memory allocation failed");
+		log_error("Memory allocation failed");
 		return NULL; 
 	}
 	
@@ -120,7 +121,7 @@ bmp_img_pixel_alloc (size_t height, size_t width)
 	{
 		img_pixels[y] = malloc (sizeof (bmp_pixel) * width);
 		if (!img_pixels[y])	{
-			fprintf(stderr, "Memory allocation failed");
+			log_error("Memory allocation failed");
 			return NULL; 
 		}
 	}
@@ -240,4 +241,97 @@ bmp_img_read (bmp_img    *img,
 	// NOTE: All good!
 	fclose (img_file);
 	return BMP_OK;
+}
+
+void bmp_print_header_data(const bmp_header* header) {
+    if (header == NULL) {
+        log_info("Error: print_bmp_header_data called with NULL header pointer.");
+        return;
+    }
+
+    log_info("--- BMP Header Dump ---");
+
+    log_info("File Header Fields:");
+    log_info("  bfSize         : %u bytes", header->bfSize);
+    log_info("  bfReserved     : %u", header->bfReserved);
+    log_info("  bfOffBits      : %u", header->bfOffBits);
+
+    log_info("-----------------------");
+
+    log_info("Info Header Fields (BITMAPINFOHEADER):");
+    log_info("  biSize         : %u bytes", header->biSize);
+    log_info("  biWidth        : %d pixels", header->biWidth);
+    log_info("  biHeight       : %d pixels", header->biHeight);
+    log_info("  biPlanes       : %hu", header->biPlanes);
+    log_info("  biBitCount     : %hu bits/pixel", header->biBitCount);
+    log_info("  biCompression  : %u", header->biCompression); // Could add interpretation (e.g., 0=RGB, 1=RLE8...)
+    log_info("  biSizeImage    : %u bytes", header->biSizeImage);
+    log_info("  biXPelsPerMeter: %d", header->biXPelsPerMeter);
+    log_info("  biYPelsPerMeter: %d", header->biYPelsPerMeter);
+    log_info("  biClrUsed      : %u", header->biClrUsed);
+    log_info("  biClrImportant : %u", header->biClrImportant);
+
+    log_info("--- End BMP Header Dump ---");
+}
+
+int bmp_compare_images(const bmp_img *img1, const bmp_img *img2) {
+	int width = 0, height = 0; 
+	bool pixels1_exist = false , pixels2_exist = false; 
+	size_t x = 0, y = 0;
+	const bmp_pixel *p1 = NULL, *p2 = NULL;
+
+    if (img1 == NULL || img2 == NULL) {
+        log_error("Error: Cannot compare NULL bmp_img pointers.\n");
+        return -1;
+    }
+
+    if (img1->img_header.bfSize != img2->img_header.bfSize ||
+        img1->img_header.bfReserved != img2->img_header.bfReserved ||
+        img1->img_header.bfOffBits != img2->img_header.bfOffBits ||
+        img1->img_header.biSize != img2->img_header.biSize ||
+        img1->img_header.biWidth != img2->img_header.biWidth ||
+        img1->img_header.biHeight != img2->img_header.biHeight ||
+        img1->img_header.biPlanes != img2->img_header.biPlanes ||
+        img1->img_header.biBitCount != img2->img_header.biBitCount ||
+        img1->img_header.biCompression != img2->img_header.biCompression ||
+        img1->img_header.biSizeImage != img2->img_header.biSizeImage ||
+        img1->img_header.biXPelsPerMeter != img2->img_header.biXPelsPerMeter ||
+        img1->img_header.biYPelsPerMeter != img2->img_header.biYPelsPerMeter ||
+        img1->img_header.biClrUsed != img2->img_header.biClrUsed ||
+        img1->img_header.biClrImportant != img2->img_header.biClrImportant)
+    {
+        return 1; 
+    }
+
+    width = img1->img_header.biWidth;
+    height = abs(img1->img_header.biHeight);
+
+    pixels1_exist = (img1->img_pixels != NULL);
+	pixels2_exist = (img2->img_pixels != NULL);
+
+    if (pixels1_exist != pixels2_exist) {
+        return 1; // One has pixels, the other doesn't
+    }
+
+    if (!pixels1_exist) {
+        return 0;
+    }
+
+    for (y = 0; y < height; ++y) {
+        if (img1->img_pixels[y] == NULL || img2->img_pixels[y] == NULL) {
+             log_error("Error: Found NULL pixel row pointer during comparison at y=%d.\n", y);
+             return 1;
+        }
+
+        for (x = 0; x < width; ++x) {
+            p1 = &img1->img_pixels[y][x];
+            p2 = &img2->img_pixels[y][x];
+            if (p1->red != p2->red || p1->green != p2->green || p1->blue != p2->blue) {
+				log_info("Difference in pixels at x:%u y:%u\n P1: %u:%u:%u P2: %u:%u:%u", x, y, p1->red, p1->green, p1->blue, p2->red, p2->green, p2->blue);
+                return 1; 
+            }
+        }
+    }
+
+    return 0;
 }
