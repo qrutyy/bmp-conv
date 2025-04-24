@@ -79,8 +79,6 @@ int8_t mpi_phase_prepare_comm(const struct mpi_context *ctx, const struct img_co
 		}
 	}
 
-	log_info("comm_data height %u, width %u", comm_data->dim->height, comm_data->dim->width);
-
 	setup_status = mpi_setup_scatter_gather_row_arrays(ctx, comm_data, comm_arrays);
 	if (setup_status != 0) {
 		free(displs_orig);

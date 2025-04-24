@@ -71,7 +71,7 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 					} else {
 						imageX_global = potential_imageX_global;
 					}
-					
+
 					potential_imageY_global = global_y + filterY - padding;
 					if (potential_imageY_global < 0) {
 						imageY_global = 0;
@@ -206,7 +206,6 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 void mpi_compute_local_region(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, const struct p_args *args, const struct filter_mix *filters,
 			      const struct mpi_context *ctx)
 {
-
 	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || !args || !args->filter_type || !filters) {
 		log_error("Rank ?: Invalid NULL parameters in mpi_compute_local_region. Skipping.");
 		return;

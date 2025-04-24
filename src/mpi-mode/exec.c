@@ -165,7 +165,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	comm_data.dim = (struct img_dim *)malloc(sizeof(struct img_dim));
 	if (!img_data.input_img || !img_data.output_img || !comm_data.dim) {
 		log_error("Rank %d: Failed to allocate top-level structs.", rank);
-		goto ext_err_f;	
+		goto ext_err_f;
 	}
 
 	comm_data.halo_size = get_halo_size(args->filter_type, filters);
@@ -173,14 +173,14 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (status) {
 		if (!ctx.rank)
 			bmp_free_img_spec(&img_data);
-		goto ext_err_f;	
+		goto ext_err_f;
 	}
 
 	orig_width = comm_data.dim->width; // saved, bc orig dim will be changed after transpose
 	orig_height = comm_data.dim->height;
 
 	if (ctx.rank == 0)
-		mpi_rank0_transpose_img(&comm_data, &img_data, orig_width, orig_height);	
+		mpi_rank0_transpose_img(&comm_data, &img_data, orig_width, orig_height);
 
 	mpi_broadcast_metadata(&comm_data);
 	mpi_calculate_column_distribution(&ctx, &comm_data);
@@ -194,7 +194,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 			img_data.input_img->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
-		goto ext_err_f;	
+		goto ext_err_f;
 	}
 
 	status = mpi_phase_scatter_data(&ctx, &comm_data, &local_data, global_send_buffer, &comm_arrays);
@@ -206,7 +206,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 			img_data.input_img->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
-		goto ext_err_f;	
+		goto ext_err_f;
 	}
 
 	// Rank 0: Free intermediate transposed input buffer now data is sent
@@ -228,11 +228,11 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (status != 0) {
 		if (ctx.rank == 0)
 			bmp_free_img_spec(&img_data); // Frees orig input and potentially gathered output
-		goto ext_err_f;	
+		goto ext_err_f;
 	}
 
 	if (ctx.rank == 0) {
-		mpi_rank0_transpose_img_back(&comm_data, &img_data, orig_width, orig_height);	
+		mpi_rank0_transpose_img_back(&comm_data, &img_data, orig_width, orig_height);
 	}
 
 	final_time = mpi_phase_finalize_and_broadcast(&ctx, start_time, &img_data, args);
@@ -251,7 +251,6 @@ ext_err_f:
 	free(img_data.output_img);
 	free(comm_data.dim);
 	ABORT_AND_RETURN(-1.0);
-
 }
 
 double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *compute_args, struct filter_mix *filters)

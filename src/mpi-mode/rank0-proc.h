@@ -66,13 +66,13 @@ int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_sp
  *
  * @return 0 on success, -1 on error
  */
-int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height); 
+int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height);
 
 /**
  * Transposes the image back (pixel array). Updates the dimensions.
  * @param same as in mpi_rank0_unpack_data
  *
  * @return 0 on success, -1 on error
- */ 
-int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height);
-int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height);
+ */
+int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height);
+int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height);

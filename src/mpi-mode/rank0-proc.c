@@ -66,7 +66,7 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 		bmp_print_header_data(&img_data->output_img->img_header);
 
 		bmp_print_header_data(&img_data->input_img->img_header); // note that dims are swapped!
-//		bmp_compare_images(img_data->input_img, img_data->output_img);
+		//		bmp_compare_images(img_data->input_img, img_data->output_img);
 
 		bmp_img_free(img_data->output_img);
 		bmp_img_free(img_data->input_img);
@@ -176,10 +176,9 @@ int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_sp
 	return 0;
 }
 
-int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height) {
-	log_debug("Rank 0: Re-initializing output image buffer for Gather phase with transposed dimensions H'=%u, W'=%u",
-		  comm_data->dim->height, 
-		  comm_data->dim->width);
+int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
+{
+	log_debug("Rank 0: Re-initializing output image buffer for Gather phase with transposed dimensions H'=%u, W'=%u", comm_data->dim->height, comm_data->dim->width);
 	if (img_data->output_img->img_pixels) {
 		// Free the buffer allocated with original dimensions during initialize
 		log_trace("Rank 0: Freeing output buffer allocated with original dimensions.");
@@ -200,7 +199,8 @@ int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struc
 	return 0;
 }
 
-int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height) {
+int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
+{
 	log_info("Rank 0: Transposing image...");
 	bmp_pixel **gathered_transposed_pixels = img_data->input_img->img_pixels;
 
@@ -220,12 +220,13 @@ int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec 
 	img_data->input_img->img_header.biHeight = comm_data->dim->height = width;
 	comm_data->row_stride_bytes = (size_t)comm_data->dim->width * BYTES_PER_PIXEL;
 	log_info("Rank 0: Swapped dimensions for transpose: %ux%u (orig %ux%u), new stride: %zu", comm_data->dim->height, comm_data->dim->width, height, width,
-			 comm_data->row_stride_bytes);
+		 comm_data->row_stride_bytes);
 
 	return 0;
 }
 
-int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width , uint32_t height) {
+int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
+{
 	log_info("Rank 0: Transposing image...");
 	bmp_pixel **gathered_transposed_pixels = img_data->output_img->img_pixels;
 
