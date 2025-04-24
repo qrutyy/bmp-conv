@@ -7,6 +7,7 @@
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
 #include "../mt-mode/compute.h"
+#include "../mt-mode/mt-types.h"
 #include "threads.h"
 #include "queue.h"
 
