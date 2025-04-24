@@ -29,11 +29,12 @@ struct mpi_context {
  */
 struct img_comm_data {
 	uint8_t halo_size;
-	size_t row_stride_bytes; // The number of bytes in a single row of the image data. Crucial for calculating memory offsets.
-	uint32_t my_start_row;
-	uint32_t my_num_rows; // The number of rows this process is responsible for computing and writing to the output.
-	uint32_t send_start_row; // The starting row index of the chunk of data this process needs to receive.
-	uint32_t send_num_rows; // The total number of rows this process needs to receive from the original image to perform its computation.
+	int8_t compute_mode;
+	size_t row_stride_bytes; // The number of bytes in a single row/column of the image data. Crucial for calculating memory offsets.
+	uint32_t my_start_rc;
+	uint32_t my_num_rc; // The number of rows/columns this process is responsible for computing and writing to the output.
+	uint32_t send_start_rc; // The starting row/column index of the chunk of data this process needs to receive.
+	uint32_t send_num_rc; // The total number of rows/columns this process needs to receive from the original image to perform its computation.
 	struct img_dim *dim;
 };
 

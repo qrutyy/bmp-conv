@@ -4,6 +4,7 @@
 
 #include "mpi-types.h"
 #include <stdint.h>
+#include "../utils/filters.h"
 
 /**
  * Determines the required halo size based on the selected filter type.
@@ -41,20 +42,14 @@ void mpi_phase_cleanup_resources(const struct mpi_context *ctx, struct mpi_local
 int8_t mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data);
 
 /**
- * Calculates the distribution based on row_method and mpi process context.
+ * Calculates the distribution based on row/column method and mpi process context.
  *
  * @param ctx - process-specific mpi_context
  * @param comm_data - process-specific img_comm_data (that stores the resulst of distr calc)
  *
  */
 void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data);
-
-/**
- * Verifies distribution range depending on the image size.
- *
- * @param comm_data - process-specific img_comm_data (that stores the resulst of distr calc)
- */
-void mpi_verify_distribution_range(struct img_comm_data *comm_data);
+void mpi_calculate_column_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data);
 
 /**
  * Sets up the comm_data and comm_data for each process. 
@@ -68,4 +63,3 @@ void mpi_verify_distribution_range(struct img_comm_data *comm_data);
  * @return 0 on success, -1 on error
  */
 int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays);
-

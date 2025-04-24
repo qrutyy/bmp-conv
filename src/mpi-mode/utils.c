@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "utils.h"
 #include "../../logger/log.h"
 #include "../../libbmp/libbmp.h"
 #include "../utils/threads-general.h"
+#include "../mt-mode/mt-types.h"
 #include "mpi-types.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -84,8 +86,8 @@ int8_t mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct im
 	size_t input_buf_size = 0;
 	size_t output_buf_size = 0;
 
-	input_buf_size = (size_t)comm_data->send_num_rows * comm_data->row_stride_bytes;
-	output_buf_size = (size_t)comm_data->my_num_rows * comm_data->row_stride_bytes;
+	input_buf_size = (size_t)comm_data->send_num_rc * comm_data->row_stride_bytes;
+	output_buf_size = (size_t)comm_data->my_num_rc * comm_data->row_stride_bytes;
 
 	log_debug("Rank %d: Attempting to allocate input: %zu bytes, output: %zu bytes", ctx->rank, input_buf_size, output_buf_size);
 
@@ -103,28 +105,45 @@ int8_t mpi_allocate_local_buffers(const struct mpi_context *ctx, const struct im
 	return 0;
 }
 
-void mpi_verify_distribution_range(struct img_comm_data *comm_data)
+/**
+ * Verifies the distribution range including halo, clamping to boundaries.
+ *
+ * IMPORTANT: Assumes the distribution stored in my_start_rc/my_num_rc was calculated
+ * based on the dimension currently stored in comm_data->dim->height.
+ * In BY_COLUMN mode, comm_data->dim should contain the TRANSPOSED dimensions
+ * before the corresponding calculation function calls this verification.
+ *
+ * @param comm_data Pointer to the communication data structure.
+ */
+static void mpi_verify_distribution_range(struct img_comm_data *comm_data)
 {
-	int start_row_with_halo = (int)comm_data->my_start_row - comm_data->halo_size;
-	uint32_t end_row_with_halo = comm_data->my_start_row + comm_data->my_num_rows + comm_data->halo_size;
+	int start_index_with_halo = (int)comm_data->my_start_rc - comm_data->halo_size;
+	uint32_t end_index_with_halo = comm_data->my_start_rc + comm_data->my_num_rc + comm_data->halo_size;
+	uint32_t boundary_limit = comm_data->dim->height; // Workes in both cases (row/column, but it needs dimension swap in column case)
 
-	if (start_row_with_halo < 0) {
-		comm_data->send_start_row = 0;
+	if (start_index_with_halo < 0) {
+		comm_data->send_start_rc = 0;
 	} else {
-		comm_data->send_start_row = (uint32_t)start_row_with_halo;
+		comm_data->send_start_rc = (uint32_t)start_index_with_halo;
 	}
 
-	if (end_row_with_halo > comm_data->dim->height) {
-		end_row_with_halo = comm_data->dim->height;
+	if (end_index_with_halo > comm_data->dim->height) {
+		end_index_with_halo = comm_data->dim->height;
 	}
 
-	if (comm_data->send_start_row >= end_row_with_halo) {
-		comm_data->send_num_rows = 0;
+	uint32_t clamped_end_index = end_index_with_halo; // Use local var for clarity
+	if (end_index_with_halo > boundary_limit) {
+		clamped_end_index = boundary_limit;
+	}
+
+	// Calculate the actual number of rows/cols to send (can be 0)
+	if (comm_data->send_start_rc >= clamped_end_index) {
+		comm_data->send_num_rc = 0;
 	} else {
-		comm_data->send_num_rows = end_row_with_halo - comm_data->send_start_row;
+		comm_data->send_num_rc = clamped_end_index - comm_data->send_start_rc;
 	}
-	log_trace("Rank %u: Verified distribution: send_start=%u, send_end=%u, send_num_rows=%u (my_start=%u, my_num=%u)", comm_data->my_start_row, comm_data->send_start_row,
-		  end_row_with_halo, comm_data->send_num_rows, comm_data->my_start_row, comm_data->my_num_rows);
+	log_trace("Rank ?: Verified distribution: send_start=%u(%u)), send_end=%u, send_num_rc=%u (my_start=%u, my_num=%u)", comm_data->my_start_rc, comm_data->send_start_rc,
+		  end_index_with_halo, comm_data->send_num_rc, comm_data->my_start_rc, comm_data->my_num_rc);
 }
 
 void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data)
@@ -135,43 +154,46 @@ void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_co
 
 	if (ctx->size == 0) { // kinda an error
 		log_warn("MPI: size in context == %lu\n", ctx->size);
-		comm_data->my_start_row = 0;
-		comm_data->my_num_rows = (ctx->rank == 0) ? u_height : 0;
+		comm_data->my_start_rc = 0;
+		comm_data->my_num_rc = (ctx->rank == 0) ? u_height : 0;
+		mpi_verify_distribution_range(comm_data);
 		return;
 	}
 
 	rows_per_proc = u_height / (uint32_t)ctx->size;
 	remainder_rows = u_height % (uint32_t)ctx->size;
 
-	comm_data->my_start_row = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
-	comm_data->my_num_rows = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
-	log_debug("comm_data start row %d rows per proc %d, i = %d", comm_data->my_start_row, rows_per_proc, ctx->rank);
-	log_debug("end row %d", comm_data->my_start_row + comm_data->my_num_rows);
+	comm_data->my_start_rc = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
+	comm_data->my_num_rc = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
+
+	log_debug("Row Distr: start_rc (row) %u, num_rc (rows) %u, rank = %u", comm_data->my_start_rc, comm_data->my_num_rc, ctx->rank);
 	mpi_verify_distribution_range(comm_data);
 }
 
 void mpi_calculate_column_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data)
 {
-	uint32_t rows_per_proc = 0;
-	uint32_t remainder_rows = 0;
-	uint32_t u_height = comm_data->dim->height;
+	uint32_t cols_per_proc = 0;
+	uint32_t remainder_cols = 0;
+	uint32_t u_width = comm_data->dim->height;
 
 	if (ctx->size == 0) { // kinda an error
 		log_warn("MPI: size in context == %lu\n", ctx->size);
-		comm_data->my_start_row = 0;
-		comm_data->my_num_rows = (ctx->rank == 0) ? u_height : 0;
+		comm_data->my_start_rc = 0;
+		comm_data->my_num_rc = (ctx->rank == 0) ? u_width : 0;
+		mpi_verify_distribution_range(comm_data);
 		return;
 	}
 
-	rows_per_proc = u_height / (uint32_t)ctx->size;
-	remainder_rows = u_height % (uint32_t)ctx->size;
+	cols_per_proc = u_width / (uint32_t)ctx->size;
+	remainder_cols = u_width % (uint32_t)ctx->size;
 
-	comm_data->my_start_row = (uint32_t)ctx->rank * rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? (uint32_t)ctx->rank : remainder_rows);
-	comm_data->my_num_rows = rows_per_proc + ((uint32_t)ctx->rank < remainder_rows ? 1 : 0);
-	log_debug("comm_data start row %d rows per proc %d, i = %d", comm_data->my_start_row, rows_per_proc, ctx->rank);
-	log_debug("end row %d", comm_data->my_start_row + comm_data->my_num_rows);
+	comm_data->my_start_rc = (uint32_t)ctx->rank * cols_per_proc + ((uint32_t)ctx->rank < remainder_cols ? (uint32_t)ctx->rank : remainder_cols);
+	comm_data->my_num_rc = cols_per_proc + ((uint32_t)ctx->rank < remainder_cols ? 1 : 0);
+
+	log_debug("Col Distr (Transposed Rows): start_rc %u, num_rc %u, rank = %u", comm_data->my_start_rc, comm_data->my_num_rc, ctx->rank);
 	mpi_verify_distribution_range(comm_data);
 }
+
 int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_comm_arr *comm_arrays)
 {
 	int proc_send_start = 0;
@@ -205,31 +227,39 @@ int8_t mpi_setup_scatter_gather_row_arrays(const struct mpi_context *ctx, const 
 		return -1;
 	}
 
+	// Setup an independent "bite" of data for each process (rank)
 	for (i = 0; i < ctx->size; ++i) {
 		struct img_comm_data temp_comm_data = { 0 };
 		struct mpi_context temp_ctx = { i, ctx->size };
 
 		temp_comm_data.dim = comm_data->dim;
 		temp_comm_data.halo_size = comm_data->halo_size;
-		log_debug("Calling calc_row_distr with rank = %d", temp_ctx.rank);
 		// For configuring the scatterv and gatterv operations (etc. array setting) - we need to calculate it another time for each process but only from the root perspective.
-		mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data); // Calculate for rank i
+		if (comm_data->compute_mode == BY_COLUMN) {
+			log_debug("Calling calc_column_distr with rank = %d and h: %u, w:%u", temp_ctx.rank, temp_comm_data.dim->height, temp_comm_data.dim->width);
+			mpi_calculate_column_distribution(&temp_ctx, &temp_comm_data);
+		} else {
+			log_debug("Calling calc_row_distr with rank = %d and h: %u, w:%u", temp_ctx.rank, temp_comm_data.dim->height, temp_comm_data.dim->width);
+			mpi_calculate_row_distribution(&temp_ctx, &temp_comm_data);
+		}
 
-		proc_send_start = (int)temp_comm_data.my_start_row - comm_data->halo_size;
-		proc_send_end = temp_comm_data.my_start_row + temp_comm_data.my_num_rows + comm_data->halo_size;
+		proc_send_start = (int)temp_comm_data.my_start_rc - comm_data->halo_size;
+		proc_send_end = temp_comm_data.my_start_rc + temp_comm_data.my_num_rc + comm_data->halo_size;
 
-		if (proc_send_start < 0)
+		if (proc_send_start < 0) {
 			proc_send_start = 0;
-		if (proc_send_end > comm_data->dim->height)
+		}
+		if (proc_send_end > comm_data->dim->height) {
 			proc_send_end = comm_data->dim->height;
+		}
 
 		proc_send_rows = proc_send_end - (uint32_t)proc_send_start;
+		log_debug("send_count for %u = send_rows (%u) * row_stride (%u)", i, proc_send_rows, comm_data->row_stride_bytes);
 
 		comm_arrays->sendcounts[i] = (int)(proc_send_rows * comm_data->row_stride_bytes);
 		comm_arrays->origdispls[i] = (int)((uint32_t)proc_send_start * comm_data->row_stride_bytes);
-
-		comm_arrays->recvcounts[i] = (int)(temp_comm_data.my_num_rows * comm_data->row_stride_bytes);
-		comm_arrays->recvdispls[i] = (int)(temp_comm_data.my_start_row * comm_data->row_stride_bytes);
+		comm_arrays->recvcounts[i] = (int)(temp_comm_data.my_num_rc * comm_data->row_stride_bytes);
+		comm_arrays->recvdispls[i] = (int)(temp_comm_data.my_start_rc * comm_data->row_stride_bytes);
 	}
 
 	current_packed_offset = 0;
