@@ -96,6 +96,13 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
  * Uses wrap-around (modulo) for horizontal boundary handling and
  * clamping for vertical boundary handling (to match MPI implementation).
  *
+ * !NOTE: 
+ * This filter application algorithm is using clamping (rounding to the border) method.
+ * That means, that required out-of-bounds elements aren't being accesssed. Instead - we access the border ones.
+ * As you may know - there is a wrap-around technique, that redirects out-of-bound elements to the opposite side.
+ * We aren't using it, due to difficulty of MPI version implementation. 
+ * It causes a lot of auxiliary stages for data transfering. (halos)
+ *
  * @param spec Pointer to the thread_spec structure containing image data, dimensions,
  *             and the specific row/column range to process.
  * @param cfilter The filter structure containing the kernel matrix, size, bias, and factor.
@@ -107,7 +114,7 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 	bmp_pixel orig_pixel;
 	double red_acc, green_acc, blue_acc;
 	int padding = cfilter.size / 2;
-	int32_t potential_imageY = 0; 
+	int32_t potential_imageY = 0, potential_imageX = 0;
 
 	log_trace("Applying filter size %d to region R[%d-%d) C[%d-%d)", cfilter.size, spec->start_row, spec->end_row, spec->start_column, spec->end_column);
 
@@ -120,9 +127,17 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 			// Apply the filter kernel
 			for (filterY = 0; filterY < cfilter.size; filterY++) {
 				for (filterX = 0; filterX < cfilter.size; filterX++) {
-					// Calculate source pixel coordinates
-					imageX = (x + filterX - padding + spec->dim->width) % spec->dim->width;
+					potential_imageX = x + filterX - padding;
+					if (potential_imageX < 0) {
+						imageX = 0;
+					} else if (potential_imageX >= spec->dim->width) {
+						imageX = spec->dim->width - 1;
+					} else {
+						imageX = potential_imageX;
+					}
+					// --- КОНЕЦ ЗАМЕНЫ ДЛЯ X ---
 
+					// --- Обработка Y (Clamping) - ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ---
 					potential_imageY = y + filterY - padding;
 					if (potential_imageY < 0) {
 						imageY = 0;
@@ -131,7 +146,15 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 					} else {
 						imageY = potential_imageY;
 					}
+					// --- КОНЕЦ ОБРАБОТКИ Y ---
 
+					// Проверка индексов (на всякий случай, хотя clamping должен гарантировать валидность)
+					if (imageY < 0 || imageY >= spec->dim->height || imageX < 0 || imageX >= spec->dim->width) {
+						log_error("apply_filter: Calculated index out of bounds after clamping! Y=%d (H=%d), X=%d (W=%d)", imageY, spec->dim->height,
+							  imageX, spec->dim->width);
+						// Можно предпринять действие или просто пропустить этот пиксель
+						continue; // Пропустить этот входной пиксель
+					}
 					orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
 					weight = cfilter.filter_arr[filterY][filterX];
 
@@ -256,8 +279,8 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 	int8_t status = 0;
 	if (strcmp(args->output_filename, "") != 0) {
 		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
-	} else if (args->mt_mode == 2){
-			snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->input_filename[0]);
+	} else if (args->mt_mode == 2) {
+		snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->input_filename[0]);
 	} else {
 		if (threadnum > 1) {
 			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
@@ -267,11 +290,11 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 	}
 
 	log_debug("Result out filepath %s\n", output_filepath);
-	if (!img_result->img_pixels) 
+	if (!img_result->img_pixels)
 		log_error("Pointer to images pixel array is NULL");
 	status = bmp_img_write(img_result, output_filepath);
-	
-	log_debug("status %d", status);	
+
+	log_debug("status %d", status);
 }
 
 void free_img_spec(struct img_spec *img_data)
@@ -286,49 +309,49 @@ void bmp_free_img_spec(struct img_spec *img_data)
 	bmp_img_free(img_data->output_img);
 }
 
-
-void bmp_img_pixel_free(bmp_pixel **pixels_to_free, const struct img_dim *original_dim) {
+void bmp_img_pixel_free(bmp_pixel **pixels_to_free, const struct img_dim *original_dim)
+{
 	uint32_t i = 0, num_allocated_rows = 0;
 
-    if (!pixels_to_free || !original_dim) 
-        return; 
+	if (!pixels_to_free || !original_dim)
+		return;
 
-    num_allocated_rows = original_dim->width;
+	num_allocated_rows = original_dim->width;
 
-    for (i = 0; i < num_allocated_rows; i++) {
-        free(pixels_to_free[i]);
-        pixels_to_free[i] = NULL; 
-    }
+	for (i = 0; i < num_allocated_rows; i++) {
+		free(pixels_to_free[i]);
+		pixels_to_free[i] = NULL;
+	}
 
-    free(pixels_to_free);
+	free(pixels_to_free);
 }
 
-bmp_pixel** transpose_matrix(bmp_pixel **img_pixels, const struct img_dim *dim) {
-    if (!img_pixels || !dim) {
-        return NULL;
-    }
-    uint32_t original_height = dim->height; // H
-    uint32_t original_width = dim->width;   // W
+bmp_pixel **transpose_matrix(bmp_pixel **img_pixels, const struct img_dim *dim)
+{
+	if (!img_pixels || !dim) {
+		return NULL;
+	}
+	uint32_t original_height = dim->height; // H
+	uint32_t original_width = dim->width; // W
 
-    if (original_height == 0 || original_width == 0) {
-        return NULL; 
-    }
+	if (original_height == 0 || original_width == 0) {
+		return NULL;
+	}
 
-    bmp_pixel **transposed_matrix = bmp_img_pixel_alloc(original_width, original_height); // Allocate W rows, H columns
-    if (!transposed_matrix) {
-        return NULL;
-    }
+	bmp_pixel **transposed_matrix = bmp_img_pixel_alloc(original_width, original_height); // Allocate W rows, H columns
+	if (!transposed_matrix) {
+		return NULL;
+	}
 
-    for (uint32_t y = 0; y < original_height; ++y) { // Iterate rows of original (0 to H-1)
-        if (!img_pixels[y]) {
-             bmp_img_pixel_free(transposed_matrix, dim); // Free using the height it was allocated with (W)
-             return NULL;
-        }
-        for (uint32_t x = 0; x < original_width; ++x) { 
-            transposed_matrix[x][y] = img_pixels[y][x];
-        }
-    }
+	for (uint32_t y = 0; y < original_height; ++y) { // Iterate rows of original (0 to H-1)
+		if (!img_pixels[y]) {
+			bmp_img_pixel_free(transposed_matrix, dim); // Free using the height it was allocated with (W)
+			return NULL;
+		}
+		for (uint32_t x = 0; x < original_width; ++x) {
+			transposed_matrix[x][y] = img_pixels[y][x];
+		}
+	}
 
-    return transposed_matrix; 
+	return transposed_matrix;
 }
-
