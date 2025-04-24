@@ -32,18 +32,18 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 
 	setup_status = mpi_allocate_local_buffers(ctx, comm_data, local_data);
 	if (setup_status != 0) {
+		log_error("Failed to allocate buffers");
 		MPI_Abort(MPI_COMM_WORLD, 1);
 		return -1;
 	}
-	log_debug("Successfully allocated all buffers");
 
-	my_recv_size_scatter = (int)(comm_data->send_num_rows * comm_data->row_stride_bytes);
+	my_recv_size_scatter = (int)(comm_data->send_num_rc * comm_data->row_stride_bytes); // scatterv requires int type
 	if (my_recv_size_scatter <= 0) {
-		log_warn("Rank %d: Calculated zero receive size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->send_num_rows);
-		my_recv_size_scatter = (comm_data->send_num_rows == 0) ? 0 : 1;
+		log_warn("Rank %d: Calculated zero receive size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->send_num_rc);
+		my_recv_size_scatter = (comm_data->send_num_rc == 0) ? 0 : 1;
 	}
 
-	log_debug("Rank %d: Scattering. Expecting %d bytes (%u rows).", ctx->rank, my_recv_size_scatter, comm_data->send_num_rows);
+	log_debug("Rank %d: Scattering. Expecting %d bytes (%u rows).", ctx->rank, my_recv_size_scatter, comm_data->send_num_rc);
 
 	mpi_rc = MPI_Scatterv(global_send_buffer, // buffer with continuous image we are scattering from
 			      comm_arrays->sendcounts, // number of items we are seding for each proc
@@ -57,9 +57,8 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
 
 	log_trace("Finished ScatterV\n");
 
-	if (ctx->rank == 0) {
+	if (ctx->rank == 0)
 		free(global_send_buffer);
-	}
 
 	if (mpi_rc != MPI_SUCCESS) {
 		log_error("Rank %d: MPI_Scatterv failed with code %d.", ctx->rank, mpi_rc);
@@ -76,11 +75,12 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 	int8_t mpi_rc = MPI_SUCCESS;
 	int8_t unpack_status = 0;
 	int my_send_size_gather = 0;
+	size_t i = 0;
 
 	if (ctx->rank == 0) {
 		size_t total_gathered_size = 0;
 		if (comm_arrays->recvcounts) { // Check pointer validity
-			for (int8_t i = 0; i < ctx->size; ++i) {
+			for (i = 0; i < ctx->size; ++i) {
 				total_gathered_size += (size_t)comm_arrays->recvcounts[i];
 			}
 		}
@@ -95,16 +95,16 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 		}
 	}
 
-	my_send_size_gather = (int)(comm_data->my_num_rows * comm_data->row_stride_bytes);
-	if (my_send_size_gather <= 0 && comm_data->my_num_rows > 0) {
-		log_warn("Rank %d: Calculated zero send size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->my_num_rows);
+	my_send_size_gather = (int)(comm_data->my_num_rc * comm_data->row_stride_bytes);
+	if (my_send_size_gather <= 0 && comm_data->my_num_rc > 0) {
+		log_warn("Rank %d: Calculated zero send size for non-zero rows (%u). Setting to 1.", ctx->rank, comm_data->my_num_rc);
 		my_send_size_gather = 1;
 	}
-	if (my_send_size_gather <= 0 && comm_data->my_num_rows == 0) {
+	if (my_send_size_gather <= 0 && comm_data->my_num_rc == 0) {
 		my_send_size_gather = 0;
 	}
 
-	log_debug("Rank %d: Gathering. Sending %d bytes (%u rows).", ctx->rank, my_send_size_gather, comm_data->my_num_rows);
+	log_debug("Rank %d: Gathering. Sending %d bytes (%u rows).", ctx->rank, my_send_size_gather, comm_data->my_num_rc);
 
 	mpi_rc = MPI_Gatherv(local_data->output_pixels, my_send_size_gather, MPI_UNSIGNED_CHAR, global_recv_buffer, comm_arrays->recvcounts, comm_arrays->recvdispls,
 			     MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
@@ -116,7 +116,7 @@ int8_t mpi_phase_gather_data(const struct mpi_context *ctx, const struct img_com
 	}
 
 	if (ctx->rank == 0 && global_recv_buffer != NULL) {
-		unpack_status = mpi_rank0_unpack_data_from_gather(global_recv_buffer, img_data, comm_data, ctx, comm_arrays);
+		unpack_status = mpi_rank0_unpack_data(global_recv_buffer, img_data, comm_data, ctx, comm_arrays);
 		free(global_recv_buffer);
 		if (unpack_status != 0) {
 			log_error("Rank 0: Failed to unpack gathered data.");
@@ -132,12 +132,15 @@ void mpi_broadcast_metadata(struct img_comm_data *comm_data)
 {
 	uint16_t mpi_width = comm_data->dim->width;
 	uint16_t mpi_height = comm_data->dim->height;
+	uint16_t mpi_row_stride = comm_data->row_stride_bytes;
 
 	MPI_Bcast(&mpi_width, 1, MPI_UINT16_T, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&mpi_height, 1, MPI_UINT16_T, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&mpi_row_stride, 1, MPI_UINT16_T, 0, MPI_COMM_WORLD);
 
 	comm_data->dim->width = mpi_width;
 	comm_data->dim->height = mpi_height;
+	comm_data->row_stride_bytes = mpi_row_stride;
 
 	log_debug("Successfully broadcasted dim");
 }
