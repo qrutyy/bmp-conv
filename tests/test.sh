@@ -16,7 +16,8 @@ VG_PREFIX=""
 QMT_INPUT_FILES=("image1.bmp" "image2.bmp" "image3.bmp" "image4.bmp")
 RWW_COMBINATIONS=("1,1,1" "1,2,1" "2,1,2" "2,3,2" "1,3,1")
 
-if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then # shorten the args
+# shorten the args and set up specific build cfg
+if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then 
 	TP_NUM=( 3 ) 
 	MODES=("by_row" "by_column")
 	FILTERS=("gg")
@@ -29,9 +30,6 @@ if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then # 
 		VG_PREFIX="valgrind --tool=helgrind --error-exitcode=1"
 	fi
 fi
-
-make -C "$BD" clean
-make -C "$BD"
 
 compare_results() {
     local filename=$1
@@ -139,7 +137,7 @@ done
 echo -e "\nRunning mpi-mode verification tests"
 for mode in "${MPI_MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
-		make -C "$BD" run INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 BLOCK_SIZE=10 > /dev/null
+		make -C "$BD" run VALGRIND_PREFIX="" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 BLOCK_SIZE=10 > /dev/null
 
 		for pc in "${TP_NUM[@]}"; do
 			make -C "$BD" run-mpi-mode VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" MPI_NP="$pc" COMPUTE_MODE="$mode" LOG=0 
