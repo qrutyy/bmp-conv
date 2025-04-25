@@ -21,7 +21,7 @@ if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then # 
 	MODES=("by_row" "by_column")
 	FILTERS=("gg")
 	BLOCK_SIZE=("32")
-	QMT_INPUT_FILES=("imge1.bmp" "image2.bmp")
+	QMT_INPUT_FILES=("image1.bmp" "image2.bmp")
 	if [[ "$1" == "ci-memcheck" ]]; then 
 		VG_PREFIX="valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
 	fi
@@ -116,7 +116,7 @@ for mode in "${MODES[@]}"; do
 
                 # Construct the input file list for the make command
                 input_file_args=$(printf "%s " "${QMT_INPUT_FILES[@]}") # Space-separated list
-				echo $input_file_args
+				echo "$input_file_args"
 
                 make -C "$BD" run-q-mode \
                     VALGRIND_PREFIX="$VG_PREFIX" \
