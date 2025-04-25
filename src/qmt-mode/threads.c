@@ -382,9 +382,9 @@ void *writer_thread(void *arg)
 		}
 
 		if (qt_info->pargs->output_filename && strlen(qt_info->pargs->output_filename) > 0) {
-			snprintf(output_filepath, sizeof(output_filepath), "test-img/q_out_%s_%s", qt_info->pargs->output_filename, filename);
+			snprintf(output_filepath, sizeof(output_filepath), "test-img/qmt_out_%s_%s", qt_info->pargs->output_filename, filename);
 		} else {
-			snprintf(output_filepath, sizeof(output_filepath), "test-img/q_out_%s", filename);
+			snprintf(output_filepath, sizeof(output_filepath), "test-img/qmt_out_%s", filename);
 		}
 
 		if (bmp_img_write(img, output_filepath) != 0) {

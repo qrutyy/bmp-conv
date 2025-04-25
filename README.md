@@ -54,11 +54,17 @@ Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ spe
 ./bmp-conv image5.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
 ```
 
-Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
+Apply Box Blur in multi-threaded queue-based mode using "by_row" distribution (1 reader and writer thread, 2 worker threads): 
 ```bash
-./bmp-conv -queue-mode image4.bmp image4.bmp image4.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
+./bmp-conv -queue-mode image1.bmp image2.bmp image3.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
 ```
-add queue-mode example
+
+Apply Emboss filter in MPI mode using "by_column" distribution (4 processes):
+```bash
+mpirun -np 4 ./bmp-conv-mpi -mpi-mode image5.bmp --mode=by_column --filter=em --block=5 --threadnum=1
+```
+
+*Additionally, to shorten the calls - check Makefile targets (etc. run, run-mpi-mode...)*
 
 ### Testing
 For future performance analysis of mutlithreaded mode - shell script for benchmarking and plot gen were implemented. At first - install dependencies (see [Benchmark-setup](https://github.com/qrutyy/bmp-conv/blob/main/Benchmark-setup.md))To execute tests - simply run:
@@ -71,9 +77,9 @@ For future performance analysis of mutlithreaded mode - shell script for benchma
 ./tests/q-mode-benchmark.sh
 ```
 
-To test the correctness of multithreaded part - use:
+To test the correctness of multithreaded part - use (add options for better analysis, see *workflows/analysis.yml*):
 ```
-./tests/test.sh
+./tests/test.sh [-ci] [-ci-memcheck] [-ci-helgrind]
 ```
 
 ### Logs
@@ -85,7 +91,7 @@ Queued mode logging saves blocking time for `queue_pop` and `queue_push`, and ex
 ```
 <LOG_TAG> <TIME>
 ```
-, where **LOG_TAG = <QPOP|QPUSH|READER|WRITER|WORKER>**
+, where **LOG_TAG = < QPOP | QPUSH | READER | WRITER | WORKER >**
 ## License
 
 Distributed under the [GPL-3.0 License](https://github.com/qrutyy/bmp-conv/blob/main/LICENSE). 
