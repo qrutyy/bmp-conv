@@ -207,7 +207,6 @@ static double run_queue_mode(struct filter_mix *filters)
 	end_time = get_time_in_seconds();
 
 	free_qthread_resources(qt_info);
-	free(qt_info);
 
 	log_info("Queue mode finished in %.6f seconds.", end_time - start_time);
 	return end_time - start_time;

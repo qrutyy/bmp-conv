@@ -48,7 +48,6 @@ static void *sthread_function(void *arg)
 	}
 
 exit:
-	free(th_spec);
 	return NULL;
 }
 
@@ -62,7 +61,6 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 
 	th = malloc(threadnum * sizeof(pthread_t));
 	if (!th) {
-		free(th);
 		goto mem_err;
 	}
 
@@ -86,6 +84,7 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 	for (i = 0; i < (size_t)threadnum; i++) {
 		if (pthread_create(&th[i], NULL, sthread_function, th_spec[i]) != 0) {
 			log_error("Failed to create a thread");
+			free(th_spec[i]->st_gen_info);
 			free(th_spec[i]);
 			create_error = 1;
 			threadnum = i;
@@ -98,6 +97,8 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 			log_error("Failed to join a thread");
 			break;
 		}
+		free(th_spec[i]->st_gen_info);
+		free(th_spec[i]);
 	}
 
 	end_time = get_time_in_seconds();

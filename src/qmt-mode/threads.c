@@ -312,7 +312,6 @@ void *worker_thread(void *arg)
 		} else {
 			queue_push(qt_info->output_q, img_result, filename);
 			log_debug("Worker: Pushed result for '%s' to output queue.", (filename ? filename : "N/A"));
-			filename = NULL;
 			img_result = NULL;
 		}
 
@@ -322,8 +321,6 @@ void *worker_thread(void *arg)
 		}
 
 		worker_cleanup_image_resources(img, th_spec);
-		if (filename)
-			free(filename);
 	}
 
 	log_debug("Worker: thread finished.");
