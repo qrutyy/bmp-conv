@@ -28,4 +28,5 @@ struct img_queue {
 
 void queue_push(struct img_queue *q, bmp_img *img, char *filename);
 void queue_init(struct img_queue *q, size_t max_mem);
+void queue_destroy(struct img_queue *q);
 bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files);

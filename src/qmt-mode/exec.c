@@ -195,6 +195,7 @@ void join_qthreads(struct qthreads_gen_info *qt_info)
 	log_info("All threads joined.");
 }
 
+
 /**
  * Frees all memory allocated for thread management structures, including the
  * arrays holding thread IDs and the main qt_info structure itself.
@@ -219,6 +220,9 @@ void free_qthread_resources(struct qthreads_gen_info *qt_info)
 	free(qt_info->wot_info);
 	free(qt_info->ret_info);
 	free(qt_info->wrt_info);
+
+	queue_destroy(qt_info->input_q);
+	queue_destroy(qt_info->output_q);
 
 	free(qt_info);
 }

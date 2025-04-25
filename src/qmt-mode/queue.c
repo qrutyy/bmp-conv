@@ -62,6 +62,17 @@ void queue_init(struct img_queue *q, size_t max_mem)
 }
 
 /**
+ * Destroys the initialised primitives for queue-func (mutex and cond_vars).
+ *
+ * @param q A pointer to the img_queue structure to be initialized.
+ */
+void queue_destroy(struct img_queue *q) {
+	pthread_mutex_destroy(&q->mutex);
+	pthread_cond_destroy(&q->cond_non_full);
+	pthread_cond_destroy(&q->cond_non_empty);
+}
+
+/**
  * Pushes an image and its associated filename onto the thread-safe queue.
  * Blocks if the queue is full (either by item count or estimated memory usage)
  * until space becomes available. Estimates image memory usage before adding.
@@ -133,6 +144,10 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename)
  * expected files have been processed (based on written_files counter).
  * Returns NULL if the queue remains empty after timeout and all files are done,
  * or if a signal indicates completion. Allocates memory for the returned filename.
+ *
+ * !NOTE: in CI (Helgrind analysis) you may have noticed an error: 
+ * "Thread #?: pthread_cond{signal,broadcast}: dubious: associated lock is not held by any thread"
+ * Error indicates, that mutex inside queue_pop wasn't held before pthread_cond_timedwait was called. Thats obviously false 
  *
  * @param q A pointer to the img_queue structure.
  * @param filename A pointer to a char pointer (`char **`). On success, this will be updated to point to a newly allocated string containing the filename. The caller is responsible for freeing this memory.

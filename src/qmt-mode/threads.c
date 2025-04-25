@@ -73,7 +73,7 @@ void *reader_thread(void *arg)
 	pthread_barrier_wait(qt_info->reader_barrier);
 
 	log_debug("Reader: Barrier passed. Sending termination signals.");
-	for (i = 0; i < (size_t)(qt_info->pargs->wot_count + 1); i++) {
+	for (i = 0; i < (size_t)(qt_info->pargs->wot_count); i++) {
 		empty_img = calloc(1, sizeof(bmp_img));
 		if (empty_img) {
 			queue_push(qt_info->input_q, empty_img, NULL);
@@ -253,12 +253,12 @@ static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spe
 	}
 
 	if (th_spec) {
-		if (th_spec->img) {
+		if (th_spec->img) 
 			free(th_spec->img);
-		}
-		if (th_spec->dim) {
+		if (th_spec->dim) 
 			free(th_spec->dim);
-		}
+		if (th_spec->st_gen_info)
+			free(th_spec->st_gen_info);
 		free(th_spec);
 	}
 }
@@ -406,9 +406,6 @@ void *writer_thread(void *arg)
 			break;
 		}
 	}
-
-	log_debug("Writer: signaling non-empty just in case others are waiting.");
-	pthread_cond_signal(&qt_info->output_q->cond_non_empty);
 
 	if (filename)
 		free(filename);
