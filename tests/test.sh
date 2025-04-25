@@ -7,8 +7,9 @@ BD="$BASEDIR"
 IMG_FOLDER="$BD/test-img/"
 
 TP_NUM=(2 3 5 8) 
-MODES=("by_row" "by_column" "by_grid")
-FILTERS=( "bb" "gb" "em" "mb" "mg" "gg" "bo")
+MODES=("by_row" "by_column" "by_pixel" "by_grid")
+MPI_MODES=("by_row" "by_column")
+FILTERS=( "gg" "bb" "gb" "em" "mb" "mg" "gg" "bo")
 TEST_FILE="image5.bmp"
 BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
 
@@ -81,14 +82,15 @@ echo -e "\nRunning queue-mode verification tests"
 # TODO
 
 echo -e "\nRunning mpi-mode verification tests"
-for fil in "${FILTERS[@]}"; do
-	make -C "$BD" run INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=2 LOG=0 BLOCK_SIZE=10 > /dev/null
+for mode in "${MPI_MODES[@]}"; do
+	for fil in "${FILTERS[@]}"; do
+		make -C "$BD" run INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=2 LOG=0 BLOCK_SIZE=10 > /dev/null
 
-	for pc in "${TP_NUM[@]}"; do
-		make -C "$BD" run-mpi-mode INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" MPI_NP="$pc" LOG=0 > /dev/null 
+		for pc in "${TP_NUM[@]}"; do
+			make -C "$BD" run-mpi-mode INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" MPI_NP="$pc" COMPUTE_MODE="$mode" LOG=0 
 
-		echo -e "Comparing mpi with $pc processes and $fil filter\n"
-		compare_results "$TEST_FILE" "mpi"
+			echo -e "Comparing mpi with $pc processes and $fil filter\n"
+			compare_results "$TEST_FILE" "mpi"
+		done
 	done
 done
-
