@@ -3,7 +3,8 @@ SHELL=/bin/sh
 # === Compiler and Flags ===
 CC = gcc
 MPICC = mpicc
-CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -O3 -DNDEBUG
+CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -DNDEBUG -O3
+
 MPICFLAGS = $(CFLAGS) -DUSE_MPI -DLOG_USE_COLOR
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
 LDLIBS = -lm 
@@ -22,7 +23,7 @@ SRCS_NO_MPI := bmp-conv.c utils/args-parse.c utils/filters.c utils/threads-gener
          qmt-mode/exec.c qmt-mode/queue.c qmt-mode/threads.c \
          log.c \
          libbmp.c
-SRCS_MPI := $(SRCS_NO_MPI) mpi-mode/exec.c mpi-mode/utils.c mpi-mode/row-compute.c mpi-mode/rank0-proc.c mpi-mode/filter-comp.c mpi-mode/data-transfer.c
+SRCS_MPI := $(SRCS_NO_MPI) mpi-mode/exec.c mpi-mode/utils.c mpi-mode/phases.c mpi-mode/rank0-proc.c mpi-mode/filter-comp.c mpi-mode/data-transfer.c
 
 BUILD_DIR_NO_MPI := build/obj_no_mpi
 BUILD_DIR_MPI := build/obj_mpi
