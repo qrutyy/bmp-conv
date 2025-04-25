@@ -37,7 +37,7 @@ jobs:
 
     - name: Compile with AddressSanitizer + UndefinedBehaviorSanitizer
       run: |
-        make build-f CFLAGS="-g -Wall -Wextra -pthread -fsanitize=address,undefined" LDFLAGS="-fsanitize=address,undefined"
+        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=address,undefined" LDFLAGS="-fsanitize=address,undefined"
 
     - name: Run Tests with ASan + UBSan
       # It will abort (and fail the step) if sanitizers detect errors.
@@ -46,7 +46,7 @@ jobs:
 
     - name: Compile with ThreadSanitizer
       run: |
-        make build-f CFLAGS="-g -Wall -Wextra -pthread -fsanitize=thread" LDFLAGS="-fsanitize=thread"
+        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=thread" LDFLAGS="-fsanitize=thread"
 
     - name: Run Tests with TSan
       # Run the normal test script with the TSan-instrumented binary.

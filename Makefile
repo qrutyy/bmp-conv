@@ -11,7 +11,7 @@ LDLIBS = -lm
 
 # === Project Structure ===
 TARGET_BASE_NAME := bmp-conv
-TARGET_NO_MPI := $(TARGET_BASE_NAME)-no-mpi
+TARGET_NO_MPI := $(TARGET_BASE_NAME)
 TARGET_MPI := $(TARGET_BASE_NAME)-mpi
 
 SRC_DIRS := src src/utils src/st-mode src/mt-mode src/qmt-mode src/mpi-mode logger libbmp
@@ -43,7 +43,7 @@ OUTPUT_FILE ?= "" # Default to empty, let the program handle it
 LOG ?= 1
 RWW_MIX ?= 1,1,1
 MPI_NP ?= 2
-VALGRIND_PREFIX ?= 
+VALGRIND_PREFIX ?= "" 
 
 # === Build Targets ===
 .DEFAULT_GOAL := all
