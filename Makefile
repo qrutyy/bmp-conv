@@ -43,6 +43,7 @@ OUTPUT_FILE ?= "" # Default to empty, let the program handle it
 LOG ?= 1
 RWW_MIX ?= 1,1,1
 MPI_NP ?= 2
+VALGRIND_PREFIX ?= 
 
 # === Build Targets ===
 .DEFAULT_GOAL := all
@@ -88,7 +89,7 @@ MPI_RUN_ARGS := $(BASE_RUN_ARGS) -mpi-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --
 # Run the program with standard arguments
 run: $(TARGET_NO_MPI)
 	@echo "\nRunning: ./$(TARGET_NO_MPI) $(RUN_ARGS)"
-	./$(TARGET_NO_MPI) $(RUN_ARGS)
+	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_ARGS)
 
 # Run specifically on macOS E-cores
 run-mac-e-cores: $(TARGET_NO_MPI)
@@ -102,12 +103,12 @@ run-mac-p-cores: $(TARGET_NO_MPI)
 
 run-q-mode: $(TARGET_NO_MPI)
 	@echo "\nRunning Queue Mode: ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)"
-	./$(TARGET_NO_MPI) $(RUN_Q_ARGS)
+	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)
 
 # Run the MPI target using mpirun
 run-mpi-mode: $(TARGET_MPI)
 	@echo "\nRunning MPI mode (NP=$(MPI_NP)): mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)"
-	mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
+	$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
 
 build-f: $(TARGET_NO_MPI) $(TARGET_MPI)
 	rm -rf build/
