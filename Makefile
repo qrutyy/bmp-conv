@@ -53,7 +53,7 @@ all: $(TARGET_NO_MPI) $(TARGET_MPI)
 $(TARGET_NO_MPI): $(OBJS_NO_MPI)
 	@echo "\nLinking Non-MPI $@..."
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
-	@echo "Build complete: $(TARGET_NO_MPI)"
+	@echo -e "\n=== BUILD COMPLETE: $(TARGET_NO_MPI) ===\n"
 
 $(BUILD_DIR_NO_MPI)/%.o: %.c | $(BUILD_DIR_NO_MPI)
 	@echo "\nCompiling Non-MPI $< -> $@"
@@ -67,7 +67,7 @@ $(BUILD_DIR_NO_MPI):
 $(TARGET_MPI): $(OBJS_MPI)
 	@echo "\nLinking MPI $@..."
 	$(MPICC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
-	@echo "Build complete: $(TARGET_MPI)"
+	@echo -e "\n=== BUILD COMPLETE: $(TARGET_MPI) ===\n"
 
 $(BUILD_DIR_MPI)/%.o: %.c | $(BUILD_DIR_MPI)
 	@echo "\nCompiling MPI $< -> $@"
@@ -110,7 +110,7 @@ run-mpi-mode: $(TARGET_MPI)
 	@echo "\nRunning MPI mode (NP=$(MPI_NP)): mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)"
 	$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
 
-build-f: $(TARGET_NO_MPI) $(TARGET_MPI)
+build-f: 
 	rm -rf build/
 	make
 

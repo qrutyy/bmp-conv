@@ -28,7 +28,7 @@ for mode in "${MODES[@]}"; do
 	for mix in "${QTHREADSMIX[@]}"; do 
 		rm -rf "$SD/queue-timings.dat"
 		for i in $(seq 1 "$RUN_NUM"); do
-			make -C "$BD" run-q-mode VALGRIND_PREFIX="" COMPUTE_MODE="$mode" INPUT_TF="$input" FILTER_TYPE=gg BLOCK_SIZE=5 RWW_MIX="$mix"
+			make -C "$BD" run-q-mode VALGRIND_PREFIX="" COMPUTE_MODE="$mode" INPUT_TF="$input" FILTER_TYPE=gg BLOCK_SIZE=15 RWW_MIX="$mix"
 		done
 
 		python3 "$SD/qmt-plots.py" --mix="$mix"
