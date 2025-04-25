@@ -3,12 +3,6 @@ name: Code Analysis (Build, Valgrind, Sanitizers)
 on:
   # if not triggered on PR - trigger manually, that was made to avoid workflow duplication
   push:
-    branches: [ main ]
-    paths:
-      - '**/*.c'
-      - '**/*.h'
-      - 'Makefile'
-      - 'tests/**'
   workflow_dispatch:
 
 jobs:

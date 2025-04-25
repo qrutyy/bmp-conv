@@ -3,7 +3,6 @@ name: Linters Check
 on:
   # if not triggered on PR - trigger manually, that was made to avoid workflow duplication
   push:
-    branches
   workflow_dispatch:
     paths:
       - '**/*.c'
