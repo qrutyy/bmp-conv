@@ -22,15 +22,17 @@
 #define QT_LOG_FILE_PATH "tests/queue-timings.dat"
 
 enum LOG_TAG { QPOP, QPUSH, READER, WORKER, WRITER };
+enum compute_mode { BY_ROW, BY_COLUMN, BY_PIXEL, BY_GRID };
+extern const char *valid_modes[];
 
 void swap(int *a, int *b);
 int selectKth(int *data, int s, int e, int k);
 
 double get_time_in_seconds(void);
-const char *mode_to_str(int mode);
+const char *compute_mode_to_str(enum compute_mode);
 const char *log_tag_to_str(enum LOG_TAG tag);
 
-void qt_write_logs(double result_time, enum LOG_TAG tag);
+void qt_write_logs(double result_time, enum LOG_TAG tag, const char* compute_mode_str);
 void st_write_logs(struct p_args *args, double result_time);
 
 void set_wait_time(struct timespec *wait_time);

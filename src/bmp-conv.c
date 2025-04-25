@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 	struct filter_mix *filters = NULL;
 	int return_code = 0;
 
-	log_set_quiet(true);
+	log_set_quiet(true); // set false for default usage, true - for benchmarking.
 	log_set_level(LOG_TRACE);
 
 	args = malloc(sizeof(struct p_args));

@@ -12,6 +12,7 @@
 #include <limits.h>
 
 const char *valid_tags[] = { "QPOP", "QPUSH", "READER", "WORKER", "WRITER", NULL };
+const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid" };
 
 /**
  * Swaps the values of two integers using pointers. Takes pointers to the integers
@@ -72,6 +73,13 @@ double get_time_in_seconds(void)
 	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
 }
 
+const char *compute_mode_to_str(enum compute_mode mode) {
+	if ((size_t)mode <= 3) {
+		return valid_modes[mode];
+	}
+	return "unknown";
+}
+
 /**
  * Converts a log tag enum value `tag` to its string representation based on
  * the `valid_tags` array. Returns a constant string representation of the tag,
@@ -91,14 +99,18 @@ const char *log_tag_to_str(enum LOG_TAG tag)
  * `tag` (enum LOG_TAG) identifying the operation being timed.
  * Errors opening the file are printed to stderr. Returns void.
  */
-void qt_write_logs(double result_time, enum LOG_TAG tag)
+void qt_write_logs(double result_time, enum LOG_TAG tag, const char* compute_mode_str)
 {
 	FILE *file = NULL;
 	const char *log_tag_str = log_tag_to_str(tag);
 
-	file = fopen(QT_LOG_FILE_PATH, "a");
+	// Если compute_mode_str не передан, используем "unknown"
+	const char *mode_str = (compute_mode_str && strlen(compute_mode_str) > 0) ? compute_mode_str : "unknown";
+
+	file = fopen(QT_LOG_FILE_PATH, "a"); // Используйте QT_LOG_FILE_PATH
 	if (file) {
-		fprintf(file, "%s %.6f\n", log_tag_str, result_time);
+        // Записываем ТРИ поля: РЕЖИМ ТЕГ ВРЕМЯ
+		fprintf(file, "%s %s %.6f\n", mode_str, log_tag_str, result_time);
 		fclose(file);
 	} else {
 		log_error("Error: could not open queue timing results file '%s' for appending.\n", QT_LOG_FILE_PATH);
@@ -120,7 +132,7 @@ void st_write_logs(struct p_args *args, double result_time)
 		return;
 
 	file = fopen(ST_LOG_FILE_PATH, "a");
-	const char *mode_str = (args->threadnum == 1 && args->compute_mode < 0) ? "none" : mode_to_str(args->compute_mode);
+	const char *mode_str = (args->threadnum == 1 && args->compute_mode < 0) ? "none" : compute_mode_to_str(args->compute_mode);
 	const char *filter_str = args->filter_type ? args->filter_type : "unknown";
 
 	if (file) {

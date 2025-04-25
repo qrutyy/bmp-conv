@@ -9,7 +9,6 @@
 #include "../../logger/log.h"
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
-const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL };
 
 /**
  * Parses mandatory arguments shared by both normal and queue modes:
@@ -247,7 +246,7 @@ int check_mode_arg(char *mode_str)
 const char *mode_to_str(int mode)
 {
 	// Check if mode is within the valid range of indices for the array
-	if (mode >= 0 && (size_t)mode < (sizeof(valid_modes) / sizeof(valid_modes[0]) - 1)) {
+	if (mode >= 0 && (size_t)mode < 4 - 1) {
 		return valid_modes[mode];
 	}
 	if (mode == -1) {

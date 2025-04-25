@@ -78,11 +78,12 @@ void queue_destroy(struct img_queue *q) {
  * until space becomes available. Estimates image memory usage before adding.
  * Handles memory allocation for queue metadata and signals waiting consumers.
  *
- * @param q A pointer to the img_queue structure.
- * @param img A pointer to the bmp_img structure to be added. Ownership is transferred.
- * @param filename A string containing the filename associated with the image. Ownership is transferred (the pointer itself, not usually a copy). Must not be NULL (function returns early if it is).
+ * @param q - A pointer to the img_queue structure.
+ * @param img - A pointer to the bmp_img structure to be added. Ownership is transferred.
+ * @param filename - A string containing the filename associated with the image. Ownership is transferred (the pointer itself, not usually a copy). Must not be NULL (function returns early if it is).
+ * @param mode - A pointer to mode string.
  */
-void queue_push(struct img_queue *q, bmp_img *img, char *filename)
+void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char* mode)
 {
 	struct queue_img_info *iq_info = NULL;
 	size_t image_memory = 0;
@@ -124,7 +125,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename)
 	result_time = (start_block_time != 0) ? get_time_in_seconds() - start_block_time : 0;
 	if (result_time > 0) {
 		log_trace("Blocked on push for %.4f seconds.", result_time);
-		qt_write_logs(result_time, QPUSH);
+		qt_write_logs(result_time, QPUSH, mode);
 	}
 
 	q->images[q->rear] = iq_info;
@@ -156,7 +157,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename)
  * 
  * @return A pointer to the popped bmp_img structure, or NULL if the queue is empty and processing should terminate, or on error during timed wait.
  */
-bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files)
+bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files, const char *mode)
 {
 	struct queue_img_info *iqi = NULL;
 	bmp_img *img_src = NULL;
@@ -202,7 +203,7 @@ restart_wait_loop:
 	result_time = (start_block_time != 0) ? get_time_in_seconds() - start_block_time : 0;
 	if (result_time > 0) {
 		log_trace("Blocked on pop for %.4f seconds.", result_time);
-		qt_write_logs(result_time, QPOP);
+		qt_write_logs(result_time, QPOP, mode);
 	}
 
 	iqi = q->images[q->front];

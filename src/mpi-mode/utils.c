@@ -4,7 +4,6 @@
 #include "../../logger/log.h"
 #include "../../libbmp/libbmp.h"
 #include "../utils/threads-general.h"
-#include "../mt-mode/mt-types.h"
 #include "mpi-types.h"
 #include <stdint.h>
 #include <stdlib.h>

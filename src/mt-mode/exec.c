@@ -6,7 +6,6 @@
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
 #include "compute.h"
-#include "mt-types.h"
 
 uint16_t st_next_x_block = 0;
 uint16_t st_next_y_block = 0;

@@ -4,7 +4,6 @@
 #include "../../logger/log.h"
 #include "data-transfer.h"
 #include "filter-comp.h"
-#include "../mt-mode/mt-types.h"
 #include "rank0-proc.h"
 #include "utils.h"
 #include <stdint.h>

@@ -3,7 +3,6 @@
 #include "../../libbmp/libbmp.h"
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
-#include "../mt-mode/mt-types.h"
 #include "filter-comp.h"
 #include "rank0-proc.h"
 #include "data-transfer.h"

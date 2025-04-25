@@ -7,8 +7,8 @@
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
 #include "../mt-mode/compute.h"
-#include "../mt-mode/mt-types.h"
 #include "threads.h"
+#include "../utils/utils.h"
 #include "queue.h"
 
 // Global counters for tracking file progress across threads
@@ -34,9 +34,11 @@ void *reader_thread(void *arg)
 	double start_time = 0;
 	double result_time = 0;
 	size_t read_files_local = 0;
-
+	const char *mode_str = NULL;
 	log_debug("Reader thread started.");
 
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
+	
 	while (1) {
 		read_files_local = __atomic_fetch_add(&read_files, 1, __ATOMIC_ACQUIRE);
 		if (read_files_local >= qt_info->pargs->file_count) {
@@ -60,11 +62,11 @@ void *reader_thread(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
-		queue_push(qt_info->input_q, img, qt_info->pargs->input_filename[read_files_local]);
+		queue_push(qt_info->input_q, img, qt_info->pargs->input_filename[read_files_local], mode_str);
 
 		result_time = get_time_in_seconds() - start_time;
 		if (result_time > 0)
-			qt_write_logs(result_time, READER);
+			qt_write_logs(result_time, READER, mode_str);
 
 		log_debug("Reader: Pushed '%s' to input queue.", filepath);
 	}
@@ -76,7 +78,7 @@ void *reader_thread(void *arg)
 	for (i = 0; i < (size_t)(qt_info->pargs->wot_count); i++) {
 		empty_img = calloc(1, sizeof(bmp_img));
 		if (empty_img) {
-			queue_push(qt_info->input_q, empty_img, NULL);
+			queue_push(qt_info->input_q, empty_img, NULL, mode_str);
 		} else {
 			log_error("Reader Error: Failed to allocate termination signal");
 		}
@@ -97,9 +99,9 @@ void *reader_thread(void *arg)
  * 
  * @return Pointer to the bmp_img task, or NULL if queue is empty/error/termination signal.
  */
-static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr)
+static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr, const char *mode)
 {
-	bmp_img *img = queue_pop(input_q, filename_ptr, file_count, written_files_ptr);
+	bmp_img *img = queue_pop(input_q, filename_ptr, file_count, written_files_ptr, mode);
 
 	if (!img) {
 		log_info("Worker Info: queue_pop returned NULL (end of queue or error).");
@@ -281,13 +283,16 @@ void *worker_thread(void *arg)
 	double start_time = 0;
 	double result_time = 0;
 	int process_status = 0;
+	const char* mode_str = NULL;
 
 	log_debug("Worker: thread started.");
+	
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
 
 	while (1) {
 		start_time = get_time_in_seconds();
-
-		img = worker_get_task(qt_info->input_q, &filename, qt_info->pargs->file_count, &written_files);
+		
+		img = worker_get_task(qt_info->input_q, &filename, qt_info->pargs->file_count, &written_files, mode_str);
 		if (!img) {
 			log_debug("Worker: Exiting loop due to null task from queue.");
 			break;
@@ -310,14 +315,14 @@ void *worker_thread(void *arg)
 			free(img_result);
 			img_result = NULL;
 		} else {
-			queue_push(qt_info->output_q, img_result, filename);
+			queue_push(qt_info->output_q, img_result, filename, mode_str);
 			log_debug("Worker: Pushed result for '%s' to output queue.", (filename ? filename : "N/A"));
 			img_result = NULL;
 		}
 
 		result_time = get_time_in_seconds() - start_time;
 		if (result_time > 0) {
-			qt_write_logs(result_time, WORKER);
+			qt_write_logs(result_time, WORKER, mode_str);
 		}
 
 		worker_cleanup_image_resources(img, th_spec);
@@ -344,9 +349,12 @@ void *writer_thread(void *arg)
 	double start_time = 0;
 	double result_time = 0;
 	size_t current_wf_local = 0;
+	const char* mode_str = NULL;
 
 	log_debug("Writer: thread started. Expecting %d files.", qt_info->pargs->file_count);
 
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
+	
 	while (1) {
 		current_wf_local = __atomic_load_n(&written_files, __ATOMIC_ACQUIRE);
 		if (current_wf_local >= qt_info->pargs->file_count) {
@@ -356,7 +364,7 @@ void *writer_thread(void *arg)
 
 		start_time = get_time_in_seconds();
 
-		img = queue_pop(qt_info->output_q, &filename, qt_info->pargs->file_count, &written_files);
+		img = queue_pop(qt_info->output_q, &filename, qt_info->pargs->file_count, &written_files, mode_str);
 
 		if (!img) {
 			log_info("Writer: queue_pop returned NULL. Assuming end of tasks.");
@@ -392,7 +400,7 @@ void *writer_thread(void *arg)
 
 			result_time = get_time_in_seconds() - start_time;
 			if (result_time > 0)
-				qt_write_logs(result_time, WRITER);
+				qt_write_logs(result_time, WRITER, mode_str);
 		}
 
 		bmp_img_free(img);
