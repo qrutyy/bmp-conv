@@ -38,7 +38,7 @@ void *reader_thread(void *arg)
 	log_debug("Reader thread started.");
 
 	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
-	
+
 	while (1) {
 		read_files_local = __atomic_fetch_add(&read_files, 1, __ATOMIC_ACQUIRE);
 		if (read_files_local >= qt_info->pargs->file_count) {
@@ -255,9 +255,9 @@ static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spe
 	}
 
 	if (th_spec) {
-		if (th_spec->img) 
+		if (th_spec->img)
 			free(th_spec->img);
-		if (th_spec->dim) 
+		if (th_spec->dim)
 			free(th_spec->dim);
 		if (th_spec->st_gen_info)
 			free(th_spec->st_gen_info);
@@ -283,15 +283,15 @@ void *worker_thread(void *arg)
 	double start_time = 0;
 	double result_time = 0;
 	int process_status = 0;
-	const char* mode_str = NULL;
+	const char *mode_str = NULL;
 
 	log_debug("Worker: thread started.");
-	
+
 	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
 
 	while (1) {
 		start_time = get_time_in_seconds();
-		
+
 		img = worker_get_task(qt_info->input_q, &filename, qt_info->pargs->file_count, &written_files, mode_str);
 		if (!img) {
 			log_debug("Worker: Exiting loop due to null task from queue.");
@@ -349,12 +349,12 @@ void *writer_thread(void *arg)
 	double start_time = 0;
 	double result_time = 0;
 	size_t current_wf_local = 0;
-	const char* mode_str = NULL;
+	const char *mode_str = NULL;
 
 	log_debug("Writer: thread started. Expecting %d files.", qt_info->pargs->file_count);
 
 	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
-	
+
 	while (1) {
 		current_wf_local = __atomic_load_n(&written_files, __ATOMIC_ACQUIRE);
 		if (current_wf_local >= qt_info->pargs->file_count) {

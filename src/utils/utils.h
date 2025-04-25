@@ -32,7 +32,7 @@ double get_time_in_seconds(void);
 const char *compute_mode_to_str(enum compute_mode);
 const char *log_tag_to_str(enum LOG_TAG tag);
 
-void qt_write_logs(double result_time, enum LOG_TAG tag, const char* compute_mode_str);
+void qt_write_logs(double result_time, enum LOG_TAG tag, const char *compute_mode_str);
 void st_write_logs(struct p_args *args, double result_time);
 
 void set_wait_time(struct timespec *wait_time);

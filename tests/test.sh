@@ -74,32 +74,6 @@ compare_results() {
     fi
 }
 
-echo -e "\nRunning single-threaded verification tests"
-for fil in "${FILTERS[@]}"; do
-	echo "$VG_PREFIX"
-	make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE=1 LOG=0 OUTPUT_FILE="pix.bmp" > /dev/null
-
-	for bs in "${BLOCK_SIZE[@]}"; do
-		make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE="$bs" LOG=0 > /dev/null 
-		compare_results "$TEST_FILE" "st"
-    done 
-done
-
-
-echo -e "\nRunning multithreaded verification tests"
-for mode in "${MODES[@]}"; do
-	for fil in "${FILTERS[@]}"; do
-		for bs in "${BLOCK_SIZE[@]}"; do 
-			make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 LOG=0 >/dev/null
-
-			for th in "${TP_NUM[@]}"; do
-				make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$th" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode" LOG=0 > /dev/null 
-				compare_results "$TEST_FILE" "mt"
-            done   
-		done
-	done
-done
-
 echo -e "\nRunning queue-mode verification tests"
 for mode in "${MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do

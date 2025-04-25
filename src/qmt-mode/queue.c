@@ -66,7 +66,8 @@ void queue_init(struct img_queue *q, size_t max_mem)
  *
  * @param q A pointer to the img_queue structure to be initialized.
  */
-void queue_destroy(struct img_queue *q) {
+void queue_destroy(struct img_queue *q)
+{
 	pthread_mutex_destroy(&q->mutex);
 	pthread_cond_destroy(&q->cond_non_full);
 	pthread_cond_destroy(&q->cond_non_empty);
@@ -83,7 +84,7 @@ void queue_destroy(struct img_queue *q) {
  * @param filename - A string containing the filename associated with the image. Ownership is transferred (the pointer itself, not usually a copy). Must not be NULL (function returns early if it is).
  * @param mode - A pointer to mode string.
  */
-void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char* mode)
+void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *mode)
 {
 	struct queue_img_info *iq_info = NULL;
 	size_t image_memory = 0;

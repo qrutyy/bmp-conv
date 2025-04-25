@@ -73,7 +73,8 @@ double get_time_in_seconds(void)
 	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
 }
 
-const char *compute_mode_to_str(enum compute_mode mode) {
+const char *compute_mode_to_str(enum compute_mode mode)
+{
 	if ((size_t)mode <= 3) {
 		return valid_modes[mode];
 	}
@@ -99,7 +100,7 @@ const char *log_tag_to_str(enum LOG_TAG tag)
  * `tag` (enum LOG_TAG) identifying the operation being timed.
  * Errors opening the file are printed to stderr. Returns void.
  */
-void qt_write_logs(double result_time, enum LOG_TAG tag, const char* compute_mode_str)
+void qt_write_logs(double result_time, enum LOG_TAG tag, const char *compute_mode_str)
 {
 	FILE *file = NULL;
 	const char *log_tag_str = log_tag_to_str(tag);
@@ -109,7 +110,7 @@ void qt_write_logs(double result_time, enum LOG_TAG tag, const char* compute_mod
 
 	file = fopen(QT_LOG_FILE_PATH, "a"); // Используйте QT_LOG_FILE_PATH
 	if (file) {
-        // Записываем ТРИ поля: РЕЖИМ ТЕГ ВРЕМЯ
+		// Записываем ТРИ поля: РЕЖИМ ТЕГ ВРЕМЯ
 		fprintf(file, "%s %s %.6f\n", mode_str, log_tag_str, result_time);
 		fclose(file);
 	} else {
