@@ -317,13 +317,13 @@ int bmp_compare_images(const bmp_img *img1, const bmp_img *img2) {
         return 0;
     }
 
-    for (y = 0; y < height; ++y) {
+    for (y = 0; y < (size_t)height; ++y) {
         if (img1->img_pixels[y] == NULL || img2->img_pixels[y] == NULL) {
              log_error("Error: Found NULL pixel row pointer during comparison at y=%d.\n", y);
              return 1;
         }
 
-        for (x = 0; x < width; ++x) {
+        for (x = 0; x < (size_t)width; ++x) {
             p1 = &img1->img_pixels[y][x];
             p2 = &img2->img_pixels[y][x];
             if (p1->red != p2->red || p1->green != p2->green || p1->blue != p2->blue) {

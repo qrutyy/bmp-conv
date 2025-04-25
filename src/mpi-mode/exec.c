@@ -165,7 +165,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	comm_data.dim = (struct img_dim *)malloc(sizeof(struct img_dim));
 	if (!img_data.input_img || !img_data.output_img || !comm_data.dim) {
 		log_error("Rank %d: Failed to allocate top-level structs.", rank);
-		goto ext_err_f;
+		goto ext_err;
 	}
 
 	comm_data.halo_size = get_halo_size(args->filter_type, filters);
@@ -173,7 +173,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (status) {
 		if (!ctx.rank)
 			bmp_free_img_spec(&img_data);
-		goto ext_err_f;
+		goto ext_err;
 	}
 
 	orig_width = comm_data.dim->width; // saved, bc orig dim will be changed after transpose
@@ -194,7 +194,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 			img_data.input_img->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
-		goto ext_err_f;
+		goto ext_err;
 	}
 
 	status = mpi_phase_scatter_data(&ctx, &comm_data, &local_data, global_send_buffer, &comm_arrays);
@@ -206,7 +206,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 			img_data.input_img->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
-		goto ext_err_f;
+		goto ext_err;
 	}
 
 	// Rank 0: Free intermediate transposed input buffer now data is sent
@@ -228,7 +228,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (status != 0) {
 		if (ctx.rank == 0)
 			bmp_free_img_spec(&img_data); // Frees orig input and potentially gathered output
-		goto ext_err_f;
+		goto ext_err;
 	}
 
 	if (ctx.rank == 0) {
@@ -244,9 +244,6 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	return final_time;
 
 ext_err:
-	bmp_free_img_spec(&img_data);
-
-ext_err_f:
 	free(img_data.input_img);
 	free(img_data.output_img);
 	free(comm_data.dim);

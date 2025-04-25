@@ -42,15 +42,15 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 	int32_t potential_imageY_global = 0, potential_imageX_global = 0;
 
 	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || cfilter.size <= 0 || !cfilter.filter_arr) {
-		log_error("Rank ?: Invalid arguments passed to mpi_apply_filter. Skipping.");
+		log_error("Rank %u: Invalid arguments passed to mpi_apply_filter. Skipping.", rank);
 		return;
 	}
 	if (comm_data->my_num_rc == 0) {
-		log_trace("Rank ?: No rows to process in mpi_apply_filter.");
+		log_trace("Rank %u: No rows to process in mpi_apply_filter.", rank);
 		return;
 	}
 
-	log_trace("Rank ?: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", cfilter.size, comm_data->my_start_rc,
+	log_trace("Rank %u: Applying filter size %d to local region R[%u-%u) C[0-%u) (Output rows)", rank, cfilter.size, comm_data->my_start_rc,
 		  comm_data->my_start_rc + comm_data->my_num_rc, comm_data->dim->width);
 	log_debug("Filter size = %d, padding = %d", cfilter.size, padding);
 
@@ -87,7 +87,7 @@ static void mpi_apply_filter(const struct mpi_local_data *local_data, const stru
 					// log_debug("Rank %u: Matrix x:y %" PRIu32 ":%" PRIu32 ", imagex %" PRId32 ", imagey %" PRId32 ", local %" PRIu32 "", rank, filterX, filterY, imageX_global,
 					//			  imageY_global, imageY_local);
 
-					if (imageY_local >= comm_data->send_num_rc || imageY_local < 0) {
+					if (imageY_local >= comm_data->send_num_rc) {
 						log_error("Rank %u: Calc local input row %" PRIu32 " (from global %d) OUT OF BOUNDS [0, %u) for output pixel (%u, %u). Aborting.",
 							  comm_data->my_start_rc, imageY_local, imageY_global, comm_data->send_num_rc, global_y, x);
 						MPI_Abort(MPI_COMM_WORLD, 1);
@@ -137,7 +137,6 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 	int32_t filterX = 0, filterY = 0;
 	int32_t imageX_global = 0, imageY_global = 0;
 	uint32_t imageY_local = 0;
-	uint32_t global_y = 0;
 	uint8_t n = 0;
 	const unsigned char *input_row_base = NULL;
 	const unsigned char *input_pixel_ptr = NULL;
@@ -165,7 +164,6 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 
 	for (y = 0; y < comm_data->my_num_rc; y++) {
 		output_row_base = local_data->output_pixels + y * row_stride;
-		global_y = comm_data->my_start_rc + y;
 
 		for (x = 0; x < width; x++) {
 			n = 0; // Index for neighborhood arrays

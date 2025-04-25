@@ -10,11 +10,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-static inline void mpi_verify_sg_data_size(const int8_t *sendcounts, const struct mpi_context *ctx, int8_t scatter_size)
-{
-	assert(sendcounts[ctx->rank] == scatter_size);
-}
-
 int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
 			      const struct mpi_comm_arr *comm_arrays)
 {

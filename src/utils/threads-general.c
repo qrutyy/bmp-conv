@@ -75,6 +75,7 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 
 	struct sthreads_gen_info *st_gen_info = malloc(sizeof(struct sthreads_gen_info));
 	if (!st_gen_info) {
+		free(th_spec);
 		log_error("Failed to allocate memory for thread_spec.");
 		return NULL;
 	}

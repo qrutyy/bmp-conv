@@ -40,7 +40,7 @@ double execute_st_computation(struct img_dim *dim, struct img_spec *img_spec, st
 	filter_part_computation(spec, args->filter_type, filters);
 
 	end_time = get_time_in_seconds();
-
+	free(spec->st_gen_info);
 	free(spec);
 
 	return end_time - start_time;

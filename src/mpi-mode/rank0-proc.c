@@ -48,7 +48,6 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 	double end_time = 0.0;
 	double total_time = -1.0;
 	char output_filepath[256] = { 0 };
-	uint32_t swap = 0;
 
 	if (ctx->rank == 0) {
 		end_time = MPI_Wtime();
