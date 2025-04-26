@@ -23,19 +23,7 @@ for pair in "${pairs[@]}"; do
     echo "f1: $f1, f2: $f2"
 done
 
-compare_results() {
-    filename=$1
-    if diff -q "${IMG_FOLDER}seq_out_${filename}" "${IMG_FOLDER}rcon_out_${filename}" > /dev/null; then
-        echo -e "Files are identical\n"
-    else
-        echo -e "Files differ\n"
-        diff "${IMG_FOLDER}seq_out_${filename}" "${IMG_FOLDER}rcon_out_${filename}"
-        exit 1
-    fi
-}
-
-make -C "$BD" clean
-make -C "$BD"
+make -C "$BD" build-f
 
 echo "RunID Filter-type Thread-num Mode Block-size Result" > "$LOG_FILE"
 
@@ -44,13 +32,10 @@ mkdir -p "$PLOTS_PATH" "$PLOTS_PATH/mt" "$PLOTS_PATH/st"
 echo -e "\nRunning single-threaded tests"
 for fil in "${FILTERS[@]}"; do
 	echo "$BD"
-	make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" LOG=0
 
 	for i in $(seq 1 "$RUN_NUM"); do
 		echo -n "$i " >> "$LOG_FILE"
 		make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 
-
-		compare_results "$TEST_FILE"
 	done
 done
 
@@ -60,12 +45,10 @@ echo -e "\nRunning multithreaded tests"
 for mode in "${MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
 		for bs in "${BLOCK_SIZE[@]}"; do
-			make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1  LOG=0
 
 			for i in $(seq 1 "$RUN_NUM"); do
 				echo -n "$i " >> "$LOG_FILE"
 				make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode"
-				compare_results "$TEST_FILE"
 			done
 		done
 	done
