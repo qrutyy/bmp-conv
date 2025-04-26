@@ -11,7 +11,7 @@ RUN_NUM=25
 TEST_FILE="image6.bmp"
 FILTER="gg"
 BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
-PROC_NUMS=("2" "4" "6" "8")
+PROC_NUMS=("2" "3" "4" "5" "6" "7" "8")
 MODES=("by_row" "by_column")
 
 make -C "$BD" build-f 
