@@ -7,13 +7,19 @@ import os
 import sys
 from pathlib import Path
 import warnings
+import traceback # For detailed error reporting
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR
+try:
+    # Assumes the script is being run directly
+    SCRIPT_DIR = Path(__file__).resolve().parent
+except NameError:
+    # Fallback for interactive environments (like Jupyter)
+    SCRIPT_DIR = Path('.').resolve()
+    print(f"Warning: '__file__' not defined. Assuming script directory is: {SCRIPT_DIR}")
 
+BASE_DIR = SCRIPT_DIR 
 LOG_FILE = BASE_DIR / "timing-results.dat"
-
-PLOTS_PATH = BASE_DIR / "plots" / "mpi"
+PLOTS_PATH = BASE_DIR / "plots" / "mpi" 
 
 plt.rcParams.update(
     {
@@ -22,177 +28,169 @@ plt.rcParams.update(
         "xtick.labelsize": 11,
         "ytick.labelsize": 12,
         "legend.fontsize": 10,
-        "figure.figsize": (18, 10),
+        "figure.figsize": (18, 10), # Adjusted for potentially many bars
         "figure.dpi": 150,
     }
 )
 try:
     colors = matplotlib.colormaps["tab20"].colors
 except AttributeError:
-    print("Warning: Using deprecated plt.cm.get_cmap. Please update Matplotlib.")
+    print("Warning: Using deprecated plt.cm.get_cmap. Consider updating Matplotlib.")
+    # Fallback for older Matplotlib versions
     colors = plt.cm.get_cmap("tab20").colors
 
 
-print(f"Attempting to read potentially inconsistent MPI data from: {LOG_FILE}")
+print(f"Running Python plotting script")
+print(f"Attempting to read MPI data from: {LOG_FILE}")
 
 if not LOG_FILE.is_file():
     print(f"Error: Log file not found at '{LOG_FILE}'")
     sys.exit(1)
 
-final_col_names = ["RunID", "Filter", "Process-num", "Mode", "Block-size", "Result"]
-# Define temporary names for reading max 6 columns
-read_col_names = ["col0", "col1", "col2", "col3", "col4", "col5"]
+final_col_names = ["RunID", "Process-num", "Filter", "ThreadNum_logged", "Mode", "Block-size", "Result"]
+
+df_final = pd.DataFrame() # Initialize df_final in outer scope
 
 try:
-    # Read the file, *ignoring* the actual header line, expect up to 6 fields
-    # Use 'warn' for bad lines initially to see if there's other garbage
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        df_raw = pd.read_csv(
-            LOG_FILE,
-            sep=r"\s+",
-            header=None,  # Treat first line as data for now
-            names=read_col_names,  # Expect max 6 columns
-            skiprows=1,  # Skip the actual header row in the file
-            skipinitialspace=True,
-            comment="#",
-            skip_blank_lines=True,
-            engine="python",
-            on_bad_lines="warn",  # Warn about lines with wrong number of fields
-        )
-        if w:
-            print("\n--- Warnings during initial read ---")
-            for warning in w:
-                print(warning.message)
-            print("----------------------------------\n")
+    print("\n--- Reading and Parsing Log File ---")
+    df_raw = pd.read_csv(
+        LOG_FILE,
+        sep=r"\s+",           # Use regex for whitespace separation
+        header=None,         # No header row in the data itself
+        names=final_col_names,# Use the defined column names
+        skiprows=1,          # Skip the actual header line in the file
+        skipinitialspace=True,
+        comment="#",         # Ignore lines starting with #
+        skip_blank_lines=True,
+        engine="python",     # Good for regex separator
+        # on_bad_lines="warn" # Removed, assuming consistent columns now
+    )
 
     if df_raw.empty:
-        print("Error: DataFrame is empty after loading. Check log file content.")
+        print("Error: DataFrame is empty after loading. Check log file content and parsing parameters.")
         sys.exit(1)
 
-    print(f"Read {len(df_raw)} data lines.")
+    print(f"Read {len(df_raw)} raw data lines.")
 
-    print("Reconstructing DataFrame based on field count...")
+    print("\n--- Cleaning Data ---")
 
-    # Identify rows that originally had 6 fields (col5 is not NaN)
-    has_run_id = df_raw["col5"].notna()
-
-    # Create the correctly structured DataFrame
-    df_structured = pd.DataFrame(columns=final_col_names)
-
-    # Populate rows that had RunID (6 fields)
-    df_structured["RunID"] = df_raw.loc[has_run_id, "col0"]
-    df_structured["Filter"] = df_raw.loc[has_run_id, "col1"]
-    df_structured["Process-num"] = df_raw.loc[has_run_id, "col2"]
-    df_structured["Mode"] = df_raw.loc[has_run_id, "col3"]
-    df_structured["Block-size"] = df_raw.loc[has_run_id, "col4"]
-    df_structured["Result"] = df_raw.loc[has_run_id, "col5"]
-
-    # Populate rows that were missing RunID (5 fields) - shift columns
-    # RunID is initially NaN for these rows
-    df_structured.loc[~has_run_id, "Filter"] = df_raw.loc[~has_run_id, "col0"]
-    df_structured.loc[~has_run_id, "Process-num"] = df_raw.loc[~has_run_id, "col1"]
-    df_structured.loc[~has_run_id, "Mode"] = df_raw.loc[~has_run_id, "col2"]
-    df_structured.loc[~has_run_id, "Block-size"] = df_raw.loc[~has_run_id, "col3"]
-    df_structured.loc[~has_run_id, "Result"] = df_raw.loc[~has_run_id, "col4"]
-
-    # Sort by original index to help with forward fill
-    df_structured.sort_index(inplace=True)
-
-    # Forward fill the missing RunID values
-    df_structured["RunID"].ffill(inplace=True)
-
-    # Drop rows where RunID might still be NaN (e.g., if the file started with a 5-field line)
-    initial_len = len(df_structured)
-    df_structured.dropna(subset=["RunID"], inplace=True)
-    if len(df_structured) < initial_len:
-        print(
-            f"Dropped {initial_len - len(df_structured)} rows with missing RunID after ffill."
-        )
-
-    print("Converting columns to appropriate types...")
+    print("Converting columns to appropriate numeric types...")
+    conversion_errors = False
     try:
-        # Convert RunID, Process-num, Block-size first as they should be integers
-        df_structured["RunID"] = pd.to_numeric(df_structured["RunID"]).astype(int)
-        df_structured["Process-num"] = pd.to_numeric(
-            df_structured["Process-num"]
-        ).astype(int)
-        df_structured["Block-size"] = pd.to_numeric(df_structured["Block-size"]).astype(
-            int
-        )
-        df_structured["Result"] = pd.to_numeric(df_structured["Result"])
+        # Use errors='coerce' to turn non-numeric values into NaN temporarily
+        df_raw["RunID"] = pd.to_numeric(df_raw["RunID"], errors='coerce')
+        df_raw["Process-num"] = pd.to_numeric(df_raw["Process-num"], errors='coerce')
+        # Filter and ThreadNum_logged are also numeric in the example
+        df_raw["ThreadNum_logged"] = pd.to_numeric(df_raw["ThreadNum_logged"], errors='coerce')
+        df_raw["Block-size"] = pd.to_numeric(df_raw["Block-size"], errors='coerce')
+        df_raw["Result"] = pd.to_numeric(df_raw["Result"], errors='coerce')
+
+        # Check for NaNs introduced by coercion (indicates bad data)
+        if df_raw.isnull().any().any():
+             print("Warning: Non-numeric data found during conversion. Affected rows:")
+             nan_cols = df_raw.columns[df_raw.isnull().any()].tolist()
+             print(f"Columns with NaNs: {nan_cols}")
+             print(df_raw[df_raw.isnull().any(axis=1)])
+             nan_rows = len(df_raw[df_raw.isnull().any(axis=1)])
+             df_raw.dropna(inplace=True)
+             print(f"Dropped {nan_rows} rows containing non-numeric data in expected numeric columns.")
+             conversion_errors = True # Mark that we dropped data
+
+        # Convert integer columns to int type *after* handling NaNs
+        df_raw["RunID"] = df_raw["RunID"].astype(int)
+        df_raw["Process-num"] = df_raw["Process-num"].astype(int)
+        df_raw["ThreadNum_logged"] = df_raw["ThreadNum_logged"].astype(int) # Convert new column
+        df_raw["Block-size"] = df_raw["Block-size"].astype(int)
+
         print("Type conversion successful.")
+        if conversion_errors:
+            print("(Note: Some rows were dropped due to conversion errors.)")
+
     except Exception as e:
-        print(f"Error during numeric conversion after restructuring: {e}")
-        print("Check the data structure and content after ffill.")
+        print(f"\n--- Error during numeric conversion ---")
+        print(f"Error type: {type(e)}")
+        print(f"Error message: {e}")
+        print("\nDataFrame state just before error:")
+        print(df_raw.head())
+        print(df_raw.info())
+        print("\nCheck the data file for unexpected non-numeric values in these columns.")
+        traceback.print_exc()
         sys.exit(1)
 
-    print("Dropping likely duplicate rows (those originally missing RunID)...")
-    cols_to_check_duplicates = [
-        "RunID",
-        "Filter",
-        "Process-num",
-        "Mode",
-        "Block-size",
-        "Result",
-    ]
-    initial_len = len(df_structured)
-    df_clean = df_structured.drop_duplicates(
-        subset=cols_to_check_duplicates, keep="first"
-    )
-    print(f"Dropped {initial_len - len(df_clean)} duplicate rows.")
+    print("Skipping duplicate row drop (no longer needed after removing ffill).")
 
-    df_final = df_clean.copy()  # Use df_final going forward
-
+    df_final = df_raw.copy() # Use df_final from here on
 
 except Exception as e:
-    print(f"\n--- An error occurred during file processing ---")
+    print(f"\n--- An unexpected error occurred during file processing ---")
     print(f"Error type: {type(e)}")
     print(f"Error message: {e}")
+    traceback.print_exc()
+    print("\nCheck the data file format and the script's parsing logic.")
     sys.exit(1)
 
-print("\nCleaned and Final DataFrame head:")
+if df_final.empty:
+    print("\nError: DataFrame is empty after cleaning. No data to plot. Check intermediate steps.")
+    sys.exit(1)
+
+print("\n--- Cleaned and Final DataFrame ---")
+print("Head:")
 print(df_final.head())
 print(f"\nTotal final rows: {len(df_final)}")
-if df_final.empty:
-    print("Error: DataFrame is empty after cleaning. No data to plot.")
-    sys.exit(1)
 print("Unique Process-num found:", sorted(df_final["Process-num"].unique()))
+print("Unique Modes found:", sorted(df_final["Mode"].unique()))
+print("Unique Block-sizes found:", sorted(df_final["Block-size"].unique()))
+print("Unique ThreadNum_logged found:", sorted(df_final["ThreadNum_logged"].unique()))
+print("Unique Filters found:", df_final["Filter"].unique())
 
 
-print("\nAggregating results...")
+print("\n--- Aggregating Results ---")
+df_agg = pd.DataFrame() # Initialize df_agg
 try:
+    grouping_cols = ["Process-num", "Mode", "Block-size"]
+    print(f"Grouping by: {grouping_cols}")
+
     df_agg = (
-        df_final.groupby(["Process-num", "Mode", "Block-size"])["Result"]
+        df_final.groupby(grouping_cols)["Result"]
         .agg(["mean", "std"])
-        .reset_index()
+        .reset_index() # Turn grouped indices back into columns
     )
+    # Handle cases with only one run (std will be NaN)
     df_agg["std"] = df_agg["std"].fillna(0)
+    # Rename columns for clarity
     df_agg.rename(columns={"mean": "avg_time", "std": "std_dev"}, inplace=True)
+
+    print("Aggregation successful.")
+
 except KeyError as e:
-    print(f"Error: Column {e} not found during aggregation.")
-    print("Available columns after cleaning:", df_final.columns)
+    print(f"\n--- Error during aggregation ---")
+    print(f"Error: Column '{e}' not found. This usually means a parsing/cleaning step failed.")
+    print("Available columns in df_final:", df_final.columns.tolist())
     sys.exit(1)
 except Exception as e:
-    print(f"An unexpected error occurred during data aggregation: {e}")
+    print(f"\n--- An unexpected error occurred during data aggregation ---")
+    print(f"Error type: {type(e)}")
+    print(f"Error message: {e}")
+    traceback.print_exc()
     sys.exit(1)
 
-print("\nAggregated MPI DataFrame head:")
+if df_agg.empty:
+    print("Error: Aggregated DataFrame is empty. No data to plot. Check grouping columns.")
+    sys.exit(1)
+
+print("\n--- Aggregated MPI DataFrame ---")
+print("Head:")
 print(df_agg.head())
 print(f"\nTotal aggregated rows: {len(df_agg)}")
-if df_agg.empty:
-    print("Error: Aggregated DataFrame is empty. No data to plot.")
-    sys.exit(1)
-print(
-    "Unique Process-num found in aggregated data:",
-    sorted(df_agg["Process-num"].unique()),
-)
-print("Unique Modes found:", df_agg["Mode"].unique())
+print("Unique Process-num in aggregated data:", sorted(df_agg["Process-num"].unique()))
+print("Unique Modes found:", sorted(df_agg["Mode"].unique()))
 print("Unique Block-sizes found:", sorted(df_agg["Block-size"].unique()))
 print("-" * 30)
 
 
+
 def plot_grouped_by_block_size(agg_data, base_plots_path):
+    """Generates plots where each plot shows results for a single block size."""
     unique_block_sizes = sorted(agg_data["Block-size"].unique())
     unique_modes = sorted(agg_data["Mode"].unique())
     unique_proc_nums = sorted(agg_data["Process-num"].unique())
@@ -206,18 +204,22 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
     print(f"\nGenerating plots grouped by Block Size into {plot_dir}")
 
     for bs in unique_block_sizes:
-        plot_df = agg_data[agg_data["Block-size"] == bs].copy()
+        plot_df = agg_data[agg_data["Block-size"] == bs].copy() # Filter data for this block size
         if plot_df.empty:
+            print(f"  Skipping Block Size: {bs} (no data)")
             continue
         print(f"  Plotting for Block Size: {bs}")
 
-        x = np.arange(len(unique_modes))
-        num_bars = len(unique_proc_nums)
-        total_width = 0.8
-        width = total_width / num_bars
+        # Prepare for grouped bar chart
+        x = np.arange(len(unique_modes))  # Positions for modes on x-axis
+        num_bars = len(unique_proc_nums)  # Number of bars in each group (one per proc_num)
+        total_width = 0.8                 # Total width allocated for each group of bars
+        width = total_width / num_bars    # Width of a single bar
 
-        fig, ax = plt.subplots(figsize=(max(12, 2 * len(unique_modes) * num_bars), 9))
+        # Create plot
+        fig, ax = plt.subplots(figsize=(max(12, 1.5 * len(unique_modes) * num_bars), 9)) # Dynamic width
 
+        # Iterate through each process number to create a bar within each mode group
         for i, proc_num in enumerate(unique_proc_nums):
             means = []
             stds = []
@@ -225,29 +227,33 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
                 row = plot_df[
                     (plot_df["Mode"] == mode) & (plot_df["Process-num"] == proc_num)
                 ]
+                # Use .iloc[0] safely after checking if row is empty
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
                 stds.append(row["std_dev"].iloc[0] if not row.empty else 0)
 
+            # Calculate position for this proc_num's bar within the group
             position = x - (total_width / 2) + (i + 0.5) * width
+
             ax.bar(
                 position,
                 means,
-                width * 0.95,
+                width * 0.95, # Slightly reduce width for spacing
                 yerr=stds,
                 label=f"{proc_num} procs",
-                color=colors[i % len(colors)],
-                capsize=4,
-                alpha=0.85,
+                color=colors[i % len(colors)], # Cycle through colors
+                capsize=4,   # Error bar cap size
+                alpha=0.85,  # Slight transparency
             )
 
         ax.set_xlabel("Computation Mode & Process Number")
         ax.set_ylabel("Average Execution Time (seconds)")
         ax.set_title(f"MPI Performance Comparison (Block Size: {bs})")
-        ax.set_xticks(x)
-        ax.set_xticklabels(unique_modes)
-        ax.legend(title="Process Number")
+        ax.set_xticks(x) # Set tick positions to center of groups
+        ax.set_xticklabels(unique_modes) # Set tick labels to mode names
+        ax.legend(title="Process Number", bbox_to_anchor=(1.02, 1), loc='upper left') # Move legend outside
         ax.grid(axis="y", linestyle="--", alpha=0.7)
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 0.95, 1]) # Adjust layout to make space for legend
+
 
         filename = f"mpi_perf_block_{bs}.png"
         save_path = plot_dir / filename
@@ -257,11 +263,11 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
         except Exception as e:
             print(f"    Error saving plot '{save_path}': {e}")
         finally:
-            plt.close(fig)
+            plt.close(fig) 
 
 
 def plot_grouped_by_proc_num(agg_data, base_plots_path):
-    # ... (previous code) ...
+    """Generates plots where each plot shows results for a single process number."""
     unique_block_sizes = sorted(agg_data["Block-size"].unique())
     unique_modes = sorted(agg_data["Mode"].unique())
     unique_proc_nums = sorted(agg_data["Process-num"].unique())
@@ -275,46 +281,53 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
     print(f"\nGenerating plots grouped by Process Number into {plot_dir}")
 
     for pn in unique_proc_nums:
-        plot_df = agg_data[agg_data["Process-num"] == pn].copy()
+        plot_df = agg_data[agg_data["Process-num"] == pn].copy() # Filter data for this process number
         if plot_df.empty:
+            print(f"  Skipping Process Number: {pn} (no data)")
             continue
         print(f"  Plotting for Process Number: {pn}")
 
-        x = np.arange(len(unique_modes))
-        num_bars = len(unique_block_sizes)
-        total_width = 0.8
-        width = total_width / num_bars
+        # Prepare for grouped bar chart
+        x = np.arange(len(unique_modes)) # Positions for modes on x-axis
+        num_bars = len(unique_block_sizes) # Number of bars in each group (one per block size)
+        total_width = 0.8                  # Total width allocated for each group of bars
+        width = total_width / num_bars     # Width of a single bar
 
-        fig, ax = plt.subplots(figsize=(max(12, 2 * len(unique_modes) * num_bars), 9))
+        fig, ax = plt.subplots(figsize=(max(12, 1.5 * len(unique_modes) * num_bars), 9)) # Dynamic width
 
+        # Iterate through each block size to create a bar within each mode group
         for i, bs in enumerate(unique_block_sizes):
             means = []
             stds = []
             for mode in unique_modes:
-                row = plot_df[(plot_df["Mode"] == mode) & (plot_df["Block-size"] == bs)]
+                row = plot_df[
+                    (plot_df["Mode"] == mode) & (plot_df["Block-size"] == bs)
+                    ]
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
                 stds.append(row["std_dev"].iloc[0] if not row.empty else 0)
 
+            # Calculate position for this block size's bar within the group
             position = x - (total_width / 2) + (i + 0.5) * width
+
             ax.bar(
                 position,
                 means,
-                width * 0.95,
+                width * 0.95, # Slightly reduce width for spacing
                 yerr=stds,
                 label=f"Block {bs}",
-                color=colors[i % len(colors)],
+                color=colors[i % len(colors)], # Cycle through colors
                 capsize=4,
                 alpha=0.85,
             )
 
-        ax.set_xlabel("Computation Mode & Block Size")
+        ax.set_xlabel("Computation Mode & Process Number")
         ax.set_ylabel("Average Execution Time (seconds)")
         ax.set_title(f"MPI Performance Comparison (Processes: {pn})")
         ax.set_xticks(x)
         ax.set_xticklabels(unique_modes)
-        ax.legend(title="Block Size")
+        ax.legend(title="Block Size", bbox_to_anchor=(1.02, 1), loc='upper left') # Move legend outside
         ax.grid(axis="y", linestyle="--", alpha=0.7)
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 0.95, 1]) # Adjust layout for legend
 
         filename = f"mpi_perf_proc_{pn}.png"
         save_path = plot_dir / filename
@@ -324,13 +337,16 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
         except Exception as e:
             print(f"    Error saving plot '{save_path}': {e}")
         finally:
-            plt.close(fig)
+            plt.close(fig) 
 
 
-os.makedirs(PLOTS_PATH, exist_ok=True)
+print("\n--- Generating Plots ---")
+os.makedirs(PLOTS_PATH, exist_ok=True) 
+
 if not df_agg.empty:
     plot_grouped_by_block_size(df_agg, PLOTS_PATH)
     plot_grouped_by_proc_num(df_agg, PLOTS_PATH)
-    print("\nMPI plotting script finished.")
+    print("\nMPI plotting script finished successfully.")
 else:
-    print("\nSkipping plotting as aggregated data is empty.")
+    print("\nSkipping plotting as aggregated data is empty or aggregation failed.")
+
