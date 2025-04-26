@@ -327,8 +327,6 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
             plt.close(fig)
 
 
-
-
 os.makedirs(PLOTS_PATH, exist_ok=True)
 if not df_agg.empty:
     plot_grouped_by_block_size(df_agg, PLOTS_PATH)
