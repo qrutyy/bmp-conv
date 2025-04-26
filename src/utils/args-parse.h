@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define DEFAULT_QUEUE_CAP 20
-#define DEFAULT_QUEUE_MEM_LIMIT 500 
+#define DEFAULT_QUEUE_MEM_LIMIT 500
 #pragma once
 
 // Structure for storing input arguments. Better described in README
@@ -21,8 +21,8 @@ struct p_args {
 	uint8_t wrt_count; // writer threads count
 	uint8_t ret_count; // reader threads count
 	uint8_t wot_count; // worker threads count
-	uint32_t queue_capacity; // max el count in queue 
-    size_t queue_memory_limit_mb;
+	uint32_t queue_capacity; // max el count in queue
+	size_t queue_memory_limit_mb;
 };
 
 void initialize_args(struct p_args *args_ptr);

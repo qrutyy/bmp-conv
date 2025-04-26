@@ -5,11 +5,9 @@ import pandas as pd
 import os
 import re
 
-TIMING_FILE = "tests/queue-timings.dat"  # Input: Raw timings for one mix
-SUMMARY_FILE = (
-    "tests/queue-summary-results.dat"  # Output: Aggregated results appended here
-)
-PLOTS_PATH = "./tests/plots/q-mode/"  # Output: Per-mix plots
+TIMING_FILE = "tests/queue-timings.dat"
+SUMMARY_FILE = "tests/queue-summary-results.dat"
+PLOTS_PATH = "./tests/plots/q-mode/"
 
 parser = argparse.ArgumentParser(
     description="Process timing data for a single mix and append aggregates."
@@ -21,7 +19,7 @@ parser.add_argument(
     "--no-plot",
     action="store_true",
     help="Skip generating the individual plot for this mix",
-)  # Optional flag
+)
 args = parser.parse_args()
 rww_s = args.mix.replace(",", "-")  # Format mix for filenames/titles
 
@@ -80,7 +78,7 @@ print(f"Processing data for: Mix={rww_s}, Compute Mode={compute_mode}")
 df_agg = df.groupby(["LOG_TAG"])["TIME"].agg(["mean", "std"]).reset_index()
 df_agg["std"] = df_agg["std"].fillna(0)
 # Add Mix and Compute Mode columns for the summary file
-df_agg["MIX"] = rww_s  # Use the formatted string
+df_agg["MIX"] = rww_s
 df_agg["COMPUTE_MODE"] = compute_mode
 
 print("\nAggregated Data for this run:")

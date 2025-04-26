@@ -5,10 +5,8 @@ import pandas as pd
 import os
 import re
 
-SUMMARY_FILE = (
-    "tests/queue-summary-results.dat"  # Input: Aggregated results for all mixes
-)
-PLOTS_PATH = "./tests/plots/"  # Base path for summary plots
+SUMMARY_FILE = "tests/queue-summary-results.dat"
+PLOTS_PATH = "./tests/plots/"
 
 plt.rcParams.update(
     {
@@ -24,7 +22,6 @@ plt.rcParams.update(
 # Use a colormap with more distinct colors if many mixes/tags
 colors = plt.cm.get_cmap("tab20").colors
 
-# --- Data Reading ---
 print(f"Reading summary data from: {SUMMARY_FILE}")
 try:
     df_summary = pd.read_csv(

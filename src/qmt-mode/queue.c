@@ -55,10 +55,10 @@ int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem)
 	q->max_mem_usage = max_mem;
 
 	q->images = malloc(capacity * sizeof(struct queue_img_info *));
-    if (!q->images) {
-        log_error("Failed to allocate queue image array (capacity: %u)", capacity);
-        return -1;
-    }
+	if (!q->images) {
+		log_error("Failed to allocate queue image array (capacity: %u)", capacity);
+		return -1;
+	}
 
 	pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond_non_empty, NULL);
@@ -73,7 +73,7 @@ int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem)
  */
 void queue_destroy(struct img_queue *q)
 {
-	if (!q) 
+	if (!q)
 		return;
 
 	free(q->images);
@@ -126,23 +126,22 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 		  q->capacity);
 
 	is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
-    is_arr_limit = (q->size >= q->capacity); // check limit
+	is_arr_limit = (q->size >= q->capacity); // check limit
 
-    while (is_mem_limit || is_arr_limit) {
-        if (is_arr_limit) {
-            log_debug("Queue array full (size %u >= MAX_QUEUE_SIZE %d). Waiting...", q->size, q->capacity);
-        } else { // is_mem_limit must be true
-            log_debug("Queue memory limit would be exceeded (current: %zu + new: %zu > max: %zu). Waiting...",
-                      q->current_mem_usage, image_memory, q->max_mem_usage);
-        }
-        start_block_time = get_time_in_seconds();
-        pthread_cond_wait(&q->cond_non_full, &q->mutex);
-        log_trace("Woke up from cond_non_full wait.");
-		
+	while (is_mem_limit || is_arr_limit) {
+		if (is_arr_limit) {
+			log_debug("Queue array full (size %u >= MAX_QUEUE_SIZE %d). Waiting...", q->size, q->capacity);
+		} else { // is_mem_limit must be true
+			log_debug("Queue memory limit would be exceeded (current: %zu + new: %zu > max: %zu). Waiting...", q->current_mem_usage, image_memory, q->max_mem_usage);
+		}
+		start_block_time = get_time_in_seconds();
+		pthread_cond_wait(&q->cond_non_full, &q->mutex);
+		log_trace("Woke up from cond_non_full wait.");
+
 		// re-check
-        is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
-        is_arr_limit = (q->size >= q->capacity);
-    }
+		is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
+		is_arr_limit = (q->size >= q->capacity);
+	}
 
 	result_time = (start_block_time != 0) ? get_time_in_seconds() - start_block_time : 0;
 	if (result_time > 0) {
