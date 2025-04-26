@@ -84,7 +84,8 @@ RUN_ARGS := $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode
 # Queue mode specific arguments
 RUN_Q_ARGS := -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
 # Arguments  for MPI mode (same as basic, except mpi-mode)
-MPI_RUN_ARGS := -mpi-mode $(RUN_ARGS)
+MPI_RUN_ARGS := -mpi-mode $(RUN_ARGS) # mpi-mode ignores the threadnum option
+
 # Run the program with standard arguments
 run: $(TARGET_NO_MPI)
 	@echo "\nRunning: ./$(TARGET_NO_MPI) $(RUN_ARGS)"
