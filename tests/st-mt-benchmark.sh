@@ -4,7 +4,6 @@ SD=$(dirname "$(realpath "$0")") # script directory
 BASEDIR=$(dirname "$SD")  # Parent directory of script's location
 BD="$BASEDIR"
 
-IMG_FOLDER="$BD/test-img/"
 LOG_FILE="$SD/timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
