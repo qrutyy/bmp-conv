@@ -41,7 +41,8 @@ Usage: ./bmp-conv [-queue-mode/-mpi-mode] <input_file.bmp> --filter=<type> [--th
 - `--log=<0|1>`: Enable or disable logging (default: `0`). Set to `1` to log execution time and parameters to a file.
 - `--mode=<compute_mode>`: This argument is optional when threadnum equals to `1` (single-threaded mode is turned on).
 - `--rww=<x,y,z>`: Sets the number of **reader**, **worker** and **writer** threads. Is required in queue-mode. If `sum < 3` -> queue-mode won't work.  
-- `--lim=<N>`: Sets the memory limit (in MB) for images being queued for convolution. Initial value is `500` MB. 
+- `--queue-size=<N>`: Sets the memory limit (in MB) for images being queued for convolution. Initial value is `500` MB. 
+- `--queue-mem=<N>`: Sets the queue's element limit. Initial value is `20` 
 
 ### Usage Examples
 

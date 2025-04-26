@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <errno.h>
 #include "args-parse.h"
 #include "utils.h"
 #include "../../logger/log.h"
@@ -67,10 +68,17 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		if (strncmp(argv[i], "--log=", 6) == 0) {
 			args->log_enabled = atoi(argv[i] + 6);
 			argv[i] = "_";
-		} else if (strncmp(argv[i], "--lim=", 6) == 0) {
-			args->queue_memory_limit = (size_t)atoi(argv[i] + 6) * 1024 * 1024; // Store as bytes
-			if (args->queue_memory_limit == 0 && strcmp(argv[i] + 6, "0") != 0) {
-				log_error("Error: Invalid value for --lim.\n");
+		} else if (strncmp(argv[i], "--queue-size=", 13) == 0) {
+			args->queue_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
+			if (args->queue_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
+				log_error("Error: Invalid value for --queue-size.\n");
+				return -1;
+			}
+			argv[i] = "_";
+		} else if (strncmp(argv[i], "--queue-mem=", 12) == 0) {
+			args->queue_memory_limit_mb = (size_t)atoi(argv[i] + 12);
+			if (args->queue_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
+				log_error("Error: Invalid value for --queue-mem.\n");
 				return -1;
 			}
 			argv[i] = "_";
@@ -98,11 +106,11 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "-", 1) == 0) {
 			log_error("Error: Unknown option in queue-mode: %s\n", argv[i]);
 			return -1;
-		} else if (args->file_count < MAX_IMAGE_QUEUE_SIZE) {
+		} else if (args->file_count < DEFAULT_QUEUE_CAP) {
 			// Assume remaining non-option args are input files
 			args->input_filename[args->file_count++] = argv[i];
 		} else {
-			log_error("Error: Too many input files (max %d) or unknown argument: %s\n", MAX_IMAGE_QUEUE_SIZE, argv[i]);
+			log_error("Error: Too many input files (max %d) or unknown argument: %s\n", argv[i]);
 			return -1;
 		}
 	}
@@ -193,9 +201,10 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->ret_count = 0;
 	args_ptr->wot_count = 0;
 	args_ptr->file_count = 0;
-	args_ptr->queue_memory_limit = QUEUE_MEM_LIMIT;
+	args_ptr->queue_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
+	args_ptr->queue_capacity = DEFAULT_QUEUE_CAP;
 
-	for (int i = 0; i < MAX_IMAGE_QUEUE_SIZE; ++i) {
+	for (int i = 0; i < DEFAULT_QUEUE_CAP; ++i) {
 		args_ptr->input_filename[i] = NULL;
 	}
 }

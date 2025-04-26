@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define MAX_IMAGE_QUEUE_SIZE 20
-#define QUEUE_MEM_LIMIT (500 * 1024 * 1024)
+#define DEFAULT_QUEUE_CAP 20
+#define DEFAULT_QUEUE_MEM_LIMIT 500 
 #pragma once
 
 // Structure for storing input arguments. Better described in README
 struct p_args {
 	uint8_t block_size;
-	char *input_filename[MAX_IMAGE_QUEUE_SIZE];
+	char *input_filename[DEFAULT_QUEUE_CAP];
 	char *output_filename;
 	uint8_t file_count;
 	char *filter_type;
@@ -21,7 +21,8 @@ struct p_args {
 	uint8_t wrt_count; // writer threads count
 	uint8_t ret_count; // reader threads count
 	uint8_t wot_count; // worker threads count
-	size_t queue_memory_limit;
+	uint32_t queue_capacity; // max el count in queue 
+    size_t queue_memory_limit_mb;
 };
 
 void initialize_args(struct p_args *args_ptr);

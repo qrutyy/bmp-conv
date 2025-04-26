@@ -44,6 +44,8 @@ LOG ?= 1
 RWW_MIX ?= 1,1,1
 MPI_NP ?= 2
 VALGRIND_PREFIX ?= "" 
+QUEUE_MEM ?= 500
+QUEUE_CAP ?= 20 
 
 # === Build Targets ===
 .DEFAULT_GOAL := all
@@ -82,7 +84,7 @@ $(BUILD_DIR_MPI):
 # Base run command arguments
 RUN_ARGS := $(INPUT_TF) --filter=$(FILTER_TYPE) --threadnum=$(THREAD_NUM) --mode=$(COMPUTE_MODE) --block=$(BLOCK_SIZE) --output=$(OUTPUT_FILE) --log=$(LOG)
 # Queue mode specific arguments
-RUN_Q_ARGS := -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX)
+RUN_Q_ARGS := -queue-mode $(INPUT_TF) --mode=$(COMPUTE_MODE) --filter=$(FILTER_TYPE) --block=$(BLOCK_SIZE) --rww=$(RWW_MIX) --queue-size=$(QUEUE_CAP) --queue-mem=$(QUEUE_MEM)
 # Arguments  for MPI mode (same as basic, except mpi-mode)
 MPI_RUN_ARGS := -mpi-mode $(RUN_ARGS) # mpi-mode ignores the threadnum option
 

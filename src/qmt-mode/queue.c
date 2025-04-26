@@ -18,7 +18,7 @@
  *
  * @param img A pointer to the bmp_img structure whose memory usage is to be estimated.
  * 
- * @return The estimated memory usage in bytes.
+ * @return The estimated memory usage in MB.
  */
 static size_t estimate_image_memory(const bmp_img *img)
 {
@@ -36,7 +36,7 @@ static size_t estimate_image_memory(const bmp_img *img)
 		row_pointers_size = (size_t)img->img_header.biHeight * sizeof(bmp_pixel *);
 	}
 
-	return pixel_data_size + row_pointers_size + bmp_struct_size + RAW_MEM_OVERHEAD;
+	return pixel_data_size + row_pointers_size + bmp_struct_size + RAW_MEM_OVERHEAD / 1024 / 1024;
 }
 
 /**
@@ -47,14 +47,19 @@ static size_t estimate_image_memory(const bmp_img *img)
  * @param q A pointer to the img_queue structure to be initialized.
  * @param max_mem The maximum total estimated memory (in bytes) the queue should hold across all images. If 0, a default maximum is used.
  */
-void queue_init(struct img_queue *q, size_t max_mem)
+int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem)
 {
 	q->front = q->rear = q->size = 0;
 	q->current_mem_usage = 0;
+	q->capacity = capacity;
 	q->max_mem_usage = max_mem;
-	if (q->max_mem_usage == 0) {
-		q->max_mem_usage = MAX_QUEUE_MEMORY;
-	}
+
+	q->images = malloc(capacity * sizeof(struct queue_img_info *));
+    if (!q->images) {
+        log_error("Failed to allocate queue image array (capacity: %u)", capacity);
+        return -1;
+    }
+
 	pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond_non_empty, NULL);
 	pthread_cond_init(&q->cond_non_full, NULL);
@@ -68,6 +73,11 @@ void queue_init(struct img_queue *q, size_t max_mem)
  */
 void queue_destroy(struct img_queue *q)
 {
+	if (!q) 
+		return;
+
+	free(q->images);
+	q->images = NULL;
 	pthread_mutex_destroy(&q->mutex);
 	pthread_cond_destroy(&q->cond_non_full);
 	pthread_cond_destroy(&q->cond_non_empty);
@@ -90,6 +100,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 	size_t image_memory = 0;
 	double start_block_time = 0;
 	double result_time = 0;
+	int8_t is_arr_limit = 0, is_mem_limit = 0;
 
 	if (!filename) {
 		log_warn("queue_push attempted with NULL filename. Skipping.");
@@ -112,16 +123,26 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 
 	image_memory = estimate_image_memory(img);
 	log_trace("Pushing '%s', estimated memory: %zu bytes. Current usage: %zu/%zu, size: %zu/%d", filename, image_memory, q->current_mem_usage, q->max_mem_usage, q->size,
-		  MAX_QUEUE_SIZE);
+		  q->capacity);
 
-	// Wait while queue is full (by count or memory limit).
-	// The memory condition allows at least one item even if it exceeds the limit initially.
-	while (q->size >= MAX_QUEUE_SIZE || (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0)) {
-		log_debug("Queue full (size: %zu, mem: %zu + %zu > %zu). Waiting...", q->size, q->current_mem_usage, image_memory, q->max_mem_usage);
-		start_block_time = get_time_in_seconds();
-		pthread_cond_wait(&q->cond_non_full, &q->mutex);
-		log_trace("Woke up from cond_non_full wait.");
-	}
+	is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
+    is_arr_limit = (q->size >= q->capacity); // check limit
+
+    while (is_mem_limit || is_arr_limit) {
+        if (is_arr_limit) {
+            log_debug("Queue array full (size %u >= MAX_QUEUE_SIZE %d). Waiting...", q->size, q->capacity);
+        } else { // is_mem_limit must be true
+            log_debug("Queue memory limit would be exceeded (current: %zu + new: %zu > max: %zu). Waiting...",
+                      q->current_mem_usage, image_memory, q->max_mem_usage);
+        }
+        start_block_time = get_time_in_seconds();
+        pthread_cond_wait(&q->cond_non_full, &q->mutex);
+        log_trace("Woke up from cond_non_full wait.");
+		
+		// re-check
+        is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
+        is_arr_limit = (q->size >= q->capacity);
+    }
 
 	result_time = (start_block_time != 0) ? get_time_in_seconds() - start_block_time : 0;
 	if (result_time > 0) {
@@ -130,7 +151,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 	}
 
 	q->images[q->rear] = iq_info;
-	q->rear = (q->rear + 1) % MAX_QUEUE_SIZE;
+	q->rear = (q->rear + 1) % q->capacity;
 	q->size++;
 	q->current_mem_usage += image_memory;
 
@@ -210,7 +231,7 @@ restart_wait_loop:
 	iqi = q->images[q->front];
 	image_memory = estimate_image_memory(iqi->image);
 
-	q->front = (q->front + 1) % MAX_QUEUE_SIZE;
+	q->front = (q->front + 1) % q->capacity;
 	q->size--;
 	q->current_mem_usage -= image_memory;
 
