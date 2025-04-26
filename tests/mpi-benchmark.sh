@@ -9,7 +9,7 @@ LOG_FILE="$SD/timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
 
-TEST_FILE="image4.bmp"
+TEST_FILE="image6.bmp"
 FILTER="gg"
 BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
 PROC_NUMS=("2" "4" "6" "8")

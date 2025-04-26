@@ -8,17 +8,13 @@ import sys
 from pathlib import Path
 import warnings
 
-# --- Configuration ---
 SCRIPT_DIR = Path(__file__).resolve().parent
 BASE_DIR = SCRIPT_DIR
 
-# --- !!! Убедитесь, что это ИМЯ ФАЙЛА, который вы анализируете !!! ---
 LOG_FILE = BASE_DIR / "timing-results.dat"
-# --- End Configuration ---
 
 PLOTS_PATH = BASE_DIR / "plots" / "mpi"
 
-# --- Matplotlib settings (keep as before) ---
 plt.rcParams.update(
     {
         "axes.titlesize": 18,
@@ -35,17 +31,14 @@ try:
 except AttributeError:
     print("Warning: Using deprecated plt.cm.get_cmap. Please update Matplotlib.")
     colors = plt.cm.get_cmap("tab20").colors
-# --- End Matplotlib settings ---
 
 
-# --- Data Reading and Cleaning ---
 print(f"Attempting to read potentially inconsistent MPI data from: {LOG_FILE}")
 
 if not LOG_FILE.is_file():
     print(f"Error: Log file not found at '{LOG_FILE}'")
     sys.exit(1)
 
-# Define final column names we want
 final_col_names = ["RunID", "Filter", "Process-num", "Mode", "Block-size", "Result"]
 # Define temporary names for reading max 6 columns
 read_col_names = ["col0", "col1", "col2", "col3", "col4", "col5"]
@@ -78,10 +71,7 @@ try:
         sys.exit(1)
 
     print(f"Read {len(df_raw)} data lines.")
-    # print("Initial DataFrame head (up to 6 cols):")
-    # print(df_raw.head())
 
-    # --- Reconstruct the DataFrame ---
     print("Reconstructing DataFrame based on field count...")
 
     # Identify rows that originally had 6 fields (col5 is not NaN)
@@ -109,14 +99,8 @@ try:
     # Sort by original index to help with forward fill
     df_structured.sort_index(inplace=True)
 
-    # print("DataFrame after structuring (before ffill):")
-    # print(df_structured.head(10)) # Show more rows
-
     # Forward fill the missing RunID values
     df_structured["RunID"].ffill(inplace=True)
-
-    # print("DataFrame after ffill:")
-    # print(df_structured.head(10))
 
     # Drop rows where RunID might still be NaN (e.g., if the file started with a 5-field line)
     initial_len = len(df_structured)
@@ -126,7 +110,6 @@ try:
             f"Dropped {initial_len - len(df_structured)} rows with missing RunID after ffill."
         )
 
-    # --- Convert types ---
     print("Converting columns to appropriate types...")
     try:
         # Convert RunID, Process-num, Block-size first as they should be integers
@@ -137,20 +120,13 @@ try:
         df_structured["Block-size"] = pd.to_numeric(df_structured["Block-size"]).astype(
             int
         )
-        # Convert Result to float
         df_structured["Result"] = pd.to_numeric(df_structured["Result"])
-        # Filter and Mode remain strings/objects
         print("Type conversion successful.")
     except Exception as e:
         print(f"Error during numeric conversion after restructuring: {e}")
         print("Check the data structure and content after ffill.")
-        # print(df_structured.info())
-        # print(df_structured.head())
         sys.exit(1)
 
-    # --- Drop duplicates ---
-    # Assume the 5-field lines are duplicates of the preceding 6-field line (after ffill)
-    # Keep the 'first' occurrence, which corresponds to the original 6-field line
     print("Dropping likely duplicate rows (those originally missing RunID)...")
     cols_to_check_duplicates = [
         "RunID",
@@ -184,7 +160,6 @@ if df_final.empty:
 print("Unique Process-num found:", sorted(df_final["Process-num"].unique()))
 
 
-# --- Data Aggregation (Now uses the cleaned df_final) ---
 print("\nAggregating results...")
 try:
     df_agg = (
@@ -217,11 +192,7 @@ print("Unique Block-sizes found:", sorted(df_agg["Block-size"].unique()))
 print("-" * 30)
 
 
-# --- Plotting Functions (No changes needed, use df_agg) ---
-# (Функции plot_grouped_by_block_size и plot_grouped_by_proc_num остаются такими же,
-#  так как они работают с уже агрегированным и чистым df_agg)
 def plot_grouped_by_block_size(agg_data, base_plots_path):
-    # ... (previous code) ...
     unique_block_sizes = sorted(agg_data["Block-size"].unique())
     unique_modes = sorted(agg_data["Mode"].unique())
     unique_proc_nums = sorted(agg_data["Process-num"].unique())
@@ -269,7 +240,7 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
                 alpha=0.85,
             )
 
-        ax.set_xlabel("Computation Mode")
+        ax.set_xlabel("Computation Mode & Process Number")
         ax.set_ylabel("Average Execution Time (seconds)")
         ax.set_title(f"MPI Performance Comparison (Block Size: {bs})")
         ax.set_xticks(x)
@@ -336,7 +307,7 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
                 alpha=0.85,
             )
 
-        ax.set_xlabel("Computation Mode")
+        ax.set_xlabel("Computation Mode & Block Size")
         ax.set_ylabel("Average Execution Time (seconds)")
         ax.set_title(f"MPI Performance Comparison (Processes: {pn})")
         ax.set_xticks(x)
@@ -356,12 +327,9 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
             plt.close(fig)
 
 
-# --- End Plotting Functions ---
 
 
-# --- Main Execution ---
 os.makedirs(PLOTS_PATH, exist_ok=True)
-# Plot using the aggregated data
 if not df_agg.empty:
     plot_grouped_by_block_size(df_agg, PLOTS_PATH)
     plot_grouped_by_proc_num(df_agg, PLOTS_PATH)
