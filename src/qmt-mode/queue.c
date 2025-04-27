@@ -32,7 +32,7 @@ static size_t estimate_image_memory(const bmp_img *img)
 
     total_bytes = pixel_data_size_bytes + sizeof(bmp_img);
     if (img->img_pixels != NULL) {
-        total_bytes += (size_t)img->img_header.biHeight * sizeof(bmp_pixel *);
+        total_bytes += (size_t)img->img_header.biHeight * sizeof(bmp_pixel *) + RAW_MEM_OVERHEAD;
     }
 
     megabytes = (total_bytes + (1024 * 1024 - 1)) / (1024 * 1024);
@@ -53,7 +53,7 @@ static size_t estimate_image_memory(const bmp_img *img)
  * @param q A pointer to the img_queue structure to be initialized.
  * @param max_mem The maximum total estimated memory (in bytes) the queue should hold across all images. If 0, a default maximum is used.
  */
-int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem)
+int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem)
 {
 	q->front = q->rear = q->size = 0;
 	q->current_mem_usage = 0;

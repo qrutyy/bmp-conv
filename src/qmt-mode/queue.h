@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#define RAW_MEM_OVERHEAD (1) // Assumed overhead for non-pixel data per image
+#define RAW_MEM_OVERHEAD (512 * 1024) // Assumed overhead for non-pixel data per image
 
 struct queue_img_info {
 	bmp_img *image;
@@ -16,7 +16,7 @@ struct queue_img_info {
 // queue_node struct
 struct img_queue {
 	struct queue_img_info **images;
-	uint16_t front, rear, size, capacity; // capacity - max el count
+	uint32_t front, rear, size, capacity; // capacity - max el count
 	pthread_mutex_t mutex;
 
 	// for advanced balancing by mem_usage factor;
@@ -25,6 +25,6 @@ struct img_queue {
 };
 
 void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *mode);
-int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem);
+int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem);
 void queue_destroy(struct img_queue *q);
 bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files, const char *mode);
