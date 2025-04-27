@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+;// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdlib.h>
 #include <string.h>
@@ -326,7 +326,18 @@ void *worker_thread(void *arg)
 		}
 
 		worker_cleanup_image_resources(img, th_spec);
+		
+		if (process_status != 0 && filename != NULL) {
+             log_debug("Worker: Freeing filename for failed processing of %s", filename);
+             free(filename); // <<< ОСВОБОЖДАЕМ FILENAME ПРИ ОШИБКЕ ПОСЛЕ ОБРАБОТКИ
+             filename = NULL;
+        }
 	}
+	
+	if(filename) {
+        log_warn("Worker: Leaking filename on thread exit?");
+        free(filename);
+    }
 
 	log_debug("Worker: thread finished.");
 	return NULL;

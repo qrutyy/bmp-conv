@@ -81,14 +81,54 @@ int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem)
  */
 void queue_destroy(struct img_queue *q)
 {
-	if (!q)
-		return;
+	if (!q) return;
 
-	free(q->images);
-	q->images = NULL;
-	pthread_mutex_destroy(&q->mutex);
-	pthread_cond_destroy(&q->cond_non_full);
-	pthread_cond_destroy(&q->cond_non_empty);
+    pthread_mutex_lock(&q->mutex);
+
+    log_debug("Destroying queue: Capacity=%u, Size=%u, MemUsage=%zu MiB",
+              q->capacity, q->size, q->current_mem_usage);
+
+    while (q->size > 0) {
+        uint32_t current_front = q->front;
+        struct queue_img_info *iqi = q->images[current_front];
+
+        q->front = (q->front + 1) % q->capacity;
+        q->size--;
+
+        if (iqi) {
+            log_trace("Destroying remaining queue element: filename='%s'", iqi->filename ? iqi->filename : "NULL");
+            if (iqi->image) {
+                 if (iqi->image->img_header.biWidth > 0 || iqi->image->img_header.biHeight > 0) {
+                     bmp_img_free(iqi->image);
+                 }
+                free(iqi->image);
+                iqi->image = NULL;
+            }
+            if (iqi->filename) {
+                free(iqi->filename);
+                iqi->filename = NULL;
+            }
+            free(iqi);
+            q->images[current_front] = NULL;
+        } else {
+            log_warn("Found NULL element pointer in queue during destroy at index %u", current_front);
+        }
+    }
+
+    if (q->size != 0) {
+        log_error("Queue size is non-zero (%u) after cleanup in destroy!", q->size);
+    }
+    q->current_mem_usage = 0;
+
+    free(q->images);
+    q->images = NULL;
+
+    pthread_mutex_unlock(&q->mutex);
+
+    pthread_mutex_destroy(&q->mutex);
+    pthread_cond_destroy(&q->cond_non_full);
+    pthread_cond_destroy(&q->cond_non_empty);
+    log_info("Queue destroyed successfully.");
 }
 
 /**

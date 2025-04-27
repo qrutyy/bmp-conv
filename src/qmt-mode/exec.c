@@ -185,5 +185,7 @@ void free_qthread_resources(struct qthreads_gen_info *qt_info)
 	queue_destroy(qt_info->input_q);
 	queue_destroy(qt_info->output_q);
 
+	pthread_barrier_destroy(qt_info->reader_barrier);
+
 	free(qt_info);
 }
