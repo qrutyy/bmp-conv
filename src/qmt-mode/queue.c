@@ -23,26 +23,27 @@
 static size_t estimate_image_memory(const bmp_img *img)
 {
 	size_t bytes_per_pixel, pixel_data_size_bytes, total_bytes;
-    size_t megabytes;
+	size_t megabytes;
 
-    bytes_per_pixel = img->img_header.biBitCount / 8;
-    if (bytes_per_pixel == 0) bytes_per_pixel = 3;
+	bytes_per_pixel = img->img_header.biBitCount / 8;
+	if (bytes_per_pixel == 0)
+		bytes_per_pixel = 3;
 
-    pixel_data_size_bytes = (size_t)img->img_header.biWidth * img->img_header.biHeight * bytes_per_pixel;
+	pixel_data_size_bytes = (size_t)img->img_header.biWidth * img->img_header.biHeight * bytes_per_pixel;
 
-    total_bytes = pixel_data_size_bytes + sizeof(bmp_img);
-    if (img->img_pixels != NULL) {
-        total_bytes += (size_t)img->img_header.biHeight * sizeof(bmp_pixel *) + RAW_MEM_OVERHEAD;
-    }
+	total_bytes = pixel_data_size_bytes + sizeof(bmp_img);
+	if (img->img_pixels != NULL) {
+		total_bytes += (size_t)img->img_header.biHeight * sizeof(bmp_pixel *) + RAW_MEM_OVERHEAD;
+	}
 
-    megabytes = (total_bytes + (1024 * 1024 - 1)) / (1024 * 1024);
-    megabytes += RAW_MEM_OVERHEAD;
+	megabytes = (total_bytes + (1024 * 1024 - 1)) / (1024 * 1024);
+	megabytes += RAW_MEM_OVERHEAD;
 
-    if (megabytes == 0) {
-        megabytes = 1;
-    }
+	if (megabytes == 0) {
+		megabytes = 1;
+	}
 
-    return megabytes;
+	return megabytes;
 }
 
 /**
