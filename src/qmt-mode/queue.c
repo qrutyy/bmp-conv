@@ -69,7 +69,7 @@ int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem)
 	pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond_non_empty, NULL);
 	pthread_cond_init(&q->cond_non_full, NULL);
-	log_info("Queue initialized with max memory: %zu bytes", q->max_mem_usage);
+	log_info("Queue initialized with max memory: %zu MB", q->max_mem_usage);
 	return 0;
 }
 
@@ -129,7 +129,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 	pthread_mutex_lock(&q->mutex);
 
 	image_memory = estimate_image_memory(img);
-	log_trace("Pushing '%s', estimated memory: %zu bytes. Current usage: %zu/%zu, size: %zu/%d", filename, image_memory, q->current_mem_usage, q->max_mem_usage, q->size,
+	log_trace("Pushing '%s', estimated memory: %zu MB. Current usage: %zu/%zu, size: %u/%u", filename, image_memory, q->current_mem_usage, q->max_mem_usage, q->size,
 		  q->capacity);
 
 	is_mem_limit = (q->current_mem_usage + image_memory > q->max_mem_usage && q->size > 0);
@@ -161,7 +161,7 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 	q->size++;
 	q->current_mem_usage += image_memory;
 
-	log_trace("Pushed '%s'. New usage: %zu bytes, size: %zu", filename, q->current_mem_usage, q->size);
+	log_trace("Pushed '%s'. New usage: %zu MB, size: %zu", filename, q->current_mem_usage, q->size);
 
 	pthread_cond_signal(&q->cond_non_empty);
 	pthread_mutex_unlock(&q->mutex);

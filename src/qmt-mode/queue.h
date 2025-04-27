@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#define RAW_MEM_OVERHEAD (512 * 1024) // Assumed overhead for non-pixel data per image
+#define RAW_MEM_OVERHEAD (1) // Assumed overhead for non-pixel data per image
 
 struct queue_img_info {
 	bmp_img *image;
