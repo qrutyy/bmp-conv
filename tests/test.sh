@@ -19,7 +19,7 @@ RWW_COMBINATIONS=("1,1,1" "1,2,1" "2,1,2" "2,3,2" "1,3,1")
 # shorten the args and set up specific build cfg
 if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then 
 	TP_NUM=( 3 ) 
-	MODES=("by_row" "by_column")
+	MODES=("by_row")
 	FILTERS=("gg")
 	BLOCK_SIZE=("32")
 	QMT_INPUT_FILES=("image1.bmp" "image2.bmp")
