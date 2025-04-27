@@ -56,8 +56,8 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 	}
 
 	q_mem_limit = args_ptr->queue_memory_limit_mb > 0 ? args_ptr->queue_memory_limit_mb : DEFAULT_QUEUE_MEM_LIMIT;
-	queue_init(input_queue, q_mem_limit, args_ptr->queue_memory_limit_mb);
-	queue_init(output_queue, q_mem_limit, args_ptr->queue_memory_limit_mb);
+	queue_init(input_queue, args_ptr->queue_capacity, q_mem_limit);
+	queue_init(output_queue, args_ptr->queue_capacity, q_mem_limit);
 
 	qt_info->pargs = args_ptr;
 	qt_info->input_q = input_queue;

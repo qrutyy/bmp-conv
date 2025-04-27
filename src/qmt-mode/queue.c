@@ -22,21 +22,27 @@
  */
 static size_t estimate_image_memory(const bmp_img *img)
 {
-	size_t bytes_per_pixel, pixel_data_size, bmp_struct_size, row_pointers_size = 0;
+	size_t bytes_per_pixel, pixel_data_size_bytes, total_bytes;
+    size_t megabytes;
 
-	bytes_per_pixel = img->img_header.biBitCount / 8;
-	if (bytes_per_pixel == 0)
-		bytes_per_pixel = 1;
+    bytes_per_pixel = img->img_header.biBitCount / 8;
+    if (bytes_per_pixel == 0) bytes_per_pixel = 3;
 
-	pixel_data_size = (size_t)img->img_header.biWidth * img->img_header.biHeight * bytes_per_pixel;
-	bmp_struct_size = sizeof(bmp_img);
+    pixel_data_size_bytes = (size_t)img->img_header.biWidth * img->img_header.biHeight * bytes_per_pixel;
 
-	if (img->img_pixels) {
-		// Assuming img_pixels is an array of pointers to rows
-		row_pointers_size = (size_t)img->img_header.biHeight * sizeof(bmp_pixel *);
-	}
+    total_bytes = pixel_data_size_bytes + sizeof(bmp_img);
+    if (img->img_pixels != NULL) {
+        total_bytes += (size_t)img->img_header.biHeight * sizeof(bmp_pixel *);
+    }
 
-	return pixel_data_size + row_pointers_size + bmp_struct_size + RAW_MEM_OVERHEAD / 1024 / 1024;
+    megabytes = (total_bytes + (1024 * 1024 - 1)) / (1024 * 1024);
+    megabytes += RAW_MEM_OVERHEAD;
+
+    if (megabytes == 0) {
+        megabytes = 1;
+    }
+
+    return megabytes;
 }
 
 /**
@@ -64,6 +70,7 @@ int queue_init(struct img_queue *q, uint16_t capacity, size_t max_mem)
 	pthread_cond_init(&q->cond_non_empty, NULL);
 	pthread_cond_init(&q->cond_non_full, NULL);
 	log_info("Queue initialized with max memory: %zu bytes", q->max_mem_usage);
+	return 0;
 }
 
 /**
@@ -232,7 +239,11 @@ restart_wait_loop:
 
 	q->front = (q->front + 1) % q->capacity;
 	q->size--;
-	q->current_mem_usage -= image_memory;
+	if (q->current_mem_usage >= image_memory) {
+		q->current_mem_usage -= image_memory;
+	} else {
+		q->current_mem_usage = 0;
+	}
 
 	log_trace("Popped '%s'. New usage: %zu bytes, size: %zu", (iqi->filename ? iqi->filename : "NULL"), q->current_mem_usage, q->size);
 
