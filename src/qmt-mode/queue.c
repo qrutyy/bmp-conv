@@ -46,14 +46,6 @@ static size_t estimate_image_memory(const bmp_img *img)
 	return megabytes;
 }
 
-/**
- * Initializes a thread-safe image queue structure.
- * Sets initial queue state (size, front, rear), memory usage limits,
- * and initializes the mutex and condition variables for synchronization.
- *
- * @param q A pointer to the img_queue structure to be initialized.
- * @param max_mem The maximum total estimated memory (in bytes) the queue should hold across all images. If 0, a default maximum is used.
- */
 int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem)
 {
 	q->front = q->rear = q->size = 0;
@@ -74,74 +66,58 @@ int queue_init(struct img_queue *q, uint32_t capacity, size_t max_mem)
 	return 0;
 }
 
-/**
- * Destroys the initialised primitives for queue-func (mutex and cond_vars).
- *
- * @param q A pointer to the img_queue structure to be initialized.
- */
 void queue_destroy(struct img_queue *q)
 {
-	if (!q) return;
+	if (!q)
+		return;
 
-    pthread_mutex_lock(&q->mutex);
+	pthread_mutex_lock(&q->mutex);
 
-    log_debug("Destroying queue: Capacity=%u, Size=%u, MemUsage=%zu MiB",
-              q->capacity, q->size, q->current_mem_usage);
+	log_debug("Destroying queue: Capacity=%u, Size=%u, MemUsage=%zu MiB", q->capacity, q->size, q->current_mem_usage);
 
-    while (q->size > 0) {
-        uint32_t current_front = q->front;
-        struct queue_img_info *iqi = q->images[current_front];
+	while (q->size > 0) {
+		uint32_t current_front = q->front;
+		struct queue_img_info *iqi = q->images[current_front];
 
-        q->front = (q->front + 1) % q->capacity;
-        q->size--;
+		q->front = (q->front + 1) % q->capacity;
+		q->size--;
 
-        if (iqi) {
-            log_trace("Destroying remaining queue element: filename='%s'", iqi->filename ? iqi->filename : "NULL");
-            if (iqi->image) {
-                 if (iqi->image->img_header.biWidth > 0 || iqi->image->img_header.biHeight > 0) {
-                     bmp_img_free(iqi->image);
-                 }
-                free(iqi->image);
-                iqi->image = NULL;
-            }
-            if (iqi->filename) {
-                free(iqi->filename);
-                iqi->filename = NULL;
-            }
-            free(iqi);
-            q->images[current_front] = NULL;
-        } else {
-            log_warn("Found NULL element pointer in queue during destroy at index %u", current_front);
-        }
-    }
+		if (iqi) {
+			log_trace("Destroying remaining queue element: filename='%s'", iqi->filename ? iqi->filename : "NULL");
+			if (iqi->image) {
+				if (iqi->image->img_header.biWidth > 0 || iqi->image->img_header.biHeight > 0) {
+					bmp_img_free(iqi->image);
+				}
+				free(iqi->image);
+				iqi->image = NULL;
+			}
+			if (iqi->filename) {
+				free(iqi->filename);
+				iqi->filename = NULL;
+			}
+			free(iqi);
+			q->images[current_front] = NULL;
+		} else {
+			log_warn("Found NULL element pointer in queue during destroy at index %u", current_front);
+		}
+	}
 
-    if (q->size != 0) {
-        log_error("Queue size is non-zero (%u) after cleanup in destroy!", q->size);
-    }
-    q->current_mem_usage = 0;
+	if (q->size != 0) {
+		log_error("Queue size is non-zero (%u) after cleanup in destroy!", q->size);
+	}
+	q->current_mem_usage = 0;
 
-    free(q->images);
-    q->images = NULL;
+	free(q->images);
+	q->images = NULL;
 
-    pthread_mutex_unlock(&q->mutex);
+	pthread_mutex_unlock(&q->mutex);
 
-    pthread_mutex_destroy(&q->mutex);
-    pthread_cond_destroy(&q->cond_non_full);
-    pthread_cond_destroy(&q->cond_non_empty);
-    log_info("Queue destroyed successfully.");
+	pthread_mutex_destroy(&q->mutex);
+	pthread_cond_destroy(&q->cond_non_full);
+	pthread_cond_destroy(&q->cond_non_empty);
+	log_info("Queue destroyed successfully.");
 }
 
-/**
- * Pushes an image and its associated filename onto the thread-safe queue.
- * Blocks if the queue is full (either by item count or estimated memory usage)
- * until space becomes available. Estimates image memory usage before adding.
- * Handles memory allocation for queue metadata and signals waiting consumers.
- *
- * @param q - A pointer to the img_queue structure.
- * @param img - A pointer to the bmp_img structure to be added. Ownership is transferred.
- * @param filename - A string containing the filename associated with the image. Ownership is transferred (the pointer itself, not usually a copy). Must not be NULL (function returns early if it is).
- * @param mode - A pointer to mode string.
- */
 void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *mode)
 {
 	struct queue_img_info *iq_info = NULL;
@@ -208,24 +184,6 @@ void queue_push(struct img_queue *q, bmp_img *img, char *filename, const char *m
 	pthread_mutex_unlock(&q->mutex);
 }
 
-/**
- * Pops an image and its filename from the thread-safe queue.
- * Blocks with a timeout if the queue is empty, checking periodically if all
- * expected files have been processed (based on written_files counter).
- * Returns NULL if the queue remains empty after timeout and all files are done,
- * or if a signal indicates completion. Allocates memory for the returned filename.
- *
- * !NOTE: in CI (Helgrind analysis) you may have noticed an error: 
- * "Thread #?: pthread_cond{signal,broadcast}: dubious: associated lock is not held by any thread"
- * Error indicates, that mutex inside queue_pop wasn't held before pthread_cond_timedwait was called. Thats obviously false 
- *
- * @param q A pointer to the img_queue structure.
- * @param filename A pointer to a char pointer (`char **`). On success, this will be updated to point to a newly allocated string containing the filename. The caller is responsible for freeing this memory.
- * @param file_count The total number of files expected to be processed by the system.
- * @param written_files A pointer to a global atomic counter tracking the number of files successfully processed (written). Used for termination check.
- * 
- * @return A pointer to the popped bmp_img structure, or NULL if the queue is empty and processing should terminate, or on error during timed wait.
- */
 bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files, const char *mode)
 {
 	struct queue_img_info *iqi = NULL;

@@ -21,5 +21,16 @@ struct filter_mix {
 	struct filter *box_blur;
 };
 
+/**
+ * Initializes all predefined filter types within the filter_mix structure by calling init_filter for each one with its corresponding kernel matrix and parameters.
+ *
+ * @param filters Pointer to the filter_mix structure to be initialized. Assumes the structure itself is already allocated.
+ */
 void init_filters(struct filter_mix *filters);
+
+/**
+ * Frees the memory associated with all predefined filter types stored within the filter_mix structure by calling free_filter for each one.
+ *
+ * @param filters Pointer to the filter_mix structure whose filters need freeing.
+ */
 void free_filters(struct filter_mix *filters);

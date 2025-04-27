@@ -99,11 +99,6 @@ static void free_filter(struct filter *f)
 	free(f);
 }
 
-/**
- * Initializes all predefined filter types within the filter_mix structure by calling init_filter for each one with its corresponding kernel matrix and parameters.
- *
- * @param filters Pointer to the filter_mix structure to be initialized. Assumes the structure itself is already allocated.
- */
 void init_filters(struct filter_mix *filters)
 {
 	init_filter(&filters->motion_blur, 9, 0.0, 1.0 / 9.0, motion_blur_arr);
@@ -117,11 +112,6 @@ void init_filters(struct filter_mix *filters)
 	init_filter(&filters->box_blur, 15, 0.0, 1.0 / 225.0, box_blur_arr); // 15x15 = 225
 }
 
-/**
- * Frees the memory associated with all predefined filter types stored within the filter_mix structure by calling free_filter for each one.
- *
- * @param filters Pointer to the filter_mix structure whose filters need freeing.
- */
 void free_filters(struct filter_mix *filters)
 {
 	if (!filters)

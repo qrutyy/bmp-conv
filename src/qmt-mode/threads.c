@@ -1,4 +1,4 @@
-;// SPDX-License-Identifier: GPL-3.0-or-later
+; // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,15 +15,6 @@
 size_t written_files = 0;
 size_t read_files = 0;
 
-/**
- * Reads image file paths specified in arguments, loads the BMP images, and pushes them onto the input queue for worker threads.
- * Handles atomic incrementing of the global read file counter.
- * After processing all files, pushes termination signals onto the queue and waits on a barrier before sending signals.
- *
- * @param arg A pointer to a struct qthreads_gen_info containing shared information like program arguments, queues, and barriers.
- * 
- * @return NULL after completion or in case of critical failure.
- */
 void *reader_thread(void *arg)
 {
 	struct qthreads_gen_info *qt_info = (struct qthreads_gen_info *)arg;
@@ -265,14 +256,6 @@ static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spe
 	}
 }
 
-/**
- * Main function for worker threads. Enters a loop to get tasks (images) from the input queue, allocate resources, process the image using filters and the specified compute mode, push the result to the output queue, log timing, and clean up resources for the completed task.
- * Exits the loop upon receiving a termination signal or encountering a queue error.
- *
- * @param arg A void pointer to a struct qthreads_gen_info containing shared information like program arguments, queues, and filter settings.
- * 
- * @return NULL upon completion or exit signal.
- */
 void *worker_thread(void *arg)
 {
 	struct qthreads_gen_info *qt_info = (struct qthreads_gen_info *)arg;
@@ -326,31 +309,23 @@ void *worker_thread(void *arg)
 		}
 
 		worker_cleanup_image_resources(img, th_spec);
-		
+
 		if (process_status != 0 && filename != NULL) {
-             log_debug("Worker: Freeing filename for failed processing of %s", filename);
-             free(filename); // <<< ОСВОБОЖДАЕМ FILENAME ПРИ ОШИБКЕ ПОСЛЕ ОБРАБОТКИ
-             filename = NULL;
-        }
+			log_debug("Worker: Freeing filename for failed processing of %s", filename);
+			free(filename); // <<< ОСВОБОЖДАЕМ FILENAME ПРИ ОШИБКЕ ПОСЛЕ ОБРАБОТКИ
+			filename = NULL;
+		}
 	}
-	
-	if(filename) {
-        log_warn("Worker: Leaking filename on thread exit?");
-        free(filename);
-    }
+
+	if (filename) {
+		log_warn("Worker: Leaking filename on thread exit?");
+		free(filename);
+	}
 
 	log_debug("Worker: thread finished.");
 	return NULL;
 }
 
-/**
- * @brief Main function for writer threads. Enters a loop to get processed images (tasks) from the output queue, construct the output filename, write the image data to disk, log timing information, and free the image resources. Handles atomic updates to the global written file counter.
- * Exits when all expected files have been written or a queue error occurs.
- *
- * @param arg A void pointer to a struct qthreads_gen_info containing shared information like program arguments and the output queue.
- * 
- * @return NULL upon completion or error.
- */
 void *writer_thread(void *arg)
 {
 	struct qthreads_gen_info *qt_info = (struct qthreads_gen_info *)arg;

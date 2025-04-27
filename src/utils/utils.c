@@ -14,10 +14,6 @@
 const char *valid_tags[] = { "QPOP", "QPUSH", "READER", "WORKER", "WRITER", NULL };
 const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid" };
 
-/**
- * Swaps the values of two integers using pointers. Takes pointers to the integers
- * `a` and `b` as input. Returns void.
- */
 void swap(int *a, int *b)
 {
 	int temp = *a;
@@ -25,12 +21,6 @@ void swap(int *a, int *b)
 	*b = temp;
 }
 
-/**
- * Finds the k-th smallest element in a subarray using the quickselect algorithm.
- * Operates on the integer array `data` within the range `[s, e)` (s inclusive, e exclusive).
- * `k` specifies the desired rank (0-based index) of the element to find within the
- * sorted version of the subarray. Modifies the input array `data` in place.
- */
 int selectKth(int *data, int s, int e, int k)
 {
 	if (e - s <= 5) {
@@ -58,10 +48,6 @@ int selectKth(int *data, int s, int e, int k)
 		return selectKth(data, j + 1, e, k - (j - s + 1));
 }
 
-/**
- * Gets the current time as a double representing seconds since the epoch,
- * including microsecond precision. Returns the current time in seconds.
- */
 double get_time_in_seconds(void)
 {
 	struct timespec ts;
@@ -81,11 +67,6 @@ const char *compute_mode_to_str(enum compute_mode mode)
 	return "unknown";
 }
 
-/**
- * Converts a log tag enum value `tag` to its string representation based on
- * the `valid_tags` array. Returns a constant string representation of the tag,
- * or "unknown" if the tag is invalid.
- */
 const char *log_tag_to_str(enum LOG_TAG tag)
 {
 	if (tag >= QPOP && tag <= WRITER) {
@@ -94,23 +75,16 @@ const char *log_tag_to_str(enum LOG_TAG tag)
 	return "unknown";
 }
 
-/**
- * Appends a timing result to the queue-mode log file (QT_LOG_FILE_PATH).
- * Takes the measured time duration `result_time` (in seconds) and the
- * `tag` (enum LOG_TAG) identifying the operation being timed.
- * Errors opening the file are printed to stderr. Returns void.
- */
 void qt_write_logs(double result_time, enum LOG_TAG tag, const char *compute_mode_str)
 {
 	FILE *file = NULL;
 	const char *log_tag_str = log_tag_to_str(tag);
 
-	// Если compute_mode_str не передан, используем "unknown"
 	const char *mode_str = (compute_mode_str && strlen(compute_mode_str) > 0) ? compute_mode_str : "unknown";
 
-	file = fopen(QT_LOG_FILE_PATH, "a"); // Используйте QT_LOG_FILE_PATH
+	file = fopen(QT_LOG_FILE_PATH, "a");
 	if (file) {
-		// Записываем ТРИ поля: РЕЖИМ ТЕГ ВРЕМЯ
+		// MODE TAG TIME
 		fprintf(file, "%s %s %.6f\n", mode_str, log_tag_str, result_time);
 		fclose(file);
 	} else {
@@ -118,13 +92,6 @@ void qt_write_logs(double result_time, enum LOG_TAG tag, const char *compute_mod
 	}
 }
 
-/**
- * Appends a timing result for single-threaded or non-queued multi-threaded execution
- * to the standard log file (ST_LOG_FILE_PATH), if logging is enabled via the `args`
- * structure. Also prints the result summary to stdout. Takes the `args` structure
- * containing execution parameters and the measured `result_time` (in seconds).
- * Errors opening the file are printed to stderr. Returns void.
- */
 void st_write_logs(struct p_args *args, double result_time)
 {
 	FILE *file = NULL;
@@ -146,12 +113,6 @@ void st_write_logs(struct p_args *args, double result_time)
 	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->threadnum, mode_str, args->block_size, result_time);
 }
 
-/**
- * Calculates an absolute time point in the future for use with timed waits.
- * Gets the current real time and adds a fixed nanosecond offset (NSEC_OFFSET).
- * Populates the `timespec` structure pointed to by `wait_time` with the result.
- * Returns void.
- */
 void set_wait_time(struct timespec *wait_time)
 {
 	clock_gettime(CLOCK_REALTIME, wait_time);
@@ -160,13 +121,6 @@ void set_wait_time(struct timespec *wait_time)
 	wait_time->tv_nsec %= 1000000000L;
 }
 
-/**
- * Compares two BMP images pixel by pixel to check if they are identical.
- * Takes pointers to the two `bmp_img` structures, `img1` and `img2`.
- * First checks if dimensions match. Returns 0 if images are identical,
- * -1 if dimensions differ or an error occurs (like NULL input or missing
- * pixel data), or 1 if pixel differences are found.
- */
 int compare_images(const bmp_img *img1, const bmp_img *img2)
 {
 	int width, height;

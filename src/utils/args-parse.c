@@ -11,17 +11,6 @@
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
 
-/**
- * Parses mandatory arguments shared by both normal and queue modes:
- * --filter=<type>, --mode=<mode>, --block=<size>.
- * Validates the arguments and stores them in the args structure. Replaces processed argument strings in argv with "_" to mark them as handled.
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
@@ -47,17 +36,6 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Parses arguments specific to the queue-based execution mode:
- * --log=<0|1>, --lim=<MB>, --output=<prefix>, --rww=<R,W,T>, and input filenames.
- * Validates the --rww argument format and range. Collects remaining non-option arguments as input filenames. Marks processed arguments in argv with "_".
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	uint8_t rww_found = 0;
@@ -131,17 +109,6 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Parses arguments specific to the normal (non-queue) execution mode:
- * --threadnum=<N>, --log=<0|1>, --output=<file>, and the single input filename.
- * Validates the thread number. Expects exactly one input filename. Marks processed arguments in argv with "_".
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
@@ -182,12 +149,6 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Initializes the p_args structure with default values before parsing.
- * Sets counts to 0 or 1, pointers to NULL or empty strings, and modes/flags to sensible defaults.
- *
- * @param args_ptr Pointer to the p_args structure to initialize.
- */
 void initialize_args(struct p_args *args_ptr)
 {
 	args_ptr->threadnum = 1;
@@ -209,13 +170,6 @@ void initialize_args(struct p_args *args_ptr)
 	}
 }
 
-/**
- * Checks if the provided filter string is present in the list of valid filters.
- *
- * @param filter The filter string extracted from the command line argument.
- * 
- * @return The original filter string pointer if valid, NULL otherwise.
- */
 char *check_filter_arg(char *filter)
 {
 	for (int i = 0; valid_filters[i] != NULL; i++) {
@@ -227,13 +181,6 @@ char *check_filter_arg(char *filter)
 	return NULL;
 }
 
-/**
- * Checks if the provided mode string is present in the list of valid modes.
- *
- * @param mode_str The mode string extracted from the command line argument.
- * 
- * @return The integer index corresponding to the mode if valid, -1 otherwise.
- */
 int check_mode_arg(char *mode_str)
 {
 	for (int i = 0; valid_modes[i] != NULL; i++) {
@@ -243,23 +190,4 @@ int check_mode_arg(char *mode_str)
 	}
 	log_error("Error: Invalid mode '%s'. Valid modes are: by_row, by_column, by_pixel, by_grid\n", mode_str);
 	return -1;
-}
-
-/**
- * Converts a compute mode integer index back to its string representation.
- *
- * @param mode The integer index representing the compute mode.
- * 
- * @return A constant string representation of the mode, or "unknown" / "unset/invalid".
- */
-const char *mode_to_str(int mode)
-{
-	// Check if mode is within the valid range of indices for the array
-	if (mode >= 0 && (size_t)mode < 4 - 1) {
-		return valid_modes[mode];
-	}
-	if (mode == -1) {
-		return "unset/invalid";
-	}
-	return "unknown";
 }
