@@ -4,6 +4,9 @@
 
 #include "../utils/args-parse.h"
 #include "../../libbmp/libbmp.h"
+#include "../utils/utils.h"
+#include "../utils/threads-general.h"
+#include "mpi-types.h"
 #include <stdint.h>
 
 /**

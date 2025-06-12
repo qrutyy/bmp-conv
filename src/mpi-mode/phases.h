@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "mpi-types.h"
 #include "../utils/args-parse.h"
+#include "../utils/utils.h"
+#include "../utils/threads-general.h"
 
 /**
  * Initialisation phase function. It sets up the root process (rank0), broadcasts the general metadata (height and width)

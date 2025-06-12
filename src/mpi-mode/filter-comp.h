@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../utils/filters.h"
+#include "../utils/args-parse.h"
 #include "mpi-types.h"
 #include <stdint.h>
 
