@@ -192,6 +192,7 @@ bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, siz
 	double start_block_time = 0;
 	double result_time = 0;
 	struct timespec wait_time;
+	uint8_t curr_written_files = 0;
 	int wait_result = 0;
 	*filename = NULL;
 
@@ -200,8 +201,9 @@ bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, siz
 restart_wait_loop:
 	while (q->size == 0) {
 		start_block_time = get_time_in_seconds();
-		if (__atomic_load_n(written_files, __ATOMIC_ACQUIRE) >= file_count) {
-			log_debug("Pop termination check: written_files (%zu) >= file_count (%u). Returning NULL.", __atomic_load_n(written_files, __ATOMIC_ACQUIRE), file_count);
+		
+		if ((curr_written_files = __atomic_load_n(written_files, __ATOMIC_ACQUIRE)) >= file_count) {
+			log_debug("Pop termination check: written_files (%zu) >= file_count (%u). Returning NULL.", curr_written_files, file_count);
 			pthread_mutex_unlock(&q->mutex);
 			return NULL;
 		}
@@ -212,9 +214,9 @@ restart_wait_loop:
 
 		if (wait_result == ETIMEDOUT) {
 			log_trace("Consumer timed out waiting for item.");
-			if (__atomic_load_n(written_files, __ATOMIC_ACQUIRE) >= file_count) {
+			if ((curr_written_files = __atomic_load_n(written_files, __ATOMIC_ACQUIRE)) >= file_count) {
 				log_debug("Pop termination check after timeout: written_files (%zu) >= file_count (%u). Returning NULL.",
-					  __atomic_load_n(written_files, __ATOMIC_ACQUIRE), file_count);
+					  curr_written_files, file_count);
 				pthread_mutex_unlock(&q->mutex);
 				return NULL;
 			}

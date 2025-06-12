@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "data-transfer.h"
 #include "../../logger/log.h"
 #include "../../libbmp/libbmp.h"
 #include "../utils/threads-general.h"

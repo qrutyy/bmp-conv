@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "threads.h"
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -7,7 +8,6 @@
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
 #include "../mt-mode/compute.h"
-#include "threads.h"
 #include "../utils/utils.h"
 #include "queue.h"
 

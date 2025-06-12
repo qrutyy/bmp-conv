@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#pragma once
+
 #include <pthread.h>
 #include <stdint.h>
-
-#pragma once
 
 #define _POSIX_C_SOURCE 200809L
 #define MAX_PATH_LEN 40

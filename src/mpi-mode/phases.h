@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#pragma once 
+
 #include <stdint.h>
 #include "mpi-types.h"
 #include "../utils/args-parse.h"
+
 /**
  * Initialisation phase function. It sets up the root process (rank0), broadcasts the general metadata (height and width) 
  * and calculates the distribution information.

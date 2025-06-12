@@ -95,9 +95,7 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 					} else {
 						imageX = potential_imageX;
 					}
-					// --- КОНЕЦ ЗАМЕНЫ ДЛЯ X ---
 
-					// --- Обработка Y (Clamping) - ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ---
 					potential_imageY = y + filterY - padding;
 					if (potential_imageY < 0) {
 						imageY = 0;
@@ -106,14 +104,11 @@ void apply_filter(struct thread_spec *spec, struct filter cfilter)
 					} else {
 						imageY = potential_imageY;
 					}
-					// --- КОНЕЦ ОБРАБОТКИ Y ---
 
-					// Проверка индексов (на всякий случай, хотя clamping должен гарантировать валидность)
 					if (imageY < 0 || imageY >= spec->dim->height || imageX < 0 || imageX >= spec->dim->width) {
 						log_error("apply_filter: Calculated index out of bounds after clamping! Y=%d (H=%d), X=%d (W=%d)", imageY, spec->dim->height,
 							  imageX, spec->dim->width);
-						// Можно предпринять действие или просто пропустить этот пиксель
-						continue; // Пропустить этот входной пиксель
+						continue;
 					}
 					orig_pixel = spec->img->input_img->img_pixels[imageY][imageX];
 					weight = cfilter.filter_arr[filterY][filterX];

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "utils.h"
 #include "../../libbmp/libbmp.h"
 #include "../../logger/log.h"
-#include "utils.h"
 #include "args-parse.h"
 #include <stdlib.h>
 #include <string.h>

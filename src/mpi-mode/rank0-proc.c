@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "rank0-proc.h"
 #include "../../logger/log.h"
 #include "../../libbmp/libbmp.h"
 #include "../utils/threads-general.h"
 #include "mpi-types.h"
-#include "rank0-proc.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>

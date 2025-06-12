@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "exec.h"
 #include "../utils/args-parse.h"
 #include "../../logger/log.h"
 #include "queue.h"
 #include "threads.h"
-#include "exec.h"
 #include <pthread.h>
 #include <string.h>
 #include <stdatomic.h>

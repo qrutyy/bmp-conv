@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "phases.h"
 #include "../../libbmp/libbmp.h"
 #include "../../logger/log.h"
 #include "data-transfer.h"
@@ -10,8 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // For memcpy
-#include "utils.h"
-#include "phases.h"
 
 int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *args, struct img_spec *img_data, struct img_comm_data *comm_data, double *start_time)
 {

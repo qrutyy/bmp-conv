@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "filter-comp.h"
 #include "../../logger/log.h"
 #include "../utils/filters.h"
 #include "../utils/threads-general.h"
 #include "mpi-types.h"
-#include "filter-comp.h"
 #include <math.h>
 #include <stdint.h>
 #include <string.h>

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "exec.h"
 #include <stdlib.h>
 #include <string.h>
 #include "../utils/utils.h"
 #include "../utils/threads-general.h"
-#include "exec.h"
 
 double execute_st_computation(struct img_dim *dim, struct img_spec *img_spec, struct p_args *args, void *filters)
 {

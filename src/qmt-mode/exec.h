@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#pragma once 
+
 #include "../../libbmp/libbmp.h"
 #include "../utils/args-parse.h"
 #include "../utils/utils.h"
 #include "threads.h"
 #include "queue.h"
+
 /**
  * Allocates memory for thread management structures (reader, worker, writer thread arrays)
  * and initializes the input and output image queues based on program arguments.

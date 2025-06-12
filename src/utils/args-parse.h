@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#pragma once
+
 #include <stdlib.h>
 #include <stdint.h>
 
 #define DEFAULT_QUEUE_CAP 20
 #define DEFAULT_QUEUE_MEM_LIMIT 500
-#pragma once
 
 // Structure for storing input arguments. Better described in README
 struct p_args {

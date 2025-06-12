@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "args-parse.h"
+#include "utils.h"
+#include "../../logger/log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
 #include <errno.h>
-#include "args-parse.h"
-#include "utils.h"
-#include "../../logger/log.h"
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
 
