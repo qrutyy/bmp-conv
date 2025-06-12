@@ -16,7 +16,7 @@
  * @param ctx - pointer to the MPI context structure
  * @param comm_data - pointer to the image communication geometry structure
  * @param local_data - pointer to the local data structure.
-* @param global_send_buffer - pointer to the contiguous buffer on rank 0 containing the packed image data ready for scattering.
+ * @param global_send_buffer - pointer to the contiguous buffer on rank 0 containing the packed image data ready for scattering.
  * @param comm_arrays - pointer to the structure containing communication arrays
  *
  * @return 0 on success, -1 on error .

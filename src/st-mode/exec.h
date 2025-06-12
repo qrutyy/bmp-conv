@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "../utils/utils.h"
+#include "../utils/threads-general.h"
+
 /**
  * Initializes a thread_spec structure encompassing the whole image dimensions, calls the core computation function, measures the execution time, and cleans up allocated resources.
  *
