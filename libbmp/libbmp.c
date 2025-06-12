@@ -36,17 +36,17 @@ bmp_header_write (const bmp_header *header,
 {
 	if (header == NULL)
 	{
-		return BMP_HEADER_NOT_INITIALIZED; 
+		return BMP_HEADER_NOT_INITIALIZED;
 	}
 	else if (img_file == NULL)
 	{
 		return BMP_FILE_NOT_OPENED;
 	}
-	
+
 	// Since an adress must be passed to fwrite, create a variable!
 	const unsigned short magic = BMP_MAGIC;
 	fwrite (&magic, sizeof (magic), 1, img_file);
-	
+
 	// Use the type instead of the variable because its a pointer!
 	fwrite (header, sizeof (bmp_header), 1, img_file);
 	return BMP_OK;
@@ -60,17 +60,17 @@ bmp_header_read (bmp_header *header,
 	{
 		return BMP_FILE_NOT_OPENED;
 	}
-	
+
 	// Since an adress must be passed to fread, create a variable!
 	unsigned short magic;
-	
+
 	// Check if its an bmp file by comparing the magic nbr:
 	if (fread (&magic, sizeof (magic), 1, img_file) != 1 ||
 	    magic != BMP_MAGIC)
 	{
 		return BMP_INVALID_FILE;
 	}
-	
+
 	if (fread (header, sizeof (bmp_header), 1, img_file) != 1)
 	{
 		return BMP_ERROR;
@@ -98,10 +98,10 @@ void
 bmp_img_alloc (bmp_img *img)
 {
 	const size_t h = abs (img->img_header.biHeight);
-	
+
 	// Allocate the required memory for the pixels:
 	img->img_pixels = malloc (sizeof (bmp_pixel*) * h);
-	
+
 	for (size_t y = 0; y < h; y++)
 	{
 		img->img_pixels[y] = malloc (sizeof (bmp_pixel) * img->img_header.biWidth);
@@ -114,15 +114,15 @@ bmp_img_pixel_alloc (size_t height, size_t width)
 	bmp_pixel **img_pixels = malloc (sizeof (bmp_pixel*) * height);
 	if (!img_pixels) {
 		log_error("Memory allocation failed");
-		return NULL; 
+		return NULL;
 	}
-	
+
 	for (size_t y = 0; y < height; y++)
 	{
 		img_pixels[y] = malloc (sizeof (bmp_pixel) * width);
 		if (!img_pixels[y])	{
 			log_error("Memory allocation failed");
-			return NULL; 
+			return NULL;
 		}
 	}
 	return img_pixels;
@@ -142,7 +142,7 @@ void
 bmp_img_free (bmp_img *img)
 {
 	const size_t h = abs (img->img_header.biHeight);
-	
+
 	for (size_t y = 0; y < h; y++)
 	{
 		free (img->img_pixels[y]);
@@ -155,39 +155,39 @@ bmp_img_write (const bmp_img *img,
                const char    *filename)
 {
 	FILE *img_file = fopen (filename, "wb");
-	
+
 	if (img_file == NULL)
 	{
 		return BMP_FILE_NOT_OPENED;
 	}
-	
+
 	// NOTE: This way the correct error code could be returned.
 	const enum bmp_error err = bmp_header_write (&img->img_header, img_file);
-	
+
 	if (err != BMP_OK)
 	{
 		// ERROR: Could'nt write the header!
 		fclose (img_file);
 		return err;
 	}
-	
+
 	// Select the mode (bottom-up or top-down):
 	const size_t h = abs (img->img_header.biHeight);
 	const size_t offset = (img->img_header.biHeight > 0 ? h - 1 : 0);
-	
+
 	// Create the padding:
 	const unsigned char padding[3] = {'\0', '\0', '\0'};
-	
+
 	// Write the content:
 	for (size_t y = 0; y < h; y++)
 	{
 		// Write a whole row of pixels to the file:
 		fwrite (img->img_pixels[offset - y], sizeof (bmp_pixel), img->img_header.biWidth, img_file);
-		
+
 		// Write the padding for the row!
 		fwrite (padding, sizeof (unsigned char), BMP_GET_PADDING (img->img_header.biWidth), img_file);
 	}
-	
+
 	// NOTE: All good!
 	fclose (img_file);
 	return BMP_OK;
@@ -198,32 +198,32 @@ bmp_img_read (bmp_img    *img,
               const char *filename)
 {
 	FILE *img_file = fopen (filename, "rb");
-	
+
 	if (img_file == NULL)
 	{
 		return BMP_FILE_NOT_OPENED;
 	}
-	
+
 	// NOTE: This way the correct error code can be returned.
 	const enum bmp_error err = bmp_header_read (&img->img_header, img_file);
-	
+
 	if (err != BMP_OK)
 	{
 		// ERROR: Could'nt read the image header!
 		fclose (img_file);
 		return err;
 	}
-	
+
 	bmp_img_alloc (img);
-	
+
 	// Select the mode (bottom-up or top-down):
 	const size_t h = abs (img->img_header.biHeight);
 	const size_t offset = (img->img_header.biHeight > 0 ? h - 1 : 0);
 	const size_t padding = BMP_GET_PADDING (img->img_header.biWidth);
-	
+
 	// Needed to compare the return value of fread
 	const size_t items = img->img_header.biWidth;
-	
+
 	// Read the content:
 	for (size_t y = 0; y < h; y++)
 	{
@@ -233,11 +233,11 @@ bmp_img_read (bmp_img    *img,
 			fclose (img_file);
 			return BMP_ERROR;
 		}
-		
+
 		// Skip the padding:
 		fseek (img_file, padding, SEEK_CUR);
 	}
-	
+
 	// NOTE: All good!
 	fclose (img_file);
 	return BMP_OK;
@@ -275,8 +275,8 @@ void bmp_print_header_data(const bmp_header* header) {
 }
 
 int bmp_compare_images(const bmp_img *img1, const bmp_img *img2) {
-	int width = 0, height = 0; 
-	bool pixels1_exist = false , pixels2_exist = false; 
+	int width = 0, height = 0;
+	bool pixels1_exist = false , pixels2_exist = false;
 	size_t x = 0, y = 0;
 	const bmp_pixel *p1 = NULL, *p2 = NULL;
 
@@ -300,7 +300,7 @@ int bmp_compare_images(const bmp_img *img1, const bmp_img *img2) {
         img1->img_header.biClrUsed != img2->img_header.biClrUsed ||
         img1->img_header.biClrImportant != img2->img_header.biClrImportant)
     {
-        return 1; 
+        return 1;
     }
 
     width = img1->img_header.biWidth;
@@ -328,7 +328,7 @@ int bmp_compare_images(const bmp_img *img1, const bmp_img *img2) {
             p2 = &img2->img_pixels[y][x];
             if (p1->red != p2->red || p1->green != p2->green || p1->blue != p2->blue) {
 				log_info("Difference in pixels at x:%u y:%u\n P1: %u:%u:%u P2: %u:%u:%u", x, y, p1->red, p1->green, p1->blue, p2->red, p2->green, p2->blue);
-                return 1; 
+                return 1;
             }
         }
     }

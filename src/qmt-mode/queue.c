@@ -17,7 +17,7 @@
  * and a fixed overhead assumption.
  *
  * @param img A pointer to the bmp_img structure whose memory usage is to be estimated.
- * 
+ *
  * @return The estimated memory usage in MB.
  */
 static size_t estimate_image_memory(const bmp_img *img)
@@ -201,7 +201,7 @@ bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, siz
 restart_wait_loop:
 	while (q->size == 0) {
 		start_block_time = get_time_in_seconds();
-		
+
 		if ((curr_written_files = __atomic_load_n(written_files, __ATOMIC_ACQUIRE)) >= file_count) {
 			log_debug("Pop termination check: written_files (%zu) >= file_count (%u). Returning NULL.", curr_written_files, file_count);
 			pthread_mutex_unlock(&q->mutex);

@@ -38,7 +38,7 @@ void initialize_args(struct p_args *args_ptr);
  * Checks if the provided mode string is present in the list of valid modes.
  *
  * @param mode_str The mode string extracted from the command line argument.
- * 
+ *
  * @return The integer index corresponding to the mode if valid, -1 otherwise.
  */
 int check_mode_arg(char *mode_str);
@@ -47,7 +47,7 @@ int check_mode_arg(char *mode_str);
  * Checks if the provided filter string is present in the list of valid filters.
  *
  * @param filter The filter string extracted from the command line argument.
- * 
+ *
  * @return The original filter string pointer if valid, NULL otherwise.
  */
 char *check_filter_arg(char *filter);
@@ -60,7 +60,7 @@ char *check_filter_arg(char *filter);
  * @param argc Argument count from main().
  * @param argv Argument vector from main().
  * @param args Pointer to the p_args structure to store parsed values.
- * 
+ *
  * @return 0 on success, -1 on parsing or validation error.
  */
 int parse_mandatory_args(int argc, char *argv[], struct p_args *args);
@@ -73,7 +73,7 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args);
  * @param argc Argument count from main().
  * @param argv Argument vector from main().
  * @param args Pointer to the p_args structure to store parsed values.
- * 
+ *
  * @return 0 on success, -1 on parsing or validation error.
  */
 int parse_queue_mode_args(int argc, char *argv[], struct p_args *args);
@@ -86,7 +86,7 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args);
  * @param argc Argument count from main().
  * @param argv Argument vector from main().
  * @param args Pointer to the p_args structure to store parsed values.
- * 
+ *
  * @return 0 on success, -1 on parsing or validation error.
  */
 int parse_normal_mode_args(int argc, char *argv[], struct p_args *args);

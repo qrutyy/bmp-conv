@@ -119,7 +119,7 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 	return final_time;
 }
 
-/** 
+/**
  * Orchestrates image processing using column-based domain decomposition via matrix transpose.
  * Manages the lifecycle of MPI communication and computation phases, including:
  * - Initial image read and timing start (rank 0).

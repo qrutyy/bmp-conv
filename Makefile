@@ -123,7 +123,7 @@ clean:
 	$(RM) -r $(BUILD_DIR_NO_MPI)
 	$(RM) tests/*.dat src/*.out 
 
-.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode
+.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode test
 
 .SUFFIXES:
 

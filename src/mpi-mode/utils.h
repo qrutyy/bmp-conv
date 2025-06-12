@@ -52,13 +52,13 @@ void mpi_calculate_row_distribution(const struct mpi_context *ctx, struct img_co
 void mpi_calculate_column_distribution(const struct mpi_context *ctx, struct img_comm_data *comm_data);
 
 /**
- * Sets up the comm_data and comm_data for each process. 
+ * Sets up the comm_data and comm_data for each process.
  * More specifically - calculates the distribution range for each process and sets all the auxilialry info.
  * See mpi-types.h for better type description.
  *
  * @param ctx - process-specific mpi_context
  * @param comm_data - process-specific img_comm_data (that stores the resulst of distr calc)
- * @param comm_arrays - distribution info (num of rows, ...) 
+ * @param comm_arrays - distribution info (num of rows, ...)
  *
  * @return 0 on success, -1 on error
  */

@@ -6,7 +6,7 @@
 #include "mpi-types.h"
 
 /**
- * This function represents the data distribution phase. 
+ * This function represents the data distribution phase.
  * It performs an MPI_Scatterv operation. Rank 0 acts as the sender,
  * distributing chunks of the pre-packed global_send_buffer (prepared in a prior phase)
  * to all processes according to the sizes and displacements specified in comm_arrays.
@@ -16,9 +16,9 @@
  * @param ctx - pointer to the MPI context structure
  * @param comm_data - pointer to the image communication geometry structure
  * @param local_data - pointer to the local data structure.
-* @param global_send_buffer - pointer to the contiguous buffer on rank 0 containing the packed image data ready for scattering. 
+* @param global_send_buffer - pointer to the contiguous buffer on rank 0 containing the packed image data ready for scattering.
  * @param comm_arrays - pointer to the structure containing communication arrays
- * 
+ *
  * @return 0 on success, -1 on error .
  */
 int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_comm_data *comm_data, struct mpi_local_data *local_data, unsigned char *global_send_buffer,
@@ -30,11 +30,11 @@ int8_t mpi_phase_scatter_data(const struct mpi_context *ctx, const struct img_co
  * unpacks into img_data->img_result via mpi_rank0_unpack_data_from_gather,
  * and frees global_recv_buffer.
  *
- * @param ctx - MPI context 
- * @param comm_data - image communication geometry 
+ * @param ctx - MPI context
+ * @param comm_data - image communication geometry
  * @param local_data - contains processed data in output_pixels to send
- * @param comm_arrays - gatherv receive counts/displacements 
- * @param img_data - final image destination 
+ * @param comm_arrays - gatherv receive counts/displacements
+ * @param img_data - final image destination
  *
  * @return 0 on success, -1 on error
  */

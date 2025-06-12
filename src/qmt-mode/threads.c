@@ -87,7 +87,7 @@ void *reader_thread(void *arg)
  * @param filename_ptr Pointer to a char pointer where the filename associated with the image will be stored (memory allocated by queue).
  * @param file_count Total expected file count (potentially used by queue logic).
  * @param written_files_ptr Pointer to counter for processed files (potentially used by queue logic).
- * 
+ *
  * @return Pointer to the bmp_img task, or NULL if queue is empty/error/termination signal.
  */
 static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, int file_count, size_t *written_files_ptr, const char *mode)
@@ -124,7 +124,7 @@ static bmp_img *worker_get_task(struct img_queue *input_q, char **filename_ptr, 
  * @param input_img The input image popped from the queue.
  * @param pargs Pointer to the program arguments structure.
  * @param filters Pointer to the filter mix structure.
- * 
+ *
  * @return Pointer to an initialized thread_spec structure containing all necessary data for processing, or NULL on allocation failure.
  */
 static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct p_args *pargs, struct filter_mix *filters)
@@ -181,7 +181,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
  * @param th_spec The thread specification structure containing image data, dimensions, etc.
  * @param pargs Pointer to the program arguments structure containing compute mode, block size.
  * @param filters Pointer to the filter mix structure.
- * 
+ *
  * @return 0 on successful processing of the entire image, < 0 on error.
  */
 static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs, struct filter_mix *filters)

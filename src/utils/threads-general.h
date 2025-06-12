@@ -74,11 +74,11 @@ void *init_thread_spec(struct p_args *args, struct filter_mix *filters);
  * Uses wrap-around (modulo) for horizontal boundary handling and
  * clamping for vertical boundary handling (to match MPI implementation).
  *
- * !NOTE: 
+ * !NOTE:
  * This filter application algorithm is using clamping (rounding to the border) method.
  * That means, that required out-of-bounds elements aren't being accesssed. Instead - we access the border ones.
  * As you may know - there is a wrap-around technique, that redirects out-of-bound elements to the opposite side.
- * We aren't using it, due to difficulty of MPI version implementation. 
+ * We aren't using it, due to difficulty of MPI version implementation.
  * It causes a lot of auxiliary stages for data transfering. (halos)
  *
  * @param spec Pointer to the thread_spec structure containing image data, dimensions,

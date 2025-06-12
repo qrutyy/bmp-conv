@@ -61,15 +61,15 @@ void queue_destroy(struct img_queue *q);
  * Returns NULL if the queue remains empty after timeout and all files are done,
  * or if a signal indicates completion. Allocates memory for the returned filename.
  *
- * !NOTE: in CI (Helgrind analysis) you may have noticed an error: 
+ * !NOTE: in CI (Helgrind analysis) you may have noticed an error:
  * "Thread #?: pthread_cond{signal,broadcast}: dubious: associated lock is not held by any thread"
- * Error indicates, that mutex inside queue_pop wasn't held before pthread_cond_timedwait was called. Thats obviously false 
+ * Error indicates, that mutex inside queue_pop wasn't held before pthread_cond_timedwait was called. Thats obviously false
  *
  * @param q A pointer to the img_queue structure.
  * @param filename A pointer to a char pointer (`char **`). On success, this will be updated to point to a newly allocated string containing the filename. The caller is responsible for freeing this memory.
  * @param file_count The total number of files expected to be processed by the system.
  * @param written_files A pointer to a global atomic counter tracking the number of files successfully processed (written). Used for termination check.
- * 
+ *
  * @return A pointer to the popped bmp_img structure, or NULL if the queue is empty and processing should terminate, or on error during timed wait.
  */
 bmp_img *queue_pop(struct img_queue *q, char **filename, uint8_t file_count, size_t *written_files, const char *mode);

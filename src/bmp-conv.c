@@ -31,7 +31,7 @@ struct p_args *args = NULL;
  * Parses command-line arguments provided via `argc` and `argv`. Initializes the
  * global `args` structure with defaults, checks for queue mode activation, calls
  * appropriate sub-parsers for mandatory and mode-specific arguments, and validates
- * that all required arguments are present and valid. 
+ * that all required arguments are present and valid.
  *
  * @return number of worker threads for normal mode (or 1 if queue mode is active) on success, or
  * -1 on any parsing or validation error.
@@ -98,7 +98,7 @@ static int parse_args(int argc, char *argv[])
  * computation function (`execute_st_computation` or `execute_mt_computation`),
  * logging the execution time, saving the resulting image, and performing cleanup.
  * Requires the number of threads `threadnum` and an initialized `filter_mix`
- * structure `filters`. 
+ * structure `filters`.
  *
  * @return result time.
  */
@@ -219,7 +219,7 @@ static double run_queue_mode(struct filter_mix *filters)
  * structures, determines the execution mode (queue-based or standard) based on
  * parsed arguments, invokes the corresponding execution function (`run_queue_mode`
  * or `run_non_queue_mode`), logs the final results if applicable, and performs
- * final cleanup of allocated resources (arguments and filters). 
+ * final cleanup of allocated resources (arguments and filters).
  *
  * @return 0 on successful completion, -1 on memory allocation errors, or -2 on argument
  * parsing errors.
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 		int rank = 0;
 		int size = 0;
 		/**
-		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine 
+		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine
 			*/
 		MPI_Init(&argc, &argv);
 

@@ -16,7 +16,7 @@
  * @param th_spec - thread_spec structure with start/end row/columns - borders of the thread execution
  * @param next_*_block - pointer to the uint16_t denoting the next calc start
  * @param mutext - you already know who it is. its ya boi ....
- * @return 
+ * @return
  */
 uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t block_size, pthread_mutex_t *x_block_mutex);
 uint8_t process_by_column(struct thread_spec *th_spec, uint16_t *next_y_block, uint16_t block_size, pthread_mutex_t *y_block_mutex);

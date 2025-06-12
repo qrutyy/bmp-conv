@@ -34,7 +34,7 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
  *
  * @param comm_data - process-specific img_comm_data distr data
  * @param ctx - process-specific mpi_context
- * @param parcked_buffer - continuous buffer 
+ * @param parcked_buffer - continuous buffer
  * + other known params
  *
  * @return 0 on success, -1 on error
@@ -52,7 +52,7 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
  * @param comm_data - pointer to root0 img_comm_data structure
  * @param ctx - process-specific mpi_context
  * @param comm_arrays - pointer to structure, that bundles together the arrays required for variable-count MPI collective communication operations, specifically those like MPI_Scatterv and MPI_Gatherv.
- * 
+ *
  * @return 0 on success, -1 on error
  */
 
