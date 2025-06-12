@@ -8,7 +8,8 @@ LOG_FILE="$SD/timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
 
-TEST_FILE="image6.bmp"
+TEST_FILE="image7.bmp" # as a small image - image6.bmp was used
+# image 7 isn't presented in the repo, it will be generated with the "magick" tool
 FILTER="gg"
 BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
 PROC_NUMS=("2" "3" "4" "5" "6" "7" "8")
@@ -17,6 +18,9 @@ MODES=("by_row" "by_column")
 make -C "$BD" build-f 
 
 echo "RunID Process-num Filter ThreadNum_logged Mode Block-size Result" > "$LOG_FILE"
+
+echo -e "Generating $TEST_FILE with the size = 1GB..."
+magick -size 16384x16384 xc:black $SD/../test-img/image7.bmp
 
 mkdir -p "$PLOTS_PATH/mpi"
 echo -e "\nRunning MPI tests"

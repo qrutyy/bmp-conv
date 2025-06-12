@@ -1,6 +1,6 @@
 # BMP-CONV
 
-This tool provides a various range of computing approaches for BMP image convolution algorithm. It includes multithreaded, queued and MPI-based approaches. The convolution can be used with multiple different filters and configuration options. The analysis of proposed approaches along with some notes is presented in [docs](https://github.com/qrutyy/bmp-conv/tree/main/docs).
+This tool provides a various range of computing approaches for BMP image convolution algorithm. It includes singlethreaded, multithreaded (queued and static) and MPI-based approaches. Convolution can be used with multiple different filters and configuration options. The analysis of proposed approaches along with some notes is presented in [docs](https://github.com/qrutyy/bmp-conv/tree/main/docs).
 
 ## Usage
 At first, you should build the sources by `make`.
@@ -31,7 +31,7 @@ Usage: ./bmp-conv [-queue-mode/-mpi-mode] <input_file.bmp> --filter=<type> [--th
   - `mg`: Median Gaussian
 - `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. **Must be greater than `0`**.
 
-[Filter description and performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
+[Filter description and MT-mode performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
 
 #### Optional Arguments:
 - `-queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)

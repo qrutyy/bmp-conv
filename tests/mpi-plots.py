@@ -19,7 +19,7 @@ except NameError:
 
 BASE_DIR = SCRIPT_DIR
 LOG_FILE = BASE_DIR / "timing-results.dat"
-PLOTS_PATH = BASE_DIR / "plots" / "mpi"
+PLOTS_PATH = BASE_DIR / "plots" / "mpi" / "1gb-image"
 
 plt.rcParams.update(
     {
