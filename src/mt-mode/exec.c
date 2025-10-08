@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "exec.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
@@ -45,7 +48,6 @@ static void *sthread_function(void *arg)
 	}
 
 exit:
-	free(th_spec);
 	return NULL;
 }
 
@@ -59,7 +61,6 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 
 	th = malloc(threadnum * sizeof(pthread_t));
 	if (!th) {
-		free(th);
 		goto mem_err;
 	}
 
@@ -83,6 +84,7 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 	for (i = 0; i < (size_t)threadnum; i++) {
 		if (pthread_create(&th[i], NULL, sthread_function, th_spec[i]) != 0) {
 			log_error("Failed to create a thread");
+			free(th_spec[i]->st_gen_info);
 			free(th_spec[i]);
 			create_error = 1;
 			threadnum = i;
@@ -95,6 +97,8 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 			log_error("Failed to join a thread");
 			break;
 		}
+		free(th_spec[i]->st_gen_info);
+		free(th_spec[i]);
 	}
 
 	end_time = get_time_in_seconds();
@@ -116,19 +120,4 @@ mem_th_err:
 		free(th_spec[i]);
 	}
 	return 0;
-}
-
-void sthreads_save(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args)
-{
-	if (strcmp(args->output_filename, "") != 0) {
-		snprintf(output_filepath, path_len, "test-img/%s", args->output_filename);
-	} else {
-		if (threadnum > 1)
-			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->input_filename[0]);
-		else
-			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->input_filename[0]);
-	}
-
-	log_debug("Result out filepath %s\n", output_filepath);
-	bmp_img_write(img_result, output_filepath);
 }

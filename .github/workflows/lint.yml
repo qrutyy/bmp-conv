@@ -1,7 +1,7 @@
 name: Linters Check
 
 on:
-  pull_request:
+  # if not triggered on PR - trigger manually, that was made to avoid workflow duplication
   push:
   workflow_dispatch:
     paths:

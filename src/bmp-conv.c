@@ -3,10 +3,10 @@
 #include "../libbmp/libbmp.h"
 #include "../logger/log.h"
 #include "utils/utils.h"
-#include "mt-mode/exec.h" // For execute_mt_computation
-#include "st-mode/exec.h" // For execute_st_computation
-#include "qmt-mode/exec.h" // For queue-mode functions
-#include "utils/filters.h" // For init_filters, free_filters, struct filter_mix
+#include "mt-mode/exec.h" // for execute_mt_computation
+#include "st-mode/exec.h" // for execute_st_computation
+#include "qmt-mode/exec.h" // for queue-mode functions
+#include "utils/filters.h" // for init_filters, free_filters, struct filter_mix
 #include "qmt-mode/threads.h" // for qthreads_gen_info
 #include <stdbool.h>
 #include <pthread.h>
@@ -17,6 +17,11 @@
 #include <assert.h>
 #include <sys/time.h>
 
+#ifdef USE_MPI
+#include <mpi.h>
+#include "mpi-mode/exec.h"
+#endif
+
 #define LOG_FILE_PATH "tests/timing-results.dat"
 
 // Global pointer to parsed arguments. Consider passing this instead of using global.
@@ -26,7 +31,7 @@ struct p_args *args = NULL;
  * Parses command-line arguments provided via `argc` and `argv`. Initializes the
  * global `args` structure with defaults, checks for queue mode activation, calls
  * appropriate sub-parsers for mandatory and mode-specific arguments, and validates
- * that all required arguments are present and valid. 
+ * that all required arguments are present and valid.
  *
  * @return number of worker threads for normal mode (or 1 if queue mode is active) on success, or
  * -1 on any parsing or validation error.
@@ -45,7 +50,10 @@ static int parse_args(int argc, char *argv[])
 	initialize_args(args);
 
 	if (argc > 1 && strncmp(argv[1], "-queue-mode", 11) == 0) {
-		args->queue_mode = 1;
+		args->mt_mode = 1;
+		argv[1] = "_";
+	} else if (argc > 1 && strncmp(argv[1], "-mpi-mode", 10) == 0) {
+		args->mt_mode = 2;
 		argv[1] = "_";
 	}
 
@@ -54,7 +62,7 @@ static int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
-	if (args->queue_mode) {
+	if (args->mt_mode == 1) {
 		if (parse_queue_mode_args(argc, argv, args) < 0) {
 			log_error("Error parsing queue-mode specific arguments.\n");
 			return -1;
@@ -70,11 +78,11 @@ static int parse_args(int argc, char *argv[])
 		log_error("Error: Missing required arguments: --filter, --mode, and --block must be set.\n");
 		return -1;
 	}
-	if (args->queue_mode && args->file_count == 0) {
+	if (args->mt_mode && args->file_count == 0) {
 		log_error("Error: Queue mode requires at least one input filename.\n");
 		return -1;
 	}
-	if (!args->queue_mode && args->file_count != 1) {
+	if (!args->mt_mode && args->file_count != 1) {
 		log_error("Error: Normal mode requires exactly one input filename.\n");
 		return -1;
 	}
@@ -90,7 +98,7 @@ static int parse_args(int argc, char *argv[])
  * computation function (`execute_st_computation` or `execute_mt_computation`),
  * logging the execution time, saving the resulting image, and performing cleanup.
  * Requires the number of threads `threadnum` and an initialized `filter_mix`
- * structure `filters`. 
+ * structure `filters`.
  *
  * @return result time.
  */
@@ -145,7 +153,7 @@ static double run_non_queue_mode(int threadnum, struct filter_mix *filters)
 		goto cleanup;
 	}
 
-	sthreads_save(output_filepath, sizeof(output_filepath), threadnum, &img_result, args);
+	save_result_image(output_filepath, sizeof(output_filepath), threadnum, &img_result, args);
 
 cleanup:
 	log_debug("Cleaning up non-queue mode resources...");
@@ -211,7 +219,7 @@ static double run_queue_mode(struct filter_mix *filters)
  * structures, determines the execution mode (queue-based or standard) based on
  * parsed arguments, invokes the corresponding execution function (`run_queue_mode`
  * or `run_non_queue_mode`), logs the final results if applicable, and performs
- * final cleanup of allocated resources (arguments and filters). 
+ * final cleanup of allocated resources (arguments and filters).
  *
  * @return 0 on successful completion, -1 on memory allocation errors, or -2 on argument
  * parsing errors.
@@ -223,8 +231,9 @@ int main(int argc, char *argv[])
 	struct filter_mix *filters = NULL;
 	int return_code = 0;
 
-	log_set_quiet(true);
-	
+	log_set_quiet(true); // set false for default usage, true - for benchmarking.
+	log_set_level(LOG_TRACE);
+
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
 		log_error("Fatal Error: Cannot allocate args structure.\n");
@@ -246,7 +255,35 @@ int main(int argc, char *argv[])
 	}
 	init_filters(filters);
 
-	result_time = (!args->queue_mode) ? run_non_queue_mode(threadnum, filters) : run_queue_mode(filters);
+	if (!args->mt_mode) {
+		result_time = run_non_queue_mode(threadnum, filters);
+	} else if (args->mt_mode == 1) {
+		result_time = run_queue_mode(filters);
+	}
+#ifdef USE_MPI
+	else if (args->mt_mode == 2) {
+		int rank = 0;
+		int size = 0;
+		/**
+		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine
+			*/
+		MPI_Init(&argc, &argv);
+
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+		log_info("SIZE = %d", size);
+		// immediatly jumps to execute_...
+		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)
+		result_time = execute_mpi_computation(size, rank, args, filters);
+
+		MPI_Finalize();
+	}
+#endif
+	else { // should be unreachable, just a plug
+		log_error("Error: invalid mode = %d", args->mt_mode);
+	}
+
 	st_write_logs(args, result_time);
 
 	free_filters(filters);

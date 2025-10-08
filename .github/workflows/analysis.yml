@@ -1,0 +1,54 @@
+name: Code Analysis (Build, Valgrind, Sanitizers)
+
+on:
+  # if not triggered on PR - trigger manually, that was made to avoid workflow duplication
+  push:
+  workflow_dispatch:
+
+jobs:
+  analysis:
+    name: Build and Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Build Tools, Analyzers, and MPI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          valgrind \
+          mpich \
+          libmpich-dev
+
+    - name: Compile Project (Standard with Debug Symbols)
+      run: |
+        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread"
+    
+    - name: Run Tests under Valgrind (Memcheck - Memory Errors)
+      run: |
+          ./tests/test.sh ci-memcheck
+
+    - name: Run Tests under Valgrind (Helgrind - Threading Errors)
+      run: |
+          tests/test.sh ci-helgrind 
+
+    - name: Compile with AddressSanitizer + UndefinedBehaviorSanitizer
+      run: |
+        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=address,undefined" LDFLAGS="-fsanitize=address,undefined"
+
+    - name: Run Tests with ASan + UBSan
+      # It will abort (and fail the step) if sanitizers detect errors.
+      run: |
+        tests/test.sh ci
+
+    - name: Compile with ThreadSanitizer
+      run: |
+        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=thread" LDFLAGS="-fsanitize=thread"
+
+    - name: Run Tests with TSan
+      # Run the normal test script with the TSan-instrumented binary.
+      run: |
+        tests/test.sh ci

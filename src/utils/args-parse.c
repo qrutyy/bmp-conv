@@ -1,27 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "args-parse.h"
+#include "utils.h"
+#include "../../logger/log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
-#include "args-parse.h"
-#include "utils.h"
-#include "../../logger/log.h"
+#include <errno.h>
 
 const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", "bo", "mg", NULL };
-const char *valid_modes[] = { "by_row", "by_column", "by_pixel", "by_grid", NULL };
 
-/**
- * Parses mandatory arguments shared by both normal and queue modes:
- * --filter=<type>, --mode=<mode>, --block=<size>.
- * Validates the arguments and stores them in the args structure. Replaces processed argument strings in argv with "_" to mark them as handled.
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
@@ -47,17 +36,6 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Parses arguments specific to the queue-based execution mode:
- * --log=<0|1>, --lim=<MB>, --output=<prefix>, --rww=<R,W,T>, and input filenames.
- * Validates the --rww argument format and range. Collects remaining non-option arguments as input filenames. Marks processed arguments in argv with "_".
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	uint8_t rww_found = 0;
@@ -68,10 +46,17 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		if (strncmp(argv[i], "--log=", 6) == 0) {
 			args->log_enabled = atoi(argv[i] + 6);
 			argv[i] = "_";
-		} else if (strncmp(argv[i], "--lim=", 6) == 0) {
-			args->queue_memory_limit = (size_t)atoi(argv[i] + 6) * 1024 * 1024; // Store as bytes
-			if (args->queue_memory_limit == 0 && strcmp(argv[i] + 6, "0") != 0) {
-				log_error("Error: Invalid value for --lim.\n");
+		} else if (strncmp(argv[i], "--queue-size=", 13) == 0) {
+			args->queue_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
+			if (args->queue_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
+				log_error("Error: Invalid value for --queue-size.\n");
+				return -1;
+			}
+			argv[i] = "_";
+		} else if (strncmp(argv[i], "--queue-mem=", 12) == 0) {
+			args->queue_memory_limit_mb = (size_t)atoi(argv[i] + 12);
+			if (args->queue_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
+				log_error("Error: Invalid value for --queue-mem.\n");
 				return -1;
 			}
 			argv[i] = "_";
@@ -99,11 +84,11 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "-", 1) == 0) {
 			log_error("Error: Unknown option in queue-mode: %s\n", argv[i]);
 			return -1;
-		} else if (args->file_count < MAX_IMAGE_QUEUE_SIZE) {
+		} else if (args->file_count < DEFAULT_QUEUE_CAP) {
 			// Assume remaining non-option args are input files
 			args->input_filename[args->file_count++] = argv[i];
 		} else {
-			log_error("Error: Too many input files (max %d) or unknown argument: %s\n", MAX_IMAGE_QUEUE_SIZE, argv[i]);
+			log_error("Error: Too many input files (max %d) or unknown argument: %s\n", argv[i]);
 			return -1;
 		}
 	}
@@ -124,17 +109,6 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Parses arguments specific to the normal (non-queue) execution mode:
- * --threadnum=<N>, --log=<0|1>, --output=<file>, and the single input filename.
- * Validates the thread number. Expects exactly one input filename. Marks processed arguments in argv with "_".
- *
- * @param argc Argument count from main().
- * @param argv Argument vector from main().
- * @param args Pointer to the p_args structure to store parsed values.
- * 
- * @return 0 on success, -1 on parsing or validation error.
- */
 int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
@@ -175,12 +149,6 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 	return 0;
 }
 
-/**
- * Initializes the p_args structure with default values before parsing.
- * Sets counts to 0 or 1, pointers to NULL or empty strings, and modes/flags to sensible defaults.
- *
- * @param args_ptr Pointer to the p_args structure to initialize.
- */
 void initialize_args(struct p_args *args_ptr)
 {
 	args_ptr->threadnum = 1;
@@ -189,25 +157,19 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->filter_type = NULL;
 	args_ptr->compute_mode = -1;
 	args_ptr->log_enabled = 0;
-	args_ptr->queue_mode = 0;
+	args_ptr->mt_mode = 0;
 	args_ptr->wrt_count = 0;
 	args_ptr->ret_count = 0;
 	args_ptr->wot_count = 0;
 	args_ptr->file_count = 0;
-	args_ptr->queue_memory_limit = QUEUE_MEM_LIMIT;
+	args_ptr->queue_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
+	args_ptr->queue_capacity = DEFAULT_QUEUE_CAP;
 
-	for (int i = 0; i < MAX_IMAGE_QUEUE_SIZE; ++i) {
+	for (int i = 0; i < DEFAULT_QUEUE_CAP; ++i) {
 		args_ptr->input_filename[i] = NULL;
 	}
 }
 
-/**
- * Checks if the provided filter string is present in the list of valid filters.
- *
- * @param filter The filter string extracted from the command line argument.
- * 
- * @return The original filter string pointer if valid, NULL otherwise.
- */
 char *check_filter_arg(char *filter)
 {
 	for (int i = 0; valid_filters[i] != NULL; i++) {
@@ -219,13 +181,6 @@ char *check_filter_arg(char *filter)
 	return NULL;
 }
 
-/**
- * Checks if the provided mode string is present in the list of valid modes.
- *
- * @param mode_str The mode string extracted from the command line argument.
- * 
- * @return The integer index corresponding to the mode if valid, -1 otherwise.
- */
 int check_mode_arg(char *mode_str)
 {
 	for (int i = 0; valid_modes[i] != NULL; i++) {
@@ -235,23 +190,4 @@ int check_mode_arg(char *mode_str)
 	}
 	log_error("Error: Invalid mode '%s'. Valid modes are: by_row, by_column, by_pixel, by_grid\n", mode_str);
 	return -1;
-}
-
-/**
- * Converts a compute mode integer index back to its string representation.
- *
- * @param mode The integer index representing the compute mode.
- * 
- * @return A constant string representation of the mode, or "unknown" / "unset/invalid".
- */
-const char *mode_to_str(int mode)
-{
-	// Check if mode is within the valid range of indices for the array
-	if (mode >= 0 && (size_t)mode < (sizeof(valid_modes) / sizeof(valid_modes[0]) - 1)) {
-		return valid_modes[mode];
-	}
-	if (mode == -1) {
-		return "unset/invalid";
-	}
-	return "unknown";
 }

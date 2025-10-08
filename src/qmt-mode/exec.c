@@ -1,34 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "exec.h"
 #include "../utils/args-parse.h"
 #include "../../logger/log.h"
 #include "queue.h"
 #include "threads.h"
-#include "exec.h"
 #include <pthread.h>
 #include <string.h>
 #include <stdatomic.h>
 #include <errno.h>
 
 /** Notes about balanced distributed work:
- * 1. Its kinda already balanced when the size of the queue is limited.
+ * 1. Its kinda already balanced when the size of the queue is limited. Btw we can't guess the optimal limitation.
+ * It should be >= CPU core number, for better core utilisation.
  * 2. We can calculate the ammount of used per thread memory/pixels and limit by it (so it would be fairly balanced)...
  * 3. Memory usage per thread isn't a good metric in terms of metrics that directly depend on execution time. However, at first i won't depend on threadnum, block_size and other metrics that affect the execution time.
- */
-
-/**
- * Allocates memory for thread management structures (reader, worker, writer thread arrays)
- * and initializes the input and output image queues based on program arguments.
- * Handles potential memory allocation failures gracefully by cleaning up partially
- * allocated resources.
- *
- * yeah, its not that precise. baytik tuda syuda...
- *
- * @param qt_info A pointer to the main qthreads_gen_info structure to be populated.
- * @param args_ptr A pointer to the parsed program arguments containing thread counts and queue memory limits.
- * @param input_queue A pointer to the img_queue structure for input images.
- * @param output_queue A pointer to the img_queue structure for processed images.
- * @return 0 on success, -1 on memory allocation failure.
  */
 
 int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args *args_ptr, struct img_queue *input_queue, struct img_queue *output_queue)
@@ -69,9 +55,9 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 			goto mem_err_cleanup;
 	}
 
-	q_mem_limit = args_ptr->queue_memory_limit > 0 ? args_ptr->queue_memory_limit : MAX_QUEUE_MEMORY;
-	queue_init(input_queue, q_mem_limit);
-	queue_init(output_queue, q_mem_limit);
+	q_mem_limit = args_ptr->queue_memory_limit_mb > 0 ? args_ptr->queue_memory_limit_mb : DEFAULT_QUEUE_MEM_LIMIT;
+	queue_init(input_queue, args_ptr->queue_capacity, q_mem_limit);
+	queue_init(output_queue, args_ptr->queue_capacity, q_mem_limit);
 
 	qt_info->pargs = args_ptr;
 	qt_info->input_q = input_queue;
@@ -97,15 +83,6 @@ mem_err: // General memory error entry point
 	return -1;
 }
 
-/**
- * Creates and launches reader, worker, and writer threads based on the counts
- * specified in program arguments. Initializes a barrier for reader synchronization.
- * Stores thread IDs in the provided qt_info structure. Handles thread creation errors.
- *
- * @param qt_info A pointer to the initialized qthreads_gen_info structure containing thread arrays, arguments, queues, and the barrier.
- * @param args_ptr A pointer to the parsed program arguments (potentially redundant).
- * @return void. Errors during thread creation are logged.
- */
 void create_qthreads(struct qthreads_gen_info *qt_info)
 {
 	size_t i = 0;
@@ -150,13 +127,6 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 	log_info("Launched %zu readers, %zu workers, %zu writers", qt_info->ret_info->used_threads, qt_info->wot_info->used_threads, qt_info->wrt_info->used_threads);
 }
 
-/**
- * Waits for all created reader, worker, and writer threads to complete execution
- * by joining them. Destroys the reader synchronization barrier after readers finish.
- *
- * @param qt_info A pointer to the qthreads_gen_info structure containing the thread IDs and the count of actually created threads.
- * @return void. Errors during join are logged.
- */
 void join_qthreads(struct qthreads_gen_info *qt_info)
 {
 	size_t i = 0;
@@ -195,14 +165,6 @@ void join_qthreads(struct qthreads_gen_info *qt_info)
 	log_info("All threads joined.");
 }
 
-/**
- * Frees all memory allocated for thread management structures, including the
- * arrays holding thread IDs and the main qt_info structure itself.
- * Assumes queues are handled/freed elsewhere if necessary.
- *
- * @param qt_info A pointer to the qthreads_gen_info structure whose resources are to be freed. Can be NULL.
- * @return void.
- */
 void free_qthread_resources(struct qthreads_gen_info *qt_info)
 {
 	if (!qt_info)
@@ -219,6 +181,11 @@ void free_qthread_resources(struct qthreads_gen_info *qt_info)
 	free(qt_info->wot_info);
 	free(qt_info->ret_info);
 	free(qt_info->wrt_info);
+
+	queue_destroy(qt_info->input_q);
+	queue_destroy(qt_info->output_q);
+
+	pthread_barrier_destroy(qt_info->reader_barrier);
 
 	free(qt_info);
 }

@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "compute.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 #include "../../logger/log.h"
 #include "../utils/threads-general.h"
-#include "compute.h"
 
 uint8_t process_by_row(struct thread_spec *th_spec, uint16_t *next_x_block, uint16_t block_size, pthread_mutex_t *x_block_mutex)
 {

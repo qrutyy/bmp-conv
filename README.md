@@ -1,6 +1,6 @@
 # BMP-CONV
 
-This program applies various filters to a BMP image in a multi-threaded manner, allowing for efficient processing based on the selected filter type and computation mode.
+This tool provides a various range of computing approaches for BMP image convolution algorithm. It includes singlethreaded, multithreaded (queued and static) and MPI-based approaches. Convolution can be used with multiple different filters and configuration options. The analysis of proposed approaches along with some notes is presented in [docs](https://github.com/qrutyy/bmp-conv/tree/main/docs).
 
 ## Usage
 At first, you should build the sources by `make`.
@@ -8,7 +8,7 @@ At first, you should build the sources by `make`.
 ### Command Line Arguments
 
 ```bash
-Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N>] [--mode=<compute_mode>] [--block=<size>] [--output=<file>] [--log=<N>]
+Usage: ./bmp-conv [-queue-mode/-mpi-mode] <input_file.bmp> --filter=<type> [--threadnum=<N>] [--mode=<compute_mode>] [--block=<size>] [--output=<file>] [--log=<N>]
 ```
 
 #### Mandatory Arguments:
@@ -29,20 +29,22 @@ Usage: ./bmp-conv [-queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N
   - `mm`: Median
   - `bo`: Box Blur
   - `mg`: Median Gaussian
-- `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. Must be greater than `0`.
+- `--block=<size>`: Block size for grid/column/row-based processing. If `1` is chosen – pixel based computation mode will be used. **Must be greater than `0`**.
 
-[Filter description and performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
+[Filter description and MT-mode performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
 
 #### Optional Arguments:
 - `-queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)
+- `-mpi-mode` : Enables MPI-based mode. Implemented for using processing with multiple processes. **Should be the first argumen** (made for better args handling). `mpich` and `mpich-devel` packages are required. **Should be ran with `mpirun` - see usage examples**.
 - `--threadnum=<N>`: The number of threads to use (default: `1`). Specify the number of threads to run in parallel. **Isn't required for queue mode.**
 - `--output=<file>`: The name of the output file where the processed image will be saved. If not specified, an output filename will be generated based on the input filename. In case of queue-mode provided parameter will be used as a template
 - `--log=<0|1>`: Enable or disable logging (default: `0`). Set to `1` to log execution time and parameters to a file.
 - `--mode=<compute_mode>`: This argument is optional when threadnum equals to `1` (single-threaded mode is turned on).
 - `--rww=<x,y,z>`: Sets the number of **reader**, **worker** and **writer** threads. Is required in queue-mode. If `sum < 3` -> queue-mode won't work.  
-- `--lim=<N>`: Sets the memory limit (in MB) for images being queued for convolution. Initial value is `500` MB. 
+- `--queue-size=<N>`: Sets the memory limit (in MB) for images being queued for convolution. Initial value is `500` MB. 
+- `--queue-mem=<N>`: Sets the queue's element limit. Initial value is `20` 
 
-### Example Usage
+### Usage Examples
 
 Apply Sharpen filter in single-threded (sequential) column mode with block size of 30 (minimum args required):
 ```bash
@@ -54,26 +56,29 @@ Apply Big Gaussian Blur in grid mode using 4 threads and block size of 16 (+ spe
 ./bmp-conv image5.bmp --mode=by_grid --filter=gg --threadnum=4 --block=16 --output=output.bmp
 ```
 
-Apply Box Blur in multi-threaded queue-based mode (1 reader and writer thread, 2 worker threads): 
+Apply Box Blur in multi-threaded queue-based mode using "by_row" distribution (1 reader and writer thread, 2 worker threads): 
 ```bash
-./bmp-conv -queue-mode image4.bmp image4.bmp image4.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
+./bmp-conv -queue-mode image1.bmp image2.bmp image3.bmp --mode=by_row --filter=bb --block=5 --rww=1,2,1
 ```
-add queue-mode example
+
+Apply Emboss filter in MPI mode using "by_column" distribution (4 processes):
+```bash
+mpirun -np 4 ./bmp-conv-mpi -mpi-mode image5.bmp --mode=by_column --filter=em --block=5 
+```
+
+*Additionally, to shorten the calls - check Makefile targets (etc. run, run-mpi-mode...)*
 
 ### Testing
-For future performance analysis of mutlithreaded mode - shell script for benchmarking and plot gen were implemented. At first - install dependencies (see [Benchmark-setup](https://github.com/qrutyy/bmp-conv/blob/main/Benchmark-setup.md))To execute tests - simply run:
+For future performance analysis of mutlithreaded mode/queue-mode/mpi-mode - shell scripts for benchmarking and plot genrerators were implemented. At first - install dependencies (see [Benchmark-setup](https://github.com/qrutyy/bmp-conv/blob/main/Benchmark-setup.md))To execute tests - simply run:
 ```
-./tests/benchmark.sh
+./tests/st-mt-benchmark.sh
+./tests/qmt-benchmark.sh
+./tests/mpi-benchmark.sh
 ``` 
 
-**(WIP)** To benchmark the queued mode and its balancing - use:
+To test the correctness of multithreaded part - use (add options for better dynamic analysis, see *workflows/analysis.yml*):
 ```
-./tests/q-mode-benchmark.sh
-```
-
-To test the correctness of multithreaded part - use:
-```
-./tests/test.sh
+./tests/test.sh [-ci] [-ci-memcheck] [-ci-helgrind]
 ```
 
 ### Logs
@@ -85,7 +90,7 @@ Queued mode logging saves blocking time for `queue_pop` and `queue_push`, and ex
 ```
 <LOG_TAG> <TIME>
 ```
-, where **LOG_TAG = <QPOP|QPUSH|READER|WRITER|WORKER>**
+, where **LOG_TAG = < QPOP | QPUSH | READER | WRITER | WORKER >**
 ## License
 
 Distributed under the [GPL-3.0 License](https://github.com/qrutyy/bmp-conv/blob/main/LICENSE). 

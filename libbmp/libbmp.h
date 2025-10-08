@@ -21,7 +21,7 @@ typedef struct _bmp_header
 	unsigned int   bfSize;
 	unsigned int   bfReserved;
 	unsigned int   bfOffBits;
-	
+
 	unsigned int   biSize;
 	int            biWidth;
 	int            biHeight;
@@ -73,6 +73,9 @@ void            bmp_img_alloc                  (bmp_img*);
 void            bmp_img_init_df                (bmp_img*,
                                                 const int,
                                                 const int);
+void*           bmp_img_pixel_alloc			   (size_t height,
+                                                size_t width);
+
 void            bmp_img_free                   (bmp_img*);
 
 enum bmp_error  bmp_img_write                  (const bmp_img*,
@@ -80,5 +83,8 @@ enum bmp_error  bmp_img_write                  (const bmp_img*,
 
 enum bmp_error  bmp_img_read                   (bmp_img*,
                                                 const char*);
+
+void bmp_print_header_data(const bmp_header* header);
+int bmp_compare_images(const bmp_img *img1, const bmp_img *img2);
 
 #endif /* __LIBBMP_H__ */
