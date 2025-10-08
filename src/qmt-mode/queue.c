@@ -215,8 +215,7 @@ restart_wait_loop:
 		if (wait_result == ETIMEDOUT) {
 			log_trace("Consumer timed out waiting for item.");
 			if ((curr_written_files = __atomic_load_n(written_files, __ATOMIC_ACQUIRE)) >= file_count) {
-				log_debug("Pop termination check after timeout: written_files (%zu) >= file_count (%u). Returning NULL.",
-					  curr_written_files, file_count);
+				log_debug("Pop termination check after timeout: written_files (%zu) >= file_count (%u). Returning NULL.", curr_written_files, file_count);
 				pthread_mutex_unlock(&q->mutex);
 				return NULL;
 			}
