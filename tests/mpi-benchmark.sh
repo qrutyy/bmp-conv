@@ -20,7 +20,7 @@ make -C "$BD" build-f
 echo "RunID Process-num Filter ThreadNum_logged Mode Block-size Result" > "$LOG_FILE"
 
 echo -e "Generating $TEST_FILE with the size = 1GB..."
-magick -size 16384x16384 xc:black $SD/../test-img/image7.bmp
+magick -size 16384x16384 xc:black "$SD"/../test-img/image7.bmp
 
 mkdir -p "$PLOTS_PATH/mpi"
 echo -e "\nRunning MPI tests"
