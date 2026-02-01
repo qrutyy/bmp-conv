@@ -22,11 +22,18 @@ bmp_img *setup_input_file(struct p_args *args)
 		return NULL;
 	}
 
+	img = malloc(sizeof(bmp_img));
+	if (!img) {
+		log_error("Error: Failed to allocate memory for input image.\n");
+		return NULL;
+	}
+
 	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->files_cfg.input_filename[0]);
 
 	if (bmp_img_read(img, input_filepath) != 0) {
 		log_error("Error: Could not read BMP image '%s'\n", input_filepath);
 		bmp_img_free(img);
+		free(img);
 		return NULL;
 	}
 
@@ -47,8 +54,18 @@ struct img_spec *setup_img_spec(struct p_args *args)
 	dim = init_dimensions(img->img_header.biWidth, img->img_header.biHeight);
 	if (!dim) {
 		log_error("Error: Failed to initialize dimensions.\n");
+		bmp_img_free(img);
+		free(img);
 		return NULL;
-		
+	}
+
+	img_result = malloc(sizeof(bmp_img));
+	if (!img_result) {
+		log_error("Error: Failed to allocate memory for output image.\n");
+		free(dim);
+		bmp_img_free(img);
+		free(img);
+		return NULL;
 	}
 
 	bmp_img_init_df(img_result, dim->width, dim->height);
@@ -56,6 +73,11 @@ struct img_spec *setup_img_spec(struct p_args *args)
 	img_spec = init_img_spec(img, img_result, dim);
 	if (!img_spec) {
 		log_error("Error: Failed to initialize image spec.\n");
+		bmp_img_free(img_result);
+		free(img_result);
+		free(dim);
+		bmp_img_free(img);
+		free(img);
 		return NULL;
 	}
 	return img_spec;

@@ -93,7 +93,11 @@ MPI_RUN_ARGS := -mpi-mode $(RUN_ARGS) # mpi-mode ignores the threadnum option
 # Run the program with standard arguments
 run: $(TARGET_NO_MPI)
 	@echo "\nRunning: ./$(TARGET_NO_MPI) $(RUN_ARGS)"
-	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_ARGS); \
+	else \
+		./$(TARGET_NO_MPI) $(RUN_ARGS); \
+	fi
 
 # Run specifically on macOS E-cores
 run-mac-e-cores: $(TARGET_NO_MPI)
@@ -107,12 +111,20 @@ run-mac-p-cores: $(TARGET_NO_MPI)
 
 run-q-mode: $(TARGET_NO_MPI)
 	@echo "\nRunning Queue Mode: ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)"
-	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_Q_ARGS); \
+	else \
+		./$(TARGET_NO_MPI) $(RUN_Q_ARGS); \
+	fi
 
 # Run the MPI target using mpirun
 run-mpi-mode: $(TARGET_MPI)
 	@echo "\nRunning MPI mode (NP=$(MPI_NP)): mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)"
-	$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS); \
+	else \
+		mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS); \
+	fi
 
 build-f: 
 	rm -rf build/

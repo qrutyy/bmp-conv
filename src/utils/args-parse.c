@@ -14,18 +14,49 @@ const char *valid_filters[] = { "bb", "mb", "em", "gg", "gb", "co", "sh", "mm", 
 int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
+		// Skip already processed arguments
+		if (strncmp(argv[i], "_", 1) == 0) {
+			continue;
+		}
+		
 		if (strncmp(argv[i], "--filter=", 9) == 0) {
-			args->compute_cfg.filter_type = check_filter_arg(argv[i] + 9);
+			char *filter_str = argv[i] + 9;
+			if (strlen(filter_str) == 0) {
+				log_error("Error: Filter type cannot be empty.\n");
+				return -1;
+			}
+			args->compute_cfg.filter_type = check_filter_arg(filter_str);
 			if (!args->compute_cfg.filter_type)
 				return -1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--mode=", 7) == 0) {
-			args->compute_cfg.compute_mode = check_mode_arg(argv[i] + 7);
-			if (args->compute_cfg.compute_mode < 0)
-				return -1;
+			char *raw_mode = argv[i] + 7;
+			char mode_buf[64]; // Buffer for trimmed mode string
+			size_t j = 0;
+			// Skip leading whitespace and copy to buffer
+			while (*raw_mode == ' ' || *raw_mode == '\t') {
+				raw_mode++;
+			}
+			// Copy mode string, stopping at whitespace or end
+			while (*raw_mode != '\0' && *raw_mode != ' ' && *raw_mode != '\t' && j < sizeof(mode_buf) - 1) {
+				mode_buf[j++] = *raw_mode++;
+			}
+			mode_buf[j] = '\0';
+			// Allow empty mode string (will be validated later if needed)
+			if (j > 0) {
+				args->compute_cfg.compute_mode = check_mode_arg(mode_buf);
+				if (args->compute_cfg.compute_mode < 0) {
+					return -1;
+				}
+			}
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--block=", 8) == 0) {
-			args->compute_cfg.block_size = atoi(argv[i] + 8);
+			char *block_str = argv[i] + 8;
+			if (strlen(block_str) == 0) {
+				log_error("Error: Block size cannot be empty.\n");
+				return -1;
+			}
+			args->compute_cfg.block_size = atoi(block_str);
 			if (args->compute_cfg.block_size <= 0) {
 				log_error("Error: Block size must be > 0.\n");
 				return -1;
@@ -112,6 +143,11 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
+		// Skip already processed arguments
+		if (strncmp(argv[i], "_", 1) == 0) {
+			continue;
+		}
+		
 		if (strncmp(argv[i], "--threadnum=", 12) == 0) {
 			args->mt_mode_cfg.threadnum = atoi(argv[i] + 12);
 			if (args->mt_mode_cfg.threadnum <= 0) {
@@ -125,8 +161,6 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "--output=", 9) == 0) {
 			args->files_cfg.output_filename = argv[i] + 9;
 			argv[i] = "_";
-		} else if (strncmp(argv[i], "_", 1) == 0) {
-			continue; // Skip already processed args
 		} else if (strncmp(argv[i], "-", 1) == 0) {
 			log_error("Error: Unknown option in normal mode: %s\n", argv[i]);
 			return -1;
@@ -157,6 +191,7 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->compute_cfg.compute_mode = -1;
 	args_ptr->log_enabled = 0;
 	args_ptr->compute_cfg.mt_mode = 0;
+	args_ptr->mt_mode_cfg.threadnum = 1; // Default to single thread
 	args_ptr->mt_mode_cfg.qm.threads_cfg.writer_cnt = 0;
 	args_ptr->mt_mode_cfg.qm.threads_cfg.reader_cnt = 0;
 	args_ptr->mt_mode_cfg.qm.threads_cfg.worker_cnt = 0;
@@ -188,11 +223,15 @@ char *check_filter_arg(char *filter)
 
 int check_mode_arg(char *mode_str)
 {
+	if (!mode_str) {
+		log_error("Error: mode_str is NULL in check_mode_arg\n");
+		return -1;
+	}
 	for (int i = 0; valid_modes[i] != NULL; i++) {
 		if (strcmp(mode_str, valid_modes[i]) == 0) {
 			return i;
 		}
 	}
-	log_error("Error: Invalid mode '%s'. Valid modes are: by_row, by_column, by_pixel, by_grid\n", mode_str);
+	log_error("Error: Invalid mode '%s' (len=%zu). Valid modes are: by_row, by_column, by_pixel, by_grid\n", mode_str, strlen(mode_str));
 	return -1;
 }

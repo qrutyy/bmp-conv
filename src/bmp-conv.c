@@ -74,8 +74,17 @@ static int parse_args(int argc, char *argv[])
 		}
 	}
 
-	if (!args->compute_cfg.filter_type || args->compute_cfg.compute_mode < 0 || args->compute_cfg.block_size == 0) {
-		log_error("Error: Missing required arguments: --filter, --mode, and --block must be set.\n");
+	if (!args->compute_cfg.filter_type || args->compute_cfg.block_size == 0) {
+		log_error("Error: Missing required arguments: --filter and --block must be set.\n");
+		return -1;
+	}
+	// Mode is required for multi-threaded mode (threadnum > 1) or queue mode
+	if (!args->compute_cfg.mt_mode && args->mt_mode_cfg.threadnum > 1 && args->compute_cfg.compute_mode < 0) {
+		log_error("Error: --mode is required for multi-threaded mode (threadnum > 1).\n");
+		return -1;
+	}
+	if (args->compute_cfg.mt_mode == 1 && args->compute_cfg.compute_mode < 0) {
+		log_error("Error: --mode is required for queue mode.\n");
 		return -1;
 	}
 	if (args->compute_cfg.mt_mode && args->files_cfg.file_cnt == 0) {
@@ -87,10 +96,9 @@ static int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
-	if (args->mt_mode_cfg.threadnum < 0) {
-		log_error("Error: Argument parsing failed.\n");
-		free(args);
-		return -2;
+	if (!args->compute_cfg.mt_mode && args->mt_mode_cfg.threadnum <= 0) {
+		log_error("Error: Thread number must be > 0 in normal mode.\n");
+		return -1;
 	}
 
 	return 1;
@@ -209,7 +217,6 @@ static double run_queue_mode(struct filter_mix *filters)
 int main(int argc, char *argv[])
 {
 	double result_time = 0;
-	int threadnum = 0;
 	struct filter_mix *filters = NULL;
 	int rc = 0;
 
@@ -223,7 +230,7 @@ int main(int argc, char *argv[])
 	}
 
 	rc = parse_args(argc, argv);
-	if (rc <= 1)
+	if (rc <= 0)
 		return rc;
 	
 	filters = setup_filters(args);
@@ -231,7 +238,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	if (!args->compute_cfg.mt_mode) {
-		result_time = run_non_queue_mode(threadnum, filters);
+		result_time = run_non_queue_mode(args->mt_mode_cfg.threadnum, filters);
 	} else if (args->compute_cfg.mt_mode == 1) {
 		result_time = run_queue_mode(filters);
 	}
@@ -268,7 +275,8 @@ int main(int argc, char *argv[])
 
 	free_filters(filters);
 	free(filters);
+	free(args->files_cfg.input_filename);
 	free(args);
 
-	return rc;
+	return 0;
 }

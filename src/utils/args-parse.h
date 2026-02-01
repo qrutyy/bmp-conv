@@ -24,7 +24,7 @@ struct compute_cfg {
 	char *filter_type;
 	uint8_t block_size;
 
-	int8_t compute_mode : 2;
+	int8_t compute_mode;
 	// 0 - non-queue-mode, 1 - queue-mode, 2 - MPI mode
 	uint8_t mt_mode : 2; 
 };

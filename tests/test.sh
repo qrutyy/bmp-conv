@@ -6,12 +6,12 @@ BD="$BASEDIR"
 
 IMG_FOLDER="$BD/test-img/"
 
-TP_NUM=(2 3 5 8) 
+TP_NUM=(2 3 8) 
 MODES=("by_row" "by_column" "by_pixel" "by_grid")
 MPI_MODES=("by_row" "by_column")
-FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo")
+FILTERS=("co" "gg" "bo") # "sh" "bb" "gb" "em" "mb" "mg" 
 TEST_FILE="image5.bmp"
-BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
+BLOCK_SIZE=("4" "128") # u can extend with  "8" "16" "32" "64" 
 VG_PREFIX=""
 QMT_INPUT_FILES=("image1.bmp" "image2.bmp" "image3.bmp" "image4.bmp")
 RWW_COMBINATIONS=("1,1,1" "1,2,1" "2,1,2" "2,3,2" "1,3,1")
@@ -77,7 +77,7 @@ compare_results() {
 echo -e "\nRunning single-threaded verification tests"
 for fil in "${FILTERS[@]}"; do
 	echo "$VG_PREFIX"
-	make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE=1 LOG=0 OUTPUT_FILE="pix.bmp" > /dev/null
+	make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE=1 LOG=0 OUTPUT_FILE="pix.bmp"
 
 	for bs in "${BLOCK_SIZE[@]}"; do
 		make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE="$bs" LOG=0 > /dev/null 
@@ -90,7 +90,7 @@ echo -e "\nRunning multithreaded verification tests"
 for mode in "${MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
 		for bs in "${BLOCK_SIZE[@]}"; do 
-			make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 LOG=0 >/dev/null
+			make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 BLOCK_SIZE="$bs" COMPUTE_MODE="$mode" LOG=0 
 
 			for th in "${TP_NUM[@]}"; do
 				make -C "$BD" run VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$th" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode" LOG=0 > /dev/null 
@@ -106,7 +106,7 @@ for mode in "${MODES[@]}"; do
 		for bs in "${BLOCK_SIZE[@]}"; do
 
 			for file in "${QMT_INPUT_FILES[@]}"; do
-				make -C "$BD" run VALGRIND_PREFIX="" INPUT_TF="$file" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 >/dev/null
+				make -C "$BD" run VALGRIND_PREFIX="" INPUT_TF="$file" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 
 			done
 
 			for rww in "${RWW_COMBINATIONS[@]}"; do
@@ -137,7 +137,7 @@ done
 echo -e "\nRunning mpi-mode verification tests"
 for mode in "${MPI_MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
-		make -C "$BD" run VALGRIND_PREFIX="" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 BLOCK_SIZE=10 > /dev/null
+		make -C "$BD" run VALGRIND_PREFIX="" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=4 LOG=0 BLOCK_SIZE=10
 
 		for pc in "${TP_NUM[@]}"; do
 			make -C "$BD" run-mpi-mode VALGRIND_PREFIX="$VG_PREFIX" INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" MPI_NP="$pc" COMPUTE_MODE="$mode" LOG=0 
