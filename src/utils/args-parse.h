@@ -44,7 +44,6 @@ struct p_args {
 	} mt_mode_cfg; 
 
 	uint8_t log_enabled : 1;
-
 };
 
 extern const char *valid_filters[];

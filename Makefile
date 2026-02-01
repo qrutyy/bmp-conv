@@ -1,11 +1,25 @@
 SHELL=/bin/sh
 
+# === Runtime Parameters (with defaults, can be overridden) ===
+INPUT_TF ?= image2.bmp
+FILTER_TYPE ?= mb
+THREAD_NUM ?= 2
+COMPUTE_MODE ?= by_row
+BLOCK_SIZE ?= 5
+OUTPUT_FILE ?= "" # Default to empty, let the program handle it
+LOG ?= 1
+RWW_MIX ?= 1,1,1
+MPI_NP ?= 2
+VALGRIND_PREFIX ?= "" 
+QUEUE_MEM ?= 500
+QUEUE_CAP ?= 20 
+
 # === Compiler and Flags ===
 CC = gcc
 MPICC = mpicc
 CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -DNDEBUG -O3
 
-MPICFLAGS = $(CFLAGS) -DUSE_MPI -DLOG_USE_COLOR
+MPICFLAGS = $(CFLAGS) -DUSE_MPI
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
 LDLIBS = -lm 
 
@@ -31,25 +45,13 @@ BUILD_DIR_MPI := build/obj_mpi
 OBJS_NO_MPI := $(addprefix $(BUILD_DIR_NO_MPI)/, $(SRCS_NO_MPI:.c=.o))
 OBJS_MPI := $(addprefix $(BUILD_DIR_MPI)/, $(SRCS_MPI:.c=.o))
 
-RM := rm -f
-
-# === Runtime Parameters (with defaults, can be overridden) ===
-INPUT_TF ?= image2.bmp
-FILTER_TYPE ?= mb
-THREAD_NUM ?= 2
-COMPUTE_MODE ?= by_row
-BLOCK_SIZE ?= 5
-OUTPUT_FILE ?= "" # Default to empty, let the program handle it
-LOG ?= 1
-RWW_MIX ?= 1,1,1
-MPI_NP ?= 2
-VALGRIND_PREFIX ?= "" 
-QUEUE_MEM ?= 500
-QUEUE_CAP ?= 20 
-
 # === Build Targets ===
 .DEFAULT_GOAL := all
 all: $(TARGET_NO_MPI) $(TARGET_MPI)
+
+build:
+	@echo "\nBuilding with Bear (compile_commands.json)..."
+	bear -- $(MAKE) clean all
 
 # --- Non-MPI Build ---
 $(TARGET_NO_MPI): $(OBJS_NO_MPI)
@@ -118,12 +120,11 @@ build-f:
 
 clean:
 	@echo "\nCleaning build artifacts..."
-	$(RM) $(TARGET_NO_MPI)
-	$(RM) -r $(BUILD_DIR_MPI)
-	$(RM) -r $(BUILD_DIR_NO_MPI)
-	$(RM) tests/*.dat src/*.out 
+	rm -rf $(TARGET_NO_MPI)
+	rm -rf $(BUILD_DIR_MPI)
+	rm -rf $(BUILD_DIR_NO_MPI)
+	rm -rf tests/*.dat src/*.out 
 
-.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode test
+.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode test build
 
 .SUFFIXES:
-
