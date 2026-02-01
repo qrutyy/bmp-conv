@@ -87,7 +87,13 @@ static int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
-	return args->mt_mode_cfg.threadnum;
+	if (args->mt_mode_cfg.threadnum < 0) {
+		log_error("Error: Argument parsing failed.\n");
+		free(args);
+		return -2;
+	}
+
+	return 1;
 }
 
 /**
@@ -104,48 +110,22 @@ static int parse_args(int argc, char *argv[])
  */
 static double run_non_queue_mode(int threadnum, struct filter_mix *filters)
 {
-	bmp_img img = { 0 };
-	bmp_img img_result = { 0 };
-	struct img_dim *dim = NULL;
 	struct img_spec *img_spec = NULL;
-	char input_filepath[256];
 	char output_filepath[256];
 	double result_time = 0;
 
-	if (!args || !args->files_cfg.input_filename[0]) {
-		log_error("Error: Missing arguments/input filename for non-queue mode.\n");
-		return -1;
-	}
-
-	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->files_cfg.input_filename[0]);
-
-	if (bmp_img_read(&img, input_filepath) != 0) {
-		log_error("Error: Could not read BMP image '%s'\n", input_filepath);
-		goto cleanup;
-	}
-
-	dim = init_dimensions(img.img_header.biWidth, img.img_header.biHeight);
-	if (!dim) {
-		log_error("Error: Failed to initialize dimensions.\n");
-		goto cleanup;
-	}
-
-	bmp_img_init_df(&img_result, dim->width, dim->height);
-
-	img_spec = init_img_spec(&img, &img_result);
-	if (!img_spec) {
-		log_error("Error: Failed to initialize image spec.\n");
-		goto cleanup;
-	}
-
 	assert(threadnum > 0);
+
+	img_spec = setup_img_spec(args);
+	if (!img_spec)
+		goto cleanup;
 
 	if (threadnum > 1) {
 		log_info("Executing multi-threaded computation (%d threads)...", threadnum);
-		result_time = execute_mt_computation(threadnum, dim, img_spec, args, filters);
+		result_time = execute_mt_computation(threadnum, img_spec, args, filters);
 	} else {
 		log_info("Executing single-threaded computation...");
-		result_time = execute_st_computation(dim, img_spec, args, filters);
+		result_time = execute_st_computation(img_spec, args, filters);
 	}
 
 	if (result_time <= 0) {
@@ -153,16 +133,18 @@ static double run_non_queue_mode(int threadnum, struct filter_mix *filters)
 		goto cleanup;
 	}
 
-	save_result_image(output_filepath, sizeof(output_filepath), threadnum, &img_result, args);
+	save_result_image(output_filepath, sizeof(output_filepath), threadnum, img_spec->output, args);
 
 cleanup:
 	log_debug("Cleaning up non-queue mode resources...");
+
+	bmp_img_free(img_spec->output);
+	bmp_img_free(img_spec->input);
+	free(img_spec->dim);
+
 	if (img_spec) {
 		free(img_spec);
 	}
-	bmp_img_free(&img_result);
-	free(dim);
-	bmp_img_free(&img);
 
 	return result_time;
 }
@@ -201,7 +183,6 @@ static double run_queue_mode(struct filter_mix *filters)
 	start_time = get_time_in_seconds();
 
 	create_qthreads(qt_info);
-
 	join_qthreads(qt_info);
 
 	end_time = get_time_in_seconds();
@@ -209,6 +190,7 @@ static double run_queue_mode(struct filter_mix *filters)
 	free_qthread_resources(qt_info);
 
 	log_info("Queue mode finished in %.6f seconds.", end_time - start_time);
+
 	return end_time - start_time;
 }
 
@@ -229,7 +211,7 @@ int main(int argc, char *argv[])
 	double result_time = 0;
 	int threadnum = 0;
 	struct filter_mix *filters = NULL;
-	int return_code = 0;
+	int rc = 0;
 
 	log_set_quiet(true); // set false for default usage, true - for benchmarking.
 	log_set_level(LOG_TRACE);
@@ -240,20 +222,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	parse_args(argc, argv);
-	if (threadnum < 0) {
-		log_error("Error: Argument parsing failed.\n");
-		free(args);
-		return -2;
-	}
-
-	filters = malloc(sizeof(struct filter_mix));
-	if (!filters) {
-		log_error("Fatal Error: Cannot allocate filter_mix structure.\n");
-		free(args);
+	rc = parse_args(argc, argv);
+	if (rc <= 1)
+		return rc;
+	
+	filters = setup_filters(args);
+	if (!filters)
 		return -1;
-	}
-	init_filters(filters);
 
 	if (!args->compute_cfg.mt_mode) {
 		result_time = run_non_queue_mode(threadnum, filters);
@@ -265,16 +240,21 @@ int main(int argc, char *argv[])
 		int rank = 0;
 		int size = 0;
 		/**
-		 * Even though "The MPI standard does not say what a program can do before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, you should do as little as possible. In particular, avoid anything that changes the external state of the program, such as opening files, reading standard input or writing to standard output." - it should be fine
-			*/
+		 * Even though "The MPI standard does not say what a program can do 
+		 * before an MPI_INIT or after an MPI_FINALIZE. In the MPICH implementation, 
+		 * you should do as little as possible. In particular, avoid anything that 
+		 * changes the external state of the program, such as opening files, reading 
+		 * standard input or writing to standard output." - it should be fine
+		 */
 		MPI_Init(&argc, &argv);
 
 		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 		log_info("SIZE = %d", size);
-		// immediatly jumps to execute_...
-		// (run_.._mode phase with initialisation is included in there, bc it depends on computation type)
+		/* immediatly jumps to execute_...
+		* (run_.._mode phase with initialisation is included in there, bc it depends on computation type)
+		*/
 		result_time = execute_mpi_computation(size, rank, args, filters);
 
 		MPI_Finalize();
@@ -290,5 +270,5 @@ int main(int argc, char *argv[])
 	free(filters);
 	free(args);
 
-	return return_code;
+	return rc;
 }

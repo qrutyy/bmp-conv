@@ -51,7 +51,7 @@ exit:
 	return NULL;
 }
 
-double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters)
+double execute_mt_computation(int threadnum, struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters)
 {
 	pthread_t *th = NULL;
 	double start_time = 0, end_time = 0;
@@ -74,7 +74,6 @@ double execute_mt_computation(int threadnum, struct img_dim *dim, struct img_spe
 			break;
 		}
 
-		th_spec[i]->dim = dim;
 		th_spec[i]->img = img_spec;
 	}
 	if (create_error < 0)
