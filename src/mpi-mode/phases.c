@@ -22,8 +22,6 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
 		return -1;
 	}
 
-	log_trace("INIT PHASE:\n");
-
 	comm_data->dim = malloc(sizeof(struct img_dim));
 	if (!comm_data) {
 		log_error("Memory allocation failed");

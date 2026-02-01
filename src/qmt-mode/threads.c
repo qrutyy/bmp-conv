@@ -158,7 +158,7 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 		return NULL;
 	}
 
-	img_spec = init_img_spec(input_img, img_result);
+	img_spec = init_img_spec(input_img, img_result, dim);
 	if (!img_spec) {
 		log_error("Worker Error: init_img_spec failed");
 		free(dim);
@@ -168,7 +168,6 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
 		return NULL;
 	}
 
-	th_spec->dim = dim;
 	th_spec->img = img_spec;
 
 	return th_spec;
@@ -248,8 +247,6 @@ static void worker_cleanup_image_resources(bmp_img *input_img, struct thread_spe
 	if (th_spec) {
 		if (th_spec->img)
 			free(th_spec->img);
-		if (th_spec->dim)
-			free(th_spec->dim);
 		if (th_spec->st_gen_info)
 			free(th_spec->st_gen_info);
 		free(th_spec);
@@ -288,7 +285,7 @@ void *worker_thread(void *arg)
 				free(filename);
 			continue;
 		}
-		img_result = th_spec->img->output_img;
+		img_result = th_spec->img->output;
 
 		process_status = worker_process_image(th_spec, qt_info->pargs, qt_info->filters);
 
@@ -312,7 +309,7 @@ void *worker_thread(void *arg)
 
 		if (process_status != 0 && filename != NULL) {
 			log_debug("Worker: Freeing filename for failed processing of %s", filename);
-			free(filename); // <<< ОСВОБОЖДАЕМ FILENAME ПРИ ОШИБКЕ ПОСЛЕ ОБРАБОТКИ
+			free(filename);
 			filename = NULL;
 		}
 	}

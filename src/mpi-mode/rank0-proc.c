@@ -19,24 +19,24 @@ int8_t mpi_rank0_initialize(struct img_spec *img_data, struct img_comm_data *com
 	log_info("Rank 0: Initializing MPI computation...");
 	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", input_filename_base);
 
-	read_status = bmp_img_read(img_data->input_img, input_filepath);
+	read_status = bmp_img_read(img_data->input, input_filepath);
 	if (read_status != 0) {
 		log_error("Rank 0: Error: Could not read BMP image '%s'.", input_filepath);
 		return -1;
 	}
 
-	comm_data->dim->width = img_data->input_img->img_header.biWidth;
-	comm_data->dim->height = img_data->input_img->img_header.biHeight;
+	comm_data->dim->width = img_data->input->img_header.biWidth;
+	comm_data->dim->height = img_data->input->img_header.biHeight;
 
 	if (comm_data->dim->height < 1 || comm_data->dim->width < 1) {
 		log_error("Rank 0: Error: Invalid image dimensions (%ux%u).", comm_data->dim->width, comm_data->dim->height);
-		bmp_img_free(img_data->input_img);
+		bmp_img_free(img_data->input);
 		return -1;
 	}
-	bmp_print_header_data(&img_data->input_img->img_header);
+	bmp_print_header_data(&img_data->input->img_header);
 
-	bmp_img_init_df(img_data->output_img, comm_data->dim->width, comm_data->dim->height);
-	img_data->output_img->img_header = img_data->input_img->img_header;
+	bmp_img_init_df(img_data->output, comm_data->dim->width, comm_data->dim->height);
+	img_data->output->img_header = img_data->input->img_header;
 
 	*start_time = MPI_Wtime();
 	log_info("Rank 0: Image '%s' (%ux%u) read successfully.", input_filepath, comm_data->dim->height, comm_data->dim->width);
@@ -56,19 +56,19 @@ double mpi_rank0_finalize_and_save(const struct mpi_context *ctx, double start_t
 		log_info("Rank 0: MPI computation finished in %.6f seconds.", total_time);
 
 		if (args) {
-			save_result_image(output_filepath, sizeof(output_filepath), -1, img_data->output_img, args);
+			save_result_image(output_filepath, sizeof(output_filepath), -1, img_data->output, args);
 			log_info("Rank 0: MPI result saved to %s", output_filepath);
 		} else {
 			log_warn("Rank 0: Cannot save result, args not provided.");
 		}
 
-		bmp_print_header_data(&img_data->output_img->img_header);
+		bmp_print_header_data(&img_data->output->img_header);
 
-		bmp_print_header_data(&img_data->input_img->img_header); // note that dims are swapped!
-		//		bmp_compare_images(img_data->input_img, img_data->output_img);
+		bmp_print_header_data(&img_data->input->img_header); // note that dims are swapped!
+		//		bmp_compare_images(img_data->input, img_data->output);
 
-		bmp_img_free(img_data->output_img);
-		bmp_img_free(img_data->input_img);
+		bmp_img_free(img_data->output);
+		bmp_img_free(img_data->input);
 	}
 
 	return total_time;
@@ -120,8 +120,8 @@ int8_t mpi_rank0_pack_data_for_scatter(const struct img_spec *img_data, const st
 
 			// copies proc_send_rows amount of rows into the packed_buffer
 			for (r = 0; r < proc_send_rows; ++r) {
-				if (img_data->input_img->img_pixels && img_data->input_img->img_pixels[proc_start_row + r]) {
-					memcpy(current_pack_ptr, img_data->input_img->img_pixels[proc_start_row + r], comm_data->row_stride_bytes);
+				if (img_data->input->img_pixels && img_data->input->img_pixels[proc_start_row + r]) {
+					memcpy(current_pack_ptr, img_data->input->img_pixels[proc_start_row + r], comm_data->row_stride_bytes);
 					current_pack_ptr += comm_data->row_stride_bytes;
 				} else {
 					log_error("Rank 0: Packing error - source row pointer is NULL for row %u.", proc_start_row + r);
@@ -145,7 +145,7 @@ int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_sp
 	size_t i = 0;
 	uint32_t r = 0;
 
-	if (!gathered_buffer || !img_data || !img_data->output_img || !img_data->output_img->img_pixels) {
+	if (!gathered_buffer || !img_data || !img_data->output || !img_data->output->img_pixels) {
 		log_error("Rank 0: Cannot unpack data, null buffer or result image structure provided.");
 		return -1;
 	}
@@ -163,11 +163,11 @@ int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_sp
 			current_unpack_ptr = gathered_buffer + comm_arrays->recvdispls[i]; // shift position to displacement
 
 			for (r = 0; r < proc_num_rows; ++r) {
-				if (img_data->output_img->img_pixels[proc_start_row + r] == NULL) {
+				if (img_data->output->img_pixels[proc_start_row + r] == NULL) {
 					log_error("Rank 0: Unpacking error - destination row %u is NULL.", proc_start_row + r);
 					return -1;
 				}
-				memcpy(img_data->output_img->img_pixels[proc_start_row + r], current_unpack_ptr, comm_data->row_stride_bytes);
+				memcpy(img_data->output->img_pixels[proc_start_row + r], current_unpack_ptr, comm_data->row_stride_bytes);
 				current_unpack_ptr += comm_data->row_stride_bytes;
 			}
 		}
@@ -178,22 +178,22 @@ int8_t mpi_rank0_unpack_data(const unsigned char *gathered_buffer, struct img_sp
 int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
 {
 	log_debug("Rank 0: Re-initializing output image buffer for Gather phase with transposed dimensions H'=%u, W'=%u", comm_data->dim->height, comm_data->dim->width);
-	if (img_data->output_img->img_pixels) {
+	if (img_data->output->img_pixels) {
 		// Free the buffer allocated with original dimensions during initialize
 		log_trace("Rank 0: Freeing output buffer allocated with original dimensions.");
 		struct img_dim original_dim_temp = { .width = width, .height = height };
-		bmp_img_pixel_free(img_data->output_img->img_pixels, &original_dim_temp);
-		img_data->output_img->img_pixels = NULL;
+		bmp_img_pixel_free(img_data->output->img_pixels, &original_dim_temp);
+		img_data->output->img_pixels = NULL;
 	}
 	// Allocate output pixel buffer with TRANSPOSED dimensions (H'=2001, W'=1226)
-	img_data->output_img->img_pixels = bmp_img_pixel_alloc(comm_data->dim->height, comm_data->dim->width);
-	if (!img_data->output_img->img_pixels) {
+	img_data->output->img_pixels = bmp_img_pixel_alloc(comm_data->dim->height, comm_data->dim->width);
+	if (!img_data->output->img_pixels) {
 		log_error("Rank 0: Failed to allocate output buffer with transposed dimensions.");
 		ABORT_AND_RETURN(-1.0);
 	}
 	// Update output header to match the buffer allocated for gather (transposed dims)
-	img_data->output_img->img_header.biWidth = comm_data->dim->width; // W'=1226
-	img_data->output_img->img_header.biHeight = comm_data->dim->height; // H'=2001
+	img_data->output->img_header.biWidth = comm_data->dim->width; // W'=1226
+	img_data->output->img_header.biHeight = comm_data->dim->height; // H'=2001
 
 	return 0;
 }
@@ -201,22 +201,22 @@ int8_t mpi_rank0_reinit_buffer_for_gather(struct img_comm_data *comm_data, struc
 int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
 {
 	log_info("Rank 0: Transposing image...");
-	bmp_pixel **gathered_transposed_pixels = img_data->input_img->img_pixels;
+	bmp_pixel **gathered_transposed_pixels = img_data->input->img_pixels;
 
 	bmp_pixel **final_output_pixels = transpose_matrix(gathered_transposed_pixels, comm_data->dim);
 	if (!final_output_pixels) {
 		log_error("Rank 0: Failed to transpose output matrix back.");
 		bmp_img_pixel_free(gathered_transposed_pixels, comm_data->dim);
 		bmp_free_img_spec(img_data);
-		free(img_data->input_img);
-		free(img_data->output_img);
+		free(img_data->input);
+		free(img_data->output);
 		free(comm_data->dim);
 		ABORT_AND_RETURN(-1.0);
 	}
 
-	img_data->input_img->img_pixels = final_output_pixels;
-	img_data->input_img->img_header.biWidth = comm_data->dim->width = height;
-	img_data->input_img->img_header.biHeight = comm_data->dim->height = width;
+	img_data->input->img_pixels = final_output_pixels;
+	img_data->input->img_header.biWidth = comm_data->dim->width = height;
+	img_data->input->img_header.biHeight = comm_data->dim->height = width;
 	comm_data->row_stride_bytes = (size_t)comm_data->dim->width * BYTES_PER_PIXEL;
 	log_info("Rank 0: Swapped dimensions for transpose: %ux%u (orig %ux%u), new stride: %zu", comm_data->dim->height, comm_data->dim->width, height, width,
 		 comm_data->row_stride_bytes);
@@ -227,7 +227,7 @@ int8_t mpi_rank0_transpose_img(struct img_comm_data *comm_data, struct img_spec 
 int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_spec *img_data, uint32_t width, uint32_t height)
 {
 	log_info("Rank 0: Transposing image...");
-	bmp_pixel **gathered_transposed_pixels = img_data->output_img->img_pixels;
+	bmp_pixel **gathered_transposed_pixels = img_data->output->img_pixels;
 
 	bmp_pixel **final_output_pixels = transpose_matrix(gathered_transposed_pixels, comm_data->dim);
 	if (!final_output_pixels) {
@@ -235,15 +235,15 @@ int8_t mpi_rank0_transpose_img_back(struct img_comm_data *comm_data, struct img_
 		bmp_img_pixel_free(gathered_transposed_pixels, comm_data->dim);
 
 		bmp_free_img_spec(img_data);
-		free(img_data->input_img);
-		free(img_data->output_img);
+		free(img_data->input);
+		free(img_data->output);
 		free(comm_data->dim);
 		ABORT_AND_RETURN(-1.0);
 	}
 
 	//        bmp_img_pixel_free(gathered_transposed_pixels, comm_data.dim);
-	img_data->output_img->img_pixels = final_output_pixels;
-	img_data->output_img->img_header.biWidth = width;
-	img_data->output_img->img_header.biHeight = height;
+	img_data->output->img_pixels = final_output_pixels;
+	img_data->output->img_header.biWidth = width;
+	img_data->output->img_header.biHeight = height;
 	return 0;
 }
