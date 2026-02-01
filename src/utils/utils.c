@@ -100,17 +100,17 @@ void st_write_logs(struct p_args *args, double result_time)
 		return;
 
 	file = fopen(ST_LOG_FILE_PATH, "a");
-	const char *mode_str = (args->threadnum == 1 && args->compute_mode < 0) ? "none" : compute_mode_to_str(args->compute_mode);
-	const char *filter_str = args->filter_type ? args->filter_type : "unknown";
+	const char *mode_str = (args->mt_mode_cfg.threadnum == 1 && args->compute_cfg.compute_mode < 0) ? "none" : compute_mode_to_str(args->compute_cfg.compute_mode);
+	const char *filter_str = args->compute_cfg.filter_type ? args->compute_cfg.filter_type : "unknown";
 
 	if (file) {
-		fprintf(file, "%s %d %s %d %.6f\n", filter_str, args->threadnum, mode_str, args->block_size, result_time);
+		fprintf(file, "%s %d %s %d %.6f\n", filter_str, args->mt_mode_cfg.threadnum, mode_str, args->compute_cfg.block_size, result_time);
 		fclose(file);
 	} else {
 		log_error("Error: could not open standard timing results file '%s' for appending.\n", ST_LOG_FILE_PATH);
 	}
 
-	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->threadnum, mode_str, args->block_size, result_time);
+	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->mt_mode_cfg.threadnum, mode_str, args->compute_cfg.block_size, result_time);
 }
 
 void set_wait_time(struct timespec *wait_time)

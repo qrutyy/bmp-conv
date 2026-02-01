@@ -28,11 +28,11 @@ void *reader_thread(void *arg)
 	const char *mode_str = NULL;
 	log_debug("Reader thread started.");
 
-	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_cfg.compute_mode);
 
 	while (1) {
 		read_files_local = __atomic_fetch_add(&read_files, 1, __ATOMIC_ACQUIRE);
-		if (read_files_local >= qt_info->pargs->file_count) {
+		if (read_files_local >= qt_info->pargs->files_cfg.file_cnt) {
 			__atomic_fetch_sub(&read_files, 1, __ATOMIC_RELEASE);
 			break;
 		}
@@ -45,7 +45,7 @@ void *reader_thread(void *arg)
 			break;
 		}
 
-		snprintf(filepath, sizeof(filepath), "test-img/%s", qt_info->pargs->input_filename[read_files_local]);
+		snprintf(filepath, sizeof(filepath), "test-img/%s", qt_info->pargs->files_cfg.input_filename[read_files_local]);
 
 		if (bmp_img_read(img, filepath) != 0) {
 			log_error("Reader Error: Could not read BMP file '%s'", filepath);
@@ -53,7 +53,7 @@ void *reader_thread(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
-		queue_push(qt_info->input_q, img, qt_info->pargs->input_filename[read_files_local], mode_str);
+		queue_push(qt_info->input_q, img, qt_info->pargs->files_cfg.input_filename[read_files_local], mode_str);
 
 		result_time = get_time_in_seconds() - start_time;
 		if (result_time > 0)
@@ -66,7 +66,7 @@ void *reader_thread(void *arg)
 	pthread_barrier_wait(qt_info->reader_barrier);
 
 	log_debug("Reader: Barrier passed. Sending termination signals.");
-	for (i = 0; i < (size_t)(qt_info->pargs->wot_count); i++) {
+	for (i = 0; i < (size_t)(qt_info->pargs->mt_mode_cfg.qm.threads_cfg.worker_cnt); i++) {
 		empty_img = calloc(1, sizeof(bmp_img));
 		if (empty_img) {
 			queue_push(qt_info->input_q, empty_img, NULL, mode_str);
@@ -194,21 +194,21 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
 	while (1) {
 		process_status = 0;
 
-		switch ((enum compute_mode)pargs->compute_mode) {
+		switch ((enum compute_mode)pargs->compute_cfg.compute_mode) {
 		case BY_ROW:
-			process_status = process_by_row(th_spec, &next_x_block_local, pargs->block_size, &local_xy_mutex);
+			process_status = process_by_row(th_spec, &next_x_block_local, pargs->compute_cfg.block_size, &local_xy_mutex);
 			break;
 		case BY_COLUMN:
-			process_status = process_by_column(th_spec, &next_y_block_local, pargs->block_size, &local_xy_mutex);
+			process_status = process_by_column(th_spec, &next_y_block_local, pargs->compute_cfg.block_size, &local_xy_mutex);
 			break;
 		case BY_PIXEL:
 			process_status = process_by_pixel(th_spec, &next_x_block_local, &next_y_block_local, &local_xy_mutex);
 			break;
 		case BY_GRID:
-			process_status = process_by_grid(th_spec, &next_x_block_local, &next_y_block_local, pargs->block_size, &local_xy_mutex);
+			process_status = process_by_grid(th_spec, &next_x_block_local, &next_y_block_local, pargs->compute_cfg.block_size, &local_xy_mutex);
 			break;
 		default:
-			log_error("Worker Error: Invalid compute mode %d", pargs->compute_mode);
+			log_error("Worker Error: Invalid compute mode %d", pargs->compute_cfg.compute_mode);
 			process_status = -1;
 			break;
 		}
@@ -222,7 +222,7 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
 			}
 			break;
 		}
-		filter_part_computation(th_spec, pargs->filter_type, filters);
+		filter_part_computation(th_spec, pargs->compute_cfg.filter_type, filters);
 	}
 
 	pthread_mutex_destroy(&local_xy_mutex);
@@ -270,12 +270,12 @@ void *worker_thread(void *arg)
 
 	log_debug("Worker: thread started.");
 
-	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_cfg.compute_mode);
 
 	while (1) {
 		start_time = get_time_in_seconds();
 
-		img = worker_get_task(qt_info->input_q, &filename, qt_info->pargs->file_count, &written_files, mode_str);
+		img = worker_get_task(qt_info->input_q, &filename, qt_info->pargs->files_cfg.file_cnt, &written_files, mode_str);
 		if (!img) {
 			log_debug("Worker: Exiting loop due to null task from queue.");
 			break;
@@ -337,20 +337,20 @@ void *writer_thread(void *arg)
 	size_t current_wf_local = 0;
 	const char *mode_str = NULL;
 
-	log_debug("Writer: thread started. Expecting %d files.", qt_info->pargs->file_count);
+	log_debug("Writer: thread started. Expecting %d files.", qt_info->pargs->files_cfg.file_cnt);
 
-	mode_str = compute_mode_to_str(qt_info->pargs->compute_mode);
+	mode_str = compute_mode_to_str(qt_info->pargs->compute_cfg.compute_mode);
 
 	while (1) {
 		current_wf_local = __atomic_load_n(&written_files, __ATOMIC_ACQUIRE);
-		if (current_wf_local >= qt_info->pargs->file_count) {
+		if (current_wf_local >= qt_info->pargs->files_cfg.file_cnt) {
 			log_debug("Writer: All expected files (%zu) accounted for. Exiting.", current_wf_local);
 			break;
 		}
 
 		start_time = get_time_in_seconds();
 
-		img = queue_pop(qt_info->output_q, &filename, qt_info->pargs->file_count, &written_files, mode_str);
+		img = queue_pop(qt_info->output_q, &filename, qt_info->pargs->files_cfg.file_cnt, &written_files, mode_str);
 
 		if (!img) {
 			log_info("Writer: queue_pop returned NULL. Assuming end of tasks.");
@@ -372,8 +372,8 @@ void *writer_thread(void *arg)
 			continue;
 		}
 
-		if (qt_info->pargs->output_filename && strlen(qt_info->pargs->output_filename) > 0) {
-			snprintf(output_filepath, sizeof(output_filepath), "test-img/qmt_out_%s_%s", qt_info->pargs->output_filename, filename);
+		if (qt_info->pargs->files_cfg.output_filename && strlen(qt_info->pargs->files_cfg.output_filename) > 0) {
+			snprintf(output_filepath, sizeof(output_filepath), "test-img/qmt_out_%s_%s", qt_info->pargs->files_cfg.output_filename, filename);
 		} else {
 			snprintf(output_filepath, sizeof(output_filepath), "test-img/qmt_out_%s", filename);
 		}
@@ -382,7 +382,7 @@ void *writer_thread(void *arg)
 			log_error("Writer Error: Failed to write image to '%s'", output_filepath);
 		} else {
 			current_wf_local = __atomic_add_fetch(&written_files, 1, __ATOMIC_RELEASE);
-			log_info("Writer: Successfully wrote '%s' (file %zu/%d)", output_filepath, current_wf_local, qt_info->pargs->file_count);
+			log_info("Writer: Successfully wrote '%s' (file %zu/%d)", output_filepath, current_wf_local, qt_info->pargs->files_cfg.file_cnt);
 
 			result_time = get_time_in_seconds() - start_time;
 			if (result_time > 0)
@@ -395,7 +395,7 @@ void *writer_thread(void *arg)
 		filename = NULL;
 		img = NULL;
 
-		if (current_wf_local >= qt_info->pargs->file_count) {
+		if (current_wf_local >= qt_info->pargs->files_cfg.file_cnt) {
 			log_debug("Writer: Reached expected file count (%zu). Exiting.", current_wf_local);
 			break;
 		}

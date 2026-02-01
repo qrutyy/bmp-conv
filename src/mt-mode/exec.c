@@ -18,21 +18,21 @@ static void *sthread_function(void *arg)
 	int8_t result = 0;
 
 	while (1) {
-		switch ((enum compute_mode)th_spec->st_gen_info->args->compute_mode) {
+		switch ((enum compute_mode)th_spec->st_gen_info->args->compute_cfg.compute_mode) {
 		case BY_ROW:
-			result = process_by_row(th_spec, &st_next_x_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			result = process_by_row(th_spec, &st_next_x_block, th_spec->st_gen_info->args->compute_cfg.block_size, &st_xy_block_mutex);
 			break;
 		case BY_COLUMN:
-			result = process_by_column(th_spec, &st_next_y_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			result = process_by_column(th_spec, &st_next_y_block, th_spec->st_gen_info->args->compute_cfg.block_size, &st_xy_block_mutex);
 			break;
 		case BY_PIXEL:
 			result = process_by_pixel(th_spec, &st_next_x_block, &st_next_y_block, &st_xy_block_mutex);
 			break;
 		case BY_GRID:
-			result = process_by_grid(th_spec, &st_next_x_block, &st_next_y_block, th_spec->st_gen_info->args->block_size, &st_xy_block_mutex);
+			result = process_by_grid(th_spec, &st_next_x_block, &st_next_y_block, th_spec->st_gen_info->args->compute_cfg.block_size, &st_xy_block_mutex);
 			break;
 		default:
-			log_error("Error: Invalid mode %d in thread function.\n", th_spec->st_gen_info->args->compute_mode);
+			log_error("Error: Invalid mode %d in thread function.\n", th_spec->st_gen_info->args->compute_cfg.compute_mode);
 			result = 1;
 			break;
 		}
@@ -40,11 +40,11 @@ static void *sthread_function(void *arg)
 		if (result != 0)
 			goto exit;
 
-		if (!th_spec || !th_spec->st_gen_info->args || !th_spec->st_gen_info->args->filter_type || !th_spec->st_gen_info->filters) {
+		if (!th_spec || !th_spec->st_gen_info->args || !th_spec->st_gen_info->args->compute_cfg.filter_type || !th_spec->st_gen_info->filters) {
 			log_error("Error: Invalid state before filter_part_computation.\n");
 			return NULL;
 		}
-		filter_part_computation(th_spec, th_spec->st_gen_info->args->filter_type, th_spec->st_gen_info->filters);
+		filter_part_computation(th_spec, th_spec->st_gen_info->args->compute_cfg.filter_type, th_spec->st_gen_info->filters);
 	}
 
 exit:

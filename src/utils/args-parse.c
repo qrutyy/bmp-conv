@@ -15,18 +15,18 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "--filter=", 9) == 0) {
-			args->filter_type = check_filter_arg(argv[i] + 9);
-			if (!args->filter_type)
+			args->compute_cfg.filter_type = check_filter_arg(argv[i] + 9);
+			if (!args->compute_cfg.filter_type)
 				return -1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--mode=", 7) == 0) {
-			args->compute_mode = check_mode_arg(argv[i] + 7);
-			if (args->compute_mode < 0)
+			args->compute_cfg.compute_mode = check_mode_arg(argv[i] + 7);
+			if (args->compute_cfg.compute_mode < 0)
 				return -1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--block=", 8) == 0) {
-			args->block_size = atoi(argv[i] + 8);
-			if (args->block_size <= 0) {
+			args->compute_cfg.block_size = atoi(argv[i] + 8);
+			if (args->compute_cfg.block_size <= 0) {
 				log_error("Error: Block size must be > 0.\n");
 				return -1;
 			}
@@ -39,7 +39,7 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	uint8_t rww_found = 0;
-	int wrt_temp = 0, ret_temp = 0, wot_temp = 0;
+	int writer_temp = 0, reader_temp = 0, worker_temp = 0;
 	char *rww_values = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -47,36 +47,36 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 			args->log_enabled = atoi(argv[i] + 6);
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--queue-size=", 13) == 0) {
-			args->queue_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
-			if (args->queue_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
+			args->mt_mode_cfg.qm.tq_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
+			if (args->mt_mode_cfg.qm.tq_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
 				log_error("Error: Invalid value for --queue-size.\n");
 				return -1;
 			}
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--queue-mem=", 12) == 0) {
-			args->queue_memory_limit_mb = (size_t)atoi(argv[i] + 12);
-			if (args->queue_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
+			args->mt_mode_cfg.qm.tq_memory_limit_mb = (size_t)atoi(argv[i] + 12);
+			if (args->mt_mode_cfg.qm.tq_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
 				log_error("Error: Invalid value for --queue-mem.\n");
 				return -1;
 			}
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--output=", 9) == 0) {
-			args->output_filename = argv[i] + 9;
+			args->files_cfg.output_filename = argv[i] + 9;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--rww=", 6) == 0) {
 			rww_values = argv[i] + 6;
-			if (sscanf(rww_values, "%d,%d,%d", &ret_temp, &wot_temp, &wrt_temp) != 3) {
+			if (sscanf(rww_values, "%d,%d,%d", &reader_temp, &worker_temp, &writer_temp) != 3) {
 				log_error("Error: Invalid format for --rww. Expected --rww=Readers,Workers,Writers.\n");
 				return -1;
 			}
-			// Validate thread counts are within uint8_t range and positive
-			if (wrt_temp <= 0 || wrt_temp > UCHAR_MAX || ret_temp <= 0 || ret_temp > UCHAR_MAX || wot_temp <= 0 || wot_temp > UCHAR_MAX) {
-				log_error("Error: Thread counts in --rww must be between 1 and %d.\n", UCHAR_MAX);
+			// Validate thread cnts are within uint8_t range and positive
+			if (writer_temp <= 0 || writer_temp > UCHAR_MAX || reader_temp <= 0 || reader_temp > UCHAR_MAX || worker_temp <= 0 || worker_temp > UCHAR_MAX) {
+				log_error("Error: Thread cnts in --rww must be between 1 and %d.\n", UCHAR_MAX);
 				return -1;
 			}
-			args->wrt_count = (uint8_t)wrt_temp;
-			args->ret_count = (uint8_t)ret_temp;
-			args->wot_count = (uint8_t)wot_temp;
+			args->mt_mode_cfg.qm.threads_cfg.writer_cnt = (uint8_t)writer_temp;
+			args->mt_mode_cfg.qm.threads_cfg.reader_cnt = (uint8_t)reader_temp;
+			args->mt_mode_cfg.qm.threads_cfg.worker_cnt = (uint8_t)worker_temp;
 			rww_found = 1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "_", 1) == 0) {
@@ -84,9 +84,9 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		} else if (strncmp(argv[i], "-", 1) == 0) {
 			log_error("Error: Unknown option in queue-mode: %s\n", argv[i]);
 			return -1;
-		} else if (args->file_count < DEFAULT_QUEUE_CAP) {
+		} else if (args->files_cfg.file_cnt < DEFAULT_QUEUE_CAP) {
 			// Assume remaining non-option args are input files
-			args->input_filename[args->file_count++] = argv[i];
+			args->files_cfg.input_filename[args->files_cfg.file_cnt++] = argv[i];
 		} else {
 			log_error("Error: Too many input files (max %d) or unknown argument: %s\n", argv[i]);
 			return -1;
@@ -97,11 +97,11 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		log_error("Error: Queue-based mode requires the --rww=R,W,T argument.\n");
 		return -1;
 	}
-	if ((args->ret_count + args->wot_count + args->wrt_count) < 3) {
+	if ((args->mt_mode_cfg.qm.threads_cfg.reader_cnt + args->mt_mode_cfg.qm.threads_cfg.worker_cnt + args->mt_mode_cfg.qm.threads_cfg.writer_cnt) < 3) {
 		log_error("Error: Queue-based mode requires at least 3 threads in total (1R, 1W, 1T).\n");
 		return -1;
 	}
-	if (args->file_count == 0) {
+	if (args->files_cfg.file_cnt == 0) {
 		log_error("Error: Queue-based mode requires at least one input filename.\n");
 		return -1;
 	}
@@ -113,9 +113,9 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 {
 	for (int i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "--threadnum=", 12) == 0) {
-			args->threadnum = atoi(argv[i] + 12);
-			if (args->threadnum <= 0) {
-				log_error("Error: Thread count must be > 0.\n");
+			args->mt_mode_cfg.threadnum = atoi(argv[i] + 12);
+			if (args->mt_mode_cfg.threadnum <= 0) {
+				log_error("Error: Thread cnt must be > 0.\n");
 				return -1;
 			}
 			argv[i] = "_";
@@ -123,17 +123,17 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 			args->log_enabled = atoi(argv[i] + 6);
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--output=", 9) == 0) {
-			args->output_filename = argv[i] + 9;
+			args->files_cfg.output_filename = argv[i] + 9;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "_", 1) == 0) {
 			continue; // Skip already processed args
 		} else if (strncmp(argv[i], "-", 1) == 0) {
 			log_error("Error: Unknown option in normal mode: %s\n", argv[i]);
 			return -1;
-		} else if (args->file_count == 0) {
+		} else if (args->files_cfg.file_cnt == 0) {
 			// Assume the first non-option, non-processed arg is the input file
-			args->input_filename[0] = argv[i];
-			args->file_count++;
+			args->files_cfg.input_filename[0] = argv[i];
+			args->files_cfg.file_cnt++;
 		} else {
 			// Found more than one potential input file or unknown arg
 			log_error("Error: Normal mode accepts only one input file. Unknown argument: %s\n", argv[i]);
@@ -141,7 +141,7 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 		}
 	}
 
-	if (args->file_count != 1) {
+	if (args->files_cfg.file_cnt != 1) {
 		log_error("Error: Normal (non-queued) mode requires exactly one input image filename.\n");
 		return -1;
 	}
@@ -151,22 +151,27 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 
 void initialize_args(struct p_args *args_ptr)
 {
-	args_ptr->threadnum = 1;
-	args_ptr->block_size = 0;
-	args_ptr->output_filename = "";
-	args_ptr->filter_type = NULL;
-	args_ptr->compute_mode = -1;
+	args_ptr->compute_cfg.block_size = 0;
+	args_ptr->files_cfg.output_filename = "";
+	args_ptr->compute_cfg.filter_type = NULL;
+	args_ptr->compute_cfg.compute_mode = -1;
 	args_ptr->log_enabled = 0;
-	args_ptr->mt_mode = 0;
-	args_ptr->wrt_count = 0;
-	args_ptr->ret_count = 0;
-	args_ptr->wot_count = 0;
-	args_ptr->file_count = 0;
-	args_ptr->queue_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
-	args_ptr->queue_capacity = DEFAULT_QUEUE_CAP;
+	args_ptr->compute_cfg.mt_mode = 0;
+	args_ptr->mt_mode_cfg.qm.threads_cfg.writer_cnt = 0;
+	args_ptr->mt_mode_cfg.qm.threads_cfg.reader_cnt = 0;
+	args_ptr->mt_mode_cfg.qm.threads_cfg.worker_cnt = 0;
+	args_ptr->files_cfg.file_cnt = 0;
+	args_ptr->mt_mode_cfg.qm.tq_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
+	args_ptr->mt_mode_cfg.qm.tq_capacity = DEFAULT_QUEUE_CAP;
+
+	args_ptr->files_cfg.input_filename = malloc(DEFAULT_QUEUE_CAP * sizeof(char *));
+	if (!args_ptr->files_cfg.input_filename) {
+		log_error("Error: Failed to allocate memory for input_filename array.\n");
+		return;
+	}
 
 	for (int i = 0; i < DEFAULT_QUEUE_CAP; ++i) {
-		args_ptr->input_filename[i] = NULL;
+		args_ptr->files_cfg.input_filename[i] = NULL;
 	}
 }
 

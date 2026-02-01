@@ -204,7 +204,7 @@ static void mpi_apply_median_filter(const struct mpi_local_data *local_data, con
 void mpi_compute_local_region(const struct mpi_local_data *local_data, const struct img_comm_data *comm_data, const struct p_args *args, const struct filter_mix *filters,
 			      const struct mpi_context *ctx)
 {
-	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || !args || !args->filter_type || !filters) {
+	if (!local_data || !local_data->input_pixels || !local_data->output_pixels || !comm_data || !comm_data->dim || !args || !args->compute_cfg.filter_type || !filters) {
 		log_error("Rank ?: Invalid NULL parameters in mpi_compute_local_region. Skipping.");
 		return;
 	}
@@ -214,7 +214,7 @@ void mpi_compute_local_region(const struct mpi_local_data *local_data, const str
 		return;
 	}
 
-	const char *filter_type = args->filter_type;
+	const char *filter_type = args->compute_cfg.filter_type;
 
 	// Dispatch based on filter type AND mode (transposed or not)
 	if (strcmp(filter_type, "mb") == 0 && filters->motion_blur) {

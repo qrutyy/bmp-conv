@@ -56,7 +56,7 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 		ABORT_AND_RETURN(-1.0);
 	}
 
-	comm_data.halo_size = get_halo_size(args->filter_type, filters);
+	comm_data.halo_size = get_halo_size(args->compute_cfg.filter_type, filters);
 	status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
 	if (status != 0) {
 		if (ctx.rank == 0)
@@ -167,7 +167,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 		goto ext_err;
 	}
 
-	comm_data.halo_size = get_halo_size(args->filter_type, filters);
+	comm_data.halo_size = get_halo_size(args->compute_cfg.filter_type, filters);
 	status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
 	if (status) {
 		if (!ctx.rank)
@@ -253,7 +253,7 @@ double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *comput
 {
 	double total_time = 0;
 
-	switch ((enum compute_mode)compute_args->compute_mode) {
+	switch ((enum compute_mode)compute_args->compute_cfg.compute_mode) {
 	case BY_ROW:
 		total_time = mpi_process_by_rows(rank, size, compute_args, filters);
 		break;
@@ -272,7 +272,7 @@ double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *comput
 		break;
 	default:
 		if (rank == 0) {
-			log_error("Error: Invalid compute_mode (%d) for MPI.", compute_args->compute_mode);
+			log_error("Error: Invalid compute_mode (%d) for MPI.", compute_args->compute_cfg.compute_mode);
 		}
 		MPI_Abort(MPI_COMM_WORLD, 1);
 		return -1.0;

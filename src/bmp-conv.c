@@ -50,10 +50,10 @@ static int parse_args(int argc, char *argv[])
 	initialize_args(args);
 
 	if (argc > 1 && strncmp(argv[1], "-queue-mode", 11) == 0) {
-		args->mt_mode = 1;
+		args->compute_cfg.mt_mode = 1;
 		argv[1] = "_";
 	} else if (argc > 1 && strncmp(argv[1], "-mpi-mode", 10) == 0) {
-		args->mt_mode = 2;
+		args->compute_cfg.mt_mode = 2;
 		argv[1] = "_";
 	}
 
@@ -62,7 +62,7 @@ static int parse_args(int argc, char *argv[])
 		return -1;
 	}
 
-	if (args->mt_mode == 1) {
+	if (args->compute_cfg.mt_mode == 1) {
 		if (parse_queue_mode_args(argc, argv, args) < 0) {
 			log_error("Error parsing queue-mode specific arguments.\n");
 			return -1;
@@ -74,20 +74,20 @@ static int parse_args(int argc, char *argv[])
 		}
 	}
 
-	if (!args->filter_type || args->compute_mode < 0 || args->block_size == 0) {
+	if (!args->compute_cfg.filter_type || args->compute_cfg.compute_mode < 0 || args->compute_cfg.block_size == 0) {
 		log_error("Error: Missing required arguments: --filter, --mode, and --block must be set.\n");
 		return -1;
 	}
-	if (args->mt_mode && args->file_count == 0) {
+	if (args->compute_cfg.mt_mode && args->files_cfg.file_cnt == 0) {
 		log_error("Error: Queue mode requires at least one input filename.\n");
 		return -1;
 	}
-	if (!args->mt_mode && args->file_count != 1) {
+	if (!args->compute_cfg.mt_mode && args->files_cfg.file_cnt != 1) {
 		log_error("Error: Normal mode requires exactly one input filename.\n");
 		return -1;
 	}
 
-	return args->threadnum;
+	return args->mt_mode_cfg.threadnum;
 }
 
 /**
@@ -112,12 +112,12 @@ static double run_non_queue_mode(int threadnum, struct filter_mix *filters)
 	char output_filepath[256];
 	double result_time = 0;
 
-	if (!args || !args->input_filename[0]) {
+	if (!args || !args->files_cfg.input_filename[0]) {
 		log_error("Error: Missing arguments/input filename for non-queue mode.\n");
 		return -1;
 	}
 
-	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->input_filename[0]);
+	snprintf(input_filepath, sizeof(input_filepath), "test-img/%s", args->files_cfg.input_filename[0]);
 
 	if (bmp_img_read(&img, input_filepath) != 0) {
 		log_error("Error: Could not read BMP image '%s'\n", input_filepath);
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	threadnum = parse_args(argc, argv);
+	parse_args(argc, argv);
 	if (threadnum < 0) {
 		log_error("Error: Argument parsing failed.\n");
 		free(args);
@@ -255,13 +255,13 @@ int main(int argc, char *argv[])
 	}
 	init_filters(filters);
 
-	if (!args->mt_mode) {
+	if (!args->compute_cfg.mt_mode) {
 		result_time = run_non_queue_mode(threadnum, filters);
-	} else if (args->mt_mode == 1) {
+	} else if (args->compute_cfg.mt_mode == 1) {
 		result_time = run_queue_mode(filters);
 	}
 #ifdef USE_MPI
-	else if (args->mt_mode == 2) {
+	else if (args->compute_cfg.mt_mode == 2) {
 		int rank = 0;
 		int size = 0;
 		/**
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 	else { // should be unreachable, just a plug
-		log_error("Error: invalid mode = %d", args->mt_mode);
+		log_error("Error: invalid mode = %d", args->compute_cfg.mt_mode);
 	}
 
 	st_write_logs(args, result_time);
