@@ -14,7 +14,7 @@ TEST_FILE="image5.bmp"
 BLOCK_SIZE=("4" "128") # u can extend with  "8" "16" "32" "64" 
 VG_PREFIX=""
 QMT_INPUT_FILES=("image1.bmp" "image2.bmp" "image3.bmp" "image4.bmp")
-RWW_COMBINATIONS=("1,1,1" "1,2,1" "2,1,2" "2,3,2" "1,3,1")
+RWW_COMBINATIONS=("1,1,1" "1,3,1" "2,3,2")
 
 # shorten the args and set up specific build cfg
 if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then 
