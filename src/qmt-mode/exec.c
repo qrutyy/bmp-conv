@@ -39,25 +39,25 @@ int allocate_qthread_resources(struct qthreads_gen_info *qt_info, struct p_args 
 	qt_info->wrt_info->threads = NULL;
 	qt_info->wot_info->threads = NULL;
 
-	if (args_ptr->wot_count > 0) {
-		qt_info->wot_info->threads = malloc(args_ptr->wot_count * sizeof(pthread_t));
+	if (args_ptr->mt_mode_cfg.qm.threads_cfg.worker_cnt > 0) {
+		qt_info->wot_info->threads = malloc(args_ptr->mt_mode_cfg.qm.threads_cfg.worker_cnt * sizeof(pthread_t));
 		if (!qt_info->wot_info->threads)
 			goto mem_err_cleanup;
 	}
-	if (args_ptr->ret_count > 0) {
-		qt_info->ret_info->threads = malloc(args_ptr->ret_count * sizeof(pthread_t));
+	if (args_ptr->mt_mode_cfg.qm.threads_cfg.reader_cnt > 0) {
+		qt_info->ret_info->threads = malloc(args_ptr->mt_mode_cfg.qm.threads_cfg.reader_cnt * sizeof(pthread_t));
 		if (!qt_info->ret_info->threads)
 			goto mem_err_cleanup;
 	}
-	if (args_ptr->wrt_count > 0) {
-		qt_info->wrt_info->threads = malloc(args_ptr->wrt_count * sizeof(pthread_t));
+	if (args_ptr->mt_mode_cfg.qm.threads_cfg.writer_cnt > 0) {
+		qt_info->wrt_info->threads = malloc(args_ptr->mt_mode_cfg.qm.threads_cfg.writer_cnt * sizeof(pthread_t));
 		if (!qt_info->wrt_info->threads)
 			goto mem_err_cleanup;
 	}
 
-	q_mem_limit = args_ptr->queue_memory_limit_mb > 0 ? args_ptr->queue_memory_limit_mb : DEFAULT_QUEUE_MEM_LIMIT;
-	queue_init(input_queue, args_ptr->queue_capacity, q_mem_limit);
-	queue_init(output_queue, args_ptr->queue_capacity, q_mem_limit);
+	q_mem_limit = args_ptr->mt_mode_cfg.qm.tq_memory_limit_mb > 0 ? args_ptr->mt_mode_cfg.qm.tq_memory_limit_mb : DEFAULT_QUEUE_MEM_LIMIT;
+	queue_init(input_queue, args_ptr->mt_mode_cfg.qm.tq_capacity, q_mem_limit);
+	queue_init(output_queue, args_ptr->mt_mode_cfg.qm.tq_capacity, q_mem_limit);
 
 	qt_info->pargs = args_ptr;
 	qt_info->input_q = input_queue;
@@ -88,17 +88,17 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 	size_t i = 0;
 	int ret = 0;
 
-	log_info("Creating %hhu readers, %hhu workers, %hhu writers", qt_info->pargs->ret_count, qt_info->pargs->wot_count, qt_info->pargs->wrt_count);
+	log_info("Creating %hhu readers, %hhu workers, %hhu writers", qt_info->pargs->mt_mode_cfg.qm.threads_cfg.reader_cnt, qt_info->pargs->mt_mode_cfg.qm.threads_cfg.worker_cnt, qt_info->pargs->mt_mode_cfg.qm.threads_cfg.writer_cnt);
 
-	if (qt_info->pargs->ret_count > 0) {
-		ret = pthread_barrier_init(qt_info->reader_barrier, NULL, qt_info->pargs->ret_count);
+	if (qt_info->pargs->mt_mode_cfg.qm.threads_cfg.reader_cnt > 0) {
+		ret = pthread_barrier_init(qt_info->reader_barrier, NULL, qt_info->pargs->mt_mode_cfg.qm.threads_cfg.reader_cnt);
 		if (ret != 0) {
 			log_error("Failed to initialize reader barrier: %s", strerror(ret));
 			return; // Cannot proceed without barrier if readers exist
 		}
 	}
 
-	for (i = 0; i < qt_info->pargs->ret_count; i++) {
+	for (i = 0; i < qt_info->pargs->mt_mode_cfg.qm.threads_cfg.reader_cnt; i++) {
 		ret = pthread_create(&qt_info->ret_info->threads[i], NULL, reader_thread, qt_info);
 		if (ret != 0) {
 			log_error("Failed to create reader thread %zu: %s", i, strerror(ret));
@@ -107,7 +107,7 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 		qt_info->ret_info->used_threads++;
 	}
 
-	for (i = 0; i < qt_info->pargs->wot_count; i++) {
+	for (i = 0; i < qt_info->pargs->mt_mode_cfg.qm.threads_cfg.worker_cnt; i++) {
 		ret = pthread_create(&qt_info->wot_info->threads[i], NULL, worker_thread, qt_info);
 		if (ret != 0) {
 			log_error("Failed to create worker thread %zu: %s", i, strerror(ret));
@@ -116,7 +116,7 @@ void create_qthreads(struct qthreads_gen_info *qt_info)
 		qt_info->wot_info->used_threads++;
 	}
 
-	for (i = 0; i < qt_info->pargs->wrt_count; i++) {
+	for (i = 0; i < qt_info->pargs->mt_mode_cfg.qm.threads_cfg.writer_cnt; i++) {
 		ret = pthread_create(&qt_info->wrt_info->threads[i], NULL, writer_thread, qt_info);
 		if (ret != 0) {
 			log_error("Failed to create writer thread %zu: %s", i, strerror(ret));
@@ -140,7 +140,7 @@ void join_qthreads(struct qthreads_gen_info *qt_info)
 		}
 	}
 
-	if (qt_info->pargs->ret_count > 0) {
+	if (qt_info->pargs->mt_mode_cfg.qm.threads_cfg.reader_cnt > 0) {
 		ret = pthread_barrier_destroy(qt_info->reader_barrier);
 		if (ret != 0) {
 			log_error("Failed to destroy reader barrier: %s", strerror(ret));

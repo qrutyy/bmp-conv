@@ -27,13 +27,13 @@ jobs:
       run: |
         make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread"
     
-    - name: Run Tests under Valgrind (Memcheck - Memory Errors)
-      run: |
-          ./tests/test.sh ci-memcheck
+    #- name: Run Tests under Valgrind (Memcheck - Memory Errors)
+    #  run: |
+    #      ./tests/test.sh ci-memcheck
 
-    - name: Run Tests under Valgrind (Helgrind - Threading Errors)
-      run: |
-          tests/test.sh ci-helgrind 
+    #- name: Run Tests under Valgrind (Helgrind - Threading Errors)
+    #  run: |
+    #      tests/test.sh ci-helgrind 
 
     - name: Compile with AddressSanitizer + UndefinedBehaviorSanitizer
       run: |

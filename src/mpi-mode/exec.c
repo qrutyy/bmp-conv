@@ -44,25 +44,25 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 	if (!ctx.rank)
 		log_info("Starting MPI process in BY_ROW mode");
 
-	img_data.input_img = (bmp_img *)calloc(1, sizeof(bmp_img));
-	img_data.output_img = (bmp_img *)calloc(1, sizeof(bmp_img));
+	img_data.input = (bmp_img *)calloc(1, sizeof(bmp_img));
+	img_data.output = (bmp_img *)calloc(1, sizeof(bmp_img));
 	comm_data.dim = (struct img_dim *)malloc(sizeof(struct img_dim));
 
-	if (!img_data.input_img || !img_data.output_img || !comm_data.dim) {
+	if (!img_data.input || !img_data.output || !comm_data.dim) {
 		log_error("Rank %d: Failed to allocate top-level structs.", rank);
-		free(img_data.input_img);
-		free(img_data.output_img);
+		free(img_data.input);
+		free(img_data.output);
 		free(comm_data.dim);
 		ABORT_AND_RETURN(-1.0);
 	}
 
-	comm_data.halo_size = get_halo_size(args->filter_type, filters);
+	comm_data.halo_size = get_halo_size(args->compute_cfg.filter_type, filters);
 	status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
 	if (status != 0) {
 		if (ctx.rank == 0)
 			bmp_free_img_spec(&img_data); // Free bmp data if init failed
-		free(img_data.input_img);
-		free(img_data.output_img);
+		free(img_data.input);
+		free(img_data.output);
 		free(comm_data.dim);
 		ABORT_AND_RETURN(-1.0);
 	}
@@ -80,8 +80,8 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 			free_comm_arr(comm_arrays);
 			bmp_free_img_spec(&img_data);
 		}
-		free(img_data.input_img);
-		free(img_data.output_img);
+		free(img_data.input);
+		free(img_data.output);
 		free(comm_data.dim);
 		ABORT_AND_RETURN(-1.0);
 	}
@@ -91,8 +91,8 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 		mpi_phase_cleanup_resources(&ctx, &local_data, &comm_arrays);
 		if (ctx.rank == 0)
 			bmp_free_img_spec(&img_data);
-		free(img_data.input_img);
-		free(img_data.output_img);
+		free(img_data.input);
+		free(img_data.output);
 		free(comm_data.dim);
 		ABORT_AND_RETURN(-1.0);
 	}
@@ -104,16 +104,16 @@ static double mpi_process_by_rows(int rank, int size, const struct p_args *args,
 	if (status != 0) {
 		if (ctx.rank == 0)
 			bmp_free_img_spec(&img_data);
-		free(img_data.input_img);
-		free(img_data.output_img);
+		free(img_data.input);
+		free(img_data.output);
 		free(comm_data.dim);
 		ABORT_AND_RETURN(-1.0);
 	}
 
 	final_time = mpi_phase_finalize_and_broadcast(&ctx, start_time, &img_data, args);
 
-	free(img_data.input_img);
-	free(img_data.output_img);
+	free(img_data.input);
+	free(img_data.output);
 	free(comm_data.dim);
 
 	return final_time;
@@ -159,15 +159,15 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (!ctx.rank)
 		log_info("Starting MPI process in BY_COLUMN (Transposed) mode");
 
-	img_data.input_img = (bmp_img *)calloc(1, sizeof(bmp_img));
-	img_data.output_img = (bmp_img *)calloc(1, sizeof(bmp_img));
+	img_data.input = (bmp_img *)calloc(1, sizeof(bmp_img));
+	img_data.output = (bmp_img *)calloc(1, sizeof(bmp_img));
 	comm_data.dim = (struct img_dim *)malloc(sizeof(struct img_dim));
-	if (!img_data.input_img || !img_data.output_img || !comm_data.dim) {
+	if (!img_data.input || !img_data.output || !comm_data.dim) {
 		log_error("Rank %d: Failed to allocate top-level structs.", rank);
 		goto ext_err;
 	}
 
-	comm_data.halo_size = get_halo_size(args->filter_type, filters);
+	comm_data.halo_size = get_halo_size(args->compute_cfg.filter_type, filters);
 	status = mpi_phase_initialize(&ctx, args, &img_data, &comm_data, &start_time);
 	if (status) {
 		if (!ctx.rank)
@@ -190,7 +190,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 			free_comm_arr(comm_arrays);
 			if (transposed_input_pixels)
 				bmp_img_pixel_free(transposed_input_pixels, comm_data.dim); // free only pixel array
-			img_data.input_img->img_pixels = orig_input_pixels;
+			img_data.input->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
 		goto ext_err;
@@ -202,7 +202,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 		if (ctx.rank == 0) {
 			if (transposed_input_pixels)
 				bmp_img_pixel_free(transposed_input_pixels, comm_data.dim);
-			img_data.input_img->img_pixels = orig_input_pixels;
+			img_data.input->img_pixels = orig_input_pixels;
 			bmp_free_img_spec(&img_data);
 		}
 		goto ext_err;
@@ -212,7 +212,7 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 	if (ctx.rank == 0 && transposed_input_pixels != NULL) {
 		log_debug("Rank 0: Freeing intermediate transposed input pixel array post-scatter.");
 		// bmp_img_pixel_free(transposed_input_pixels, comm_data.dim); // orig_width = transposed height TODO: fix
-		img_data.input_img->img_pixels = orig_input_pixels; // Restore orig ptr for final free
+		img_data.input->img_pixels = orig_input_pixels; // Restore orig ptr for final free
 		transposed_input_pixels = NULL;
 	}
 
@@ -236,15 +236,15 @@ static double mpi_process_by_columns(int rank, int size, const struct p_args *ar
 
 	final_time = mpi_phase_finalize_and_broadcast(&ctx, start_time, &img_data, args);
 
-	free(img_data.input_img);
-	free(img_data.output_img);
+	free(img_data.input);
+	free(img_data.output);
 	free(comm_data.dim);
 
 	return final_time;
 
 ext_err:
-	free(img_data.input_img);
-	free(img_data.output_img);
+	free(img_data.input);
+	free(img_data.output);
 	free(comm_data.dim);
 	ABORT_AND_RETURN(-1.0);
 }
@@ -253,7 +253,7 @@ double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *comput
 {
 	double total_time = 0;
 
-	switch ((enum compute_mode)compute_args->compute_mode) {
+	switch ((enum compute_mode)compute_args->compute_cfg.compute_mode) {
 	case BY_ROW:
 		total_time = mpi_process_by_rows(rank, size, compute_args, filters);
 		break;
@@ -272,7 +272,7 @@ double execute_mpi_computation(uint8_t size, uint8_t rank, struct p_args *comput
 		break;
 	default:
 		if (rank == 0) {
-			log_error("Error: Invalid compute_mode (%d) for MPI.", compute_args->compute_mode);
+			log_error("Error: Invalid compute_mode (%d) for MPI.", compute_args->compute_cfg.compute_mode);
 		}
 		MPI_Abort(MPI_COMM_WORLD, 1);
 		return -1.0;

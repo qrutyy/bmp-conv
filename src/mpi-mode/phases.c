@@ -16,23 +16,21 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
 {
 	int8_t setup_status = 0;
 
-	if (!args || !args->input_filename[0]) {
+	if (!args || !args->files_cfg.input_filename[0]) {
 		if (ctx->rank == 0)
 			log_error("Rank 0: Error: Missing input filename for MPI mode.");
 		return -1;
 	}
-
-	log_trace("INIT PHASE:\n");
 
 	comm_data->dim = malloc(sizeof(struct img_dim));
 	if (!comm_data) {
 		log_error("Memory allocation failed");
 		return -1;
 	}
-	comm_data->compute_mode = args->compute_mode;
+	comm_data->compute_mode = args->compute_cfg.compute_mode;
 
 	if (ctx->rank == 0) {
-		setup_status = mpi_rank0_initialize(img_data, comm_data, start_time, args->input_filename[0]);
+		setup_status = mpi_rank0_initialize(img_data, comm_data, start_time, args->files_cfg.input_filename[0]);
 		if (setup_status != 0)
 
 			return -1;
@@ -48,7 +46,7 @@ int8_t mpi_phase_initialize(const struct mpi_context *ctx, const struct p_args *
 		log_error("Rank %d: Received invalid image dimensions (%ux%u).", ctx->rank, comm_data->dim->width, comm_data->dim->height);
 		return -1;
 	}
-	if (args->compute_mode == BY_ROW) { // Here we calculate distribution of image for every process.
+	if (args->compute_cfg.compute_mode == BY_ROW) { // Here we calculate distribution of image for every process.
 		mpi_calculate_row_distribution(ctx, comm_data);
 	} else {
 		mpi_calculate_column_distribution(ctx, comm_data);

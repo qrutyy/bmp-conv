@@ -11,8 +11,7 @@
 // thread-specific parameters for computation only.
 struct thread_spec {
 	struct img_spec *img;
-	struct img_dim *dim;
-	struct sthreads_gen_info *st_gen_info;
+	struct st_gen_info *st_gen_info;
 	uint16_t start_column;
 	uint16_t start_row;
 	uint16_t end_row;
@@ -28,15 +27,21 @@ struct img_dim {
 
 // since thread manages only 1 image computation -> this struct is used.
 struct img_spec {
-	bmp_img *input_img;
-	bmp_img *output_img;
+	bmp_img *input;
+	bmp_img *output;
+
+	struct img_dim *dim;
 };
 
 // simple threads general info
-struct sthreads_gen_info {
+struct st_gen_info {
 	struct p_args *args;
 	struct filter_mix *filters;
 };
+
+bmp_img *setup_input_file(struct p_args *args);
+struct img_spec *setup_img_spec(struct p_args *args);
+struct filter_mix *setup_filters(struct p_args *args);
 
 /**
  * Allocates and initializes an image dimensions structure.
@@ -52,9 +57,10 @@ struct img_dim *init_dimensions(uint16_t width, uint16_t height);
  *
  * @param input Pointer to the bmp_img structure holding the input image data.
  * @param output Pointer to the bmp_img structure where the output image data will be stored.
+ * @param output Pointer to the img_dim structure containing size details.
  * @return Pointer to the newly allocated img_spec structure, or NULL on failure.
  */
-struct img_spec *init_img_spec(bmp_img *input, bmp_img *output);
+struct img_spec *init_img_spec(bmp_img *input, bmp_img *output, struct img_dim *dim);
 
 /**
  * Allocates memory for a thread specification structure. Note: This basic version only allocates the structure. Further initialization (linking dimensions, images, setting row/column ranges) happens elsewhere.

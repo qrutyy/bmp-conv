@@ -1,11 +1,25 @@
 SHELL=/bin/sh
 
+# === Runtime Parameters (with defaults, can be overridden) ===
+INPUT_TF ?= image2.bmp
+FILTER_TYPE ?= mb
+THREAD_NUM ?= 2
+COMPUTE_MODE ?= by_row
+BLOCK_SIZE ?= 5
+OUTPUT_FILE ?= "" # Default to empty, let the program handle it
+LOG ?= 1
+RWW_MIX ?= 1,1,1
+MPI_NP ?= 2
+VALGRIND_PREFIX ?= "" 
+QUEUE_MEM ?= 500
+QUEUE_CAP ?= 20 
+
 # === Compiler and Flags ===
 CC = gcc
 MPICC = mpicc
 CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -DNDEBUG -O3
 
-MPICFLAGS = $(CFLAGS) -DUSE_MPI -DLOG_USE_COLOR
+MPICFLAGS = $(CFLAGS) -DUSE_MPI
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
 LDLIBS = -lm 
 
@@ -31,25 +45,13 @@ BUILD_DIR_MPI := build/obj_mpi
 OBJS_NO_MPI := $(addprefix $(BUILD_DIR_NO_MPI)/, $(SRCS_NO_MPI:.c=.o))
 OBJS_MPI := $(addprefix $(BUILD_DIR_MPI)/, $(SRCS_MPI:.c=.o))
 
-RM := rm -f
-
-# === Runtime Parameters (with defaults, can be overridden) ===
-INPUT_TF ?= image2.bmp
-FILTER_TYPE ?= mb
-THREAD_NUM ?= 2
-COMPUTE_MODE ?= by_row
-BLOCK_SIZE ?= 5
-OUTPUT_FILE ?= "" # Default to empty, let the program handle it
-LOG ?= 1
-RWW_MIX ?= 1,1,1
-MPI_NP ?= 2
-VALGRIND_PREFIX ?= "" 
-QUEUE_MEM ?= 500
-QUEUE_CAP ?= 20 
-
 # === Build Targets ===
 .DEFAULT_GOAL := all
 all: $(TARGET_NO_MPI) $(TARGET_MPI)
+
+build:
+	@echo "\nBuilding with Bear (compile_commands.json)..."
+	bear -- $(MAKE) clean all
 
 # --- Non-MPI Build ---
 $(TARGET_NO_MPI): $(OBJS_NO_MPI)
@@ -91,7 +93,11 @@ MPI_RUN_ARGS := -mpi-mode $(RUN_ARGS) # mpi-mode ignores the threadnum option
 # Run the program with standard arguments
 run: $(TARGET_NO_MPI)
 	@echo "\nRunning: ./$(TARGET_NO_MPI) $(RUN_ARGS)"
-	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_ARGS); \
+	else \
+		./$(TARGET_NO_MPI) $(RUN_ARGS); \
+	fi
 
 # Run specifically on macOS E-cores
 run-mac-e-cores: $(TARGET_NO_MPI)
@@ -105,12 +111,20 @@ run-mac-p-cores: $(TARGET_NO_MPI)
 
 run-q-mode: $(TARGET_NO_MPI)
 	@echo "\nRunning Queue Mode: ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)"
-	$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_Q_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) ./$(TARGET_NO_MPI) $(RUN_Q_ARGS); \
+	else \
+		./$(TARGET_NO_MPI) $(RUN_Q_ARGS); \
+	fi
 
 # Run the MPI target using mpirun
 run-mpi-mode: $(TARGET_MPI)
 	@echo "\nRunning MPI mode (NP=$(MPI_NP)): mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)"
-	$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS)
+	@if [ -n "$(VALGRIND_PREFIX)" ] && [ "$(VALGRIND_PREFIX)" != '""' ]; then \
+		$(VALGRIND_PREFIX) mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS); \
+	else \
+		mpirun -np $(MPI_NP) ./$(TARGET_MPI) $(MPI_RUN_ARGS); \
+	fi
 
 build-f: 
 	rm -rf build/
@@ -118,12 +132,11 @@ build-f:
 
 clean:
 	@echo "\nCleaning build artifacts..."
-	$(RM) $(TARGET_NO_MPI)
-	$(RM) -r $(BUILD_DIR_MPI)
-	$(RM) -r $(BUILD_DIR_NO_MPI)
-	$(RM) tests/*.dat src/*.out 
+	rm -rf $(TARGET_NO_MPI)
+	rm -rf $(BUILD_DIR_MPI)
+	rm -rf $(BUILD_DIR_NO_MPI)
+	rm -rf tests/*.dat src/*.out 
 
-.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode test
+.PHONY: all clean run run-mac-e-cores run-mac-p-cores run-q-mode test build
 
 .SUFFIXES:
-
