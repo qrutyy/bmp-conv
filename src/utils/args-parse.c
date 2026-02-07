@@ -2,7 +2,7 @@
 
 #include "args-parse.h"
 #include "utils.h"
-#include "../../logger/log.h"
+#include "logger/log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -45,7 +45,7 @@ int parse_mandatory_args(int argc, char *argv[], struct p_args *args)
 			// Allow empty mode string (will be validated later if needed)
 			if (j > 0) {
 				args->compute_cfg.compute_mode = check_mode_arg(mode_buf);
-				if (args->compute_cfg.compute_mode < 0) {
+				if (args->compute_cfg.compute_mode == CONV_COMPUTE_INIT) {
 					return -1;
 				}
 			}
@@ -78,15 +78,15 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 			args->log_enabled = atoi(argv[i] + 6);
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--queue-size=", 13) == 0) {
-			args->mt_mode_cfg.qm.tq_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
-			if (args->mt_mode_cfg.qm.tq_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
+			args->compute_ctx.qm.tq_capacity = (size_t)atoi(argv[i] + 13); // Store as bytes
+			if (args->compute_ctx.qm.tq_capacity == 0 && strcmp(argv[i] + 13, "0") != 0) {
 				log_error("Error: Invalid value for --queue-size.\n");
 				return -1;
 			}
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--queue-mem=", 12) == 0) {
-			args->mt_mode_cfg.qm.tq_memory_limit_mb = (size_t)atoi(argv[i] + 12);
-			if (args->mt_mode_cfg.qm.tq_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
+			args->compute_ctx.qm.tq_memory_limit_mb = (size_t)atoi(argv[i] + 12);
+			if (args->compute_ctx.qm.tq_memory_limit_mb == 0 && strcmp(argv[i] + 12, "0") != 0) {
 				log_error("Error: Invalid value for --queue-mem.\n");
 				return -1;
 			}
@@ -105,9 +105,9 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 				log_error("Error: Thread cnts in --rww must be between 1 and %d.\n", UCHAR_MAX);
 				return -1;
 			}
-			args->mt_mode_cfg.qm.threads_cfg.writer_cnt = (uint8_t)writer_temp;
-			args->mt_mode_cfg.qm.threads_cfg.reader_cnt = (uint8_t)reader_temp;
-			args->mt_mode_cfg.qm.threads_cfg.worker_cnt = (uint8_t)worker_temp;
+			args->compute_ctx.qm.threads_cfg.writer_cnt = (uint8_t)writer_temp;
+			args->compute_ctx.qm.threads_cfg.reader_cnt = (uint8_t)reader_temp;
+			args->compute_ctx.qm.threads_cfg.worker_cnt = (uint8_t)worker_temp;
 			rww_found = 1;
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "_", 1) == 0) {
@@ -128,7 +128,7 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args)
 		log_error("Error: Queue-based mode requires the --rww=R,W,T argument.\n");
 		return -1;
 	}
-	if ((args->mt_mode_cfg.qm.threads_cfg.reader_cnt + args->mt_mode_cfg.qm.threads_cfg.worker_cnt + args->mt_mode_cfg.qm.threads_cfg.writer_cnt) < 3) {
+	if ((args->compute_ctx.qm.threads_cfg.reader_cnt + args->compute_ctx.qm.threads_cfg.worker_cnt + args->compute_ctx.qm.threads_cfg.writer_cnt) < 3) {
 		log_error("Error: Queue-based mode requires at least 3 threads in total (1R, 1W, 1T).\n");
 		return -1;
 	}
@@ -149,10 +149,14 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args)
 		}
 		
 		if (strncmp(argv[i], "--threadnum=", 12) == 0) {
-			args->mt_mode_cfg.threadnum = atoi(argv[i] + 12);
-			if (args->mt_mode_cfg.threadnum <= 0) {
+			args->compute_ctx.threadnum = atoi(argv[i] + 12);
+			if (args->compute_ctx.threadnum <= 0) {
 				log_error("Error: Thread cnt must be > 0.\n");
 				return -1;
+			} else if (args->compute_ctx.threadnum == 1) {
+				args->compute_cfg.threadnum = CONV_THREAD_SINGLE;
+			} else {
+				args->compute_cfg.threadnum = CONV_THREAD_MULTI;
 			}
 			argv[i] = "_";
 		} else if (strncmp(argv[i], "--log=", 6) == 0) {
@@ -188,16 +192,16 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->compute_cfg.block_size = 0;
 	args_ptr->files_cfg.output_filename = "";
 	args_ptr->compute_cfg.filter_type = NULL;
-	args_ptr->compute_cfg.compute_mode = -1;
+	args_ptr->compute_cfg.compute_mode = CONV_COMPUTE_INIT;
 	args_ptr->log_enabled = 0;
-	args_ptr->compute_cfg.mt_mode = 0;
-	args_ptr->mt_mode_cfg.threadnum = 1; // Default to single thread
-	args_ptr->mt_mode_cfg.qm.threads_cfg.writer_cnt = 0;
-	args_ptr->mt_mode_cfg.qm.threads_cfg.reader_cnt = 0;
-	args_ptr->mt_mode_cfg.qm.threads_cfg.worker_cnt = 0;
+	args_ptr->compute_cfg.backend = CONV_BACKEND_CPU;
+	args_ptr->compute_ctx.threadnum = 1; // Default to single thread
+	args_ptr->compute_ctx.qm.threads_cfg.writer_cnt = 0;
+	args_ptr->compute_ctx.qm.threads_cfg.reader_cnt = 0;
+	args_ptr->compute_ctx.qm.threads_cfg.worker_cnt = 0;
 	args_ptr->files_cfg.file_cnt = 0;
-	args_ptr->mt_mode_cfg.qm.tq_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
-	args_ptr->mt_mode_cfg.qm.tq_capacity = DEFAULT_QUEUE_CAP;
+	args_ptr->compute_ctx.qm.tq_memory_limit_mb = DEFAULT_QUEUE_MEM_LIMIT;
+	args_ptr->compute_ctx.qm.tq_capacity = DEFAULT_QUEUE_CAP;
 
 	args_ptr->files_cfg.input_filename = malloc(DEFAULT_QUEUE_CAP * sizeof(char *));
 	if (!args_ptr->files_cfg.input_filename) {
@@ -234,4 +238,56 @@ int check_mode_arg(char *mode_str)
 	}
 	log_error("Error: Invalid mode '%s' (len=%zu). Valid modes are: by_row, by_column, by_pixel, by_grid\n", mode_str, strlen(mode_str));
 	return -1;
+}
+
+int parse_args(int argc, char *argv[], struct p_args *args)
+{
+	if (argc < 2) {
+		log_error("Usage: %s <input.bmp> --filter=<f> --mode=<m> --block=<b> [--threadnum=<N> | -queue-mode --rww=R,W,T] [options...]\n", argv[0]);
+		return -1;
+	}
+
+	if (!args) {
+		log_error("Error: Global args structure not allocated before parse_args.\n");
+		return -1;
+	}
+	initialize_args(args);
+
+	// Scan for global flags first
+	for (int i = 1; i < argc; i++) {
+		if (strncmp(argv[i], "_", 1) == 0) continue;
+
+		if (strcmp(argv[i], "-cpu") == 0) {
+			args->compute_cfg.backend = CONV_BACKEND_CPU;
+			argv[i] = "_";
+		} else if (strcmp(argv[i], "-mpi-mode") == 0 || strcmp(argv[i], "-mpi") == 0) {
+			args->compute_cfg.backend = CONV_BACKEND_MPI;
+			argv[i] = "_";
+		} else if (strcmp(argv[i], "-gpu") == 0) {
+			args->compute_cfg.backend = CONV_BACKEND_GPU;
+			argv[i] = "_";
+		} else if (strcmp(argv[i], "-queue-mode") == 0 || strcmp(argv[i], "-queue") == 0) {
+			args->compute_cfg.queue = CONV_QUEUE_ENABLED;
+			argv[i] = "_";
+		}
+	}
+
+	if (parse_mandatory_args(argc, argv, args) < 0) {
+		log_error("Error parsing mandatory arguments.\n");
+		return -1;
+	}
+
+	if (args->compute_cfg.queue == CONV_QUEUE_ENABLED) {
+		if (parse_queue_mode_args(argc, argv, args) < 0) {
+			log_error("Error parsing queue-mode specific arguments.\n");
+			return -1;
+		}
+	} else {
+		if (parse_normal_mode_args(argc, argv, args) < 0) {
+			log_error("Error parsing normal-mode specific arguments.\n");
+			return -1;
+		}
+	}
+
+	return 1;
 }

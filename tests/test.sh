@@ -22,7 +22,7 @@ if [[ "$1" == "ci" || "$1" == "ci-memcheck" || "$1" == "ci-helgrind" ]]; then
 	MODES=("by_row")
 	FILTERS=("gg")
 	BLOCK_SIZE=("32")
-	QMT_INPUT_FILES=("image1.bmp" "image2.bmp")
+	QMT_INPUT_FILES=("image1.bmp" "image2.bmp" "image3.bmp")
 	if [[ "$1" == "ci-memcheck" ]]; then 
 		VG_PREFIX="valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
 	fi

@@ -17,7 +17,7 @@ QUEUE_CAP ?= 20
 # === Compiler and Flags ===
 CC = gcc
 MPICC = mpicc
-CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -DNDEBUG -O3
+CFLAGS = -Wall -Wpedantic -Wextra -std=c99 -DLOG_USE_COLOR -DNDEBUG -O3 -I. -Isrc
 
 MPICFLAGS = $(CFLAGS) -DUSE_MPI
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L # use the specific posix standart that includes barriers
@@ -28,16 +28,29 @@ TARGET_BASE_NAME := bmp-conv
 TARGET_NO_MPI := $(TARGET_BASE_NAME)
 TARGET_MPI := $(TARGET_BASE_NAME)-mpi
 
-SRC_DIRS := src src/utils src/st-mode src/mt-mode src/qmt-mode src/mpi-mode logger libbmp
+SRC_DIRS := src src/utils \
+            src/backend src/backend/cpu src/backend/cpu/st src/backend/cpu/mt src/backend/cpu/qmt \
+            src/backend/mpi src/backend/mpi/core src/backend/mpi/comm src/backend/mpi/compute src/backend/mpi/utils \
+            logger libbmp
 VPATH := $(SRC_DIRS)
 
-SRCS_NO_MPI := bmp-conv.c utils/args-parse.c utils/filters.c utils/threads-general.c utils/utils.c \
-         st-mode/exec.c \
-         mt-mode/compute.c mt-mode/exec.c \
-         qmt-mode/exec.c qmt-mode/queue.c qmt-mode/threads.c \
-         log.c \
-         libbmp.c
-SRCS_MPI := $(SRCS_NO_MPI) mpi-mode/exec.c mpi-mode/utils.c mpi-mode/phases.c mpi-mode/rank0-proc.c mpi-mode/filter-comp.c mpi-mode/data-transfer.c
+SRCS_COMMON := bmp-conv.c \
+               utils/args-parse.c utils/filters.c utils/threads-general.c utils/utils.c \
+               backend/compute-backend.c \
+               backend/cpu/cpu-backend.c \
+               backend/cpu/st/st_exec.c \
+               backend/cpu/mt/mt_compute.c backend/cpu/mt/mt_exec.c \
+               backend/cpu/qmt/qmt_exec.c backend/cpu/qmt/qmt_queue.c backend/cpu/qmt/qmt_threads.c \
+               log.c \
+               libbmp.c
+
+SRCS_NO_MPI := $(SRCS_COMMON)
+SRCS_MPI := $(SRCS_COMMON) \
+            backend/mpi/mpi-backend.c \
+            backend/mpi/core/exec.c \
+            backend/mpi/utils/utils.c \
+            backend/mpi/comm/phases.c backend/mpi/comm/rank0-proc.c backend/mpi/comm/data-transfer.c \
+            backend/mpi/compute/filter-comp.c
 
 BUILD_DIR_NO_MPI := build/obj_no_mpi
 BUILD_DIR_MPI := build/obj_mpi

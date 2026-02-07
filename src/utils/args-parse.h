@@ -20,13 +20,39 @@ struct threads_cfg {
 	uint8_t worker_cnt; // worker threads cnt
 };
 
+enum conv_compute_mode { 
+	CONV_COMPUTE_INIT = -1,
+	CONV_COMPUTE_BY_ROW, 
+	CONV_COMPUTE_BY_COLUMN, 
+	CONV_COMPUTE_BY_PIXEL, 
+	CONV_COMPUTE_BY_GRID 
+};
+
+enum conv_backend {
+    CONV_BACKEND_CPU,
+    CONV_BACKEND_MPI,
+    CONV_BACKEND_GPU
+};
+
+enum conv_threadnum {
+    CONV_THREAD_SINGLE,
+    CONV_THREAD_MULTI
+};
+
+enum conv_queue_mode {
+    CONV_QUEUE_DISABLED,
+    CONV_QUEUE_ENABLED
+};
+
 struct compute_cfg {
 	char *filter_type;
-	uint8_t block_size;
 
-	int8_t compute_mode;
-	// 0 - non-queue-mode, 1 - queue-mode, 2 - MPI mode
-	uint8_t mt_mode : 2; 
+	uint8_t block_size;
+	enum conv_compute_mode compute_mode;
+
+	enum conv_backend backend; 
+	enum conv_threadnum threadnum; 
+	enum conv_queue_mode queue;
 };
 
 // Structure for storing input arguments. Better described in README
@@ -41,7 +67,7 @@ struct p_args {
 			size_t tq_memory_limit_mb;
 		} qm;
 		int8_t threadnum;
-	} mt_mode_cfg; 
+	} compute_ctx; 
 
 	uint8_t log_enabled : 1;
 };
@@ -112,3 +138,14 @@ int parse_queue_mode_args(int argc, char *argv[], struct p_args *args);
  * @return 0 on success, -1 on parsing or validation error.
  */
 int parse_normal_mode_args(int argc, char *argv[], struct p_args *args);
+
+/**
+ * Parses command-line arguments provided via `argc` and `argv`. Initializes the
+ * global `args` structure with defaults, checks for queue mode activation, calls
+ * appropriate sub-parsers for mandatory and mode-specific arguments, and validates
+ * that all required arguments are present and valid.
+ *
+ * @return number of worker threads for normal mode (or 1 if queue mode is active) on success, or
+ * -1 on any parsing or validation error.
+ */
+int parse_args(int argc, char *argv[], struct p_args *args);
