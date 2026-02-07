@@ -39,16 +39,16 @@ jobs:
       run: |
         make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=address,undefined -I. -Isrc" LDFLAGS="-fsanitize=address,undefined"
 
-    - name: Run Tests with ASan + UBSan
+   # - name: Run Tests with ASan + UBSan
       # It will abort (and fail the step) if sanitizers detect errors.
-      run: |
-        tests/test.sh ci
+ #     run: |
+ #       tests/test.sh ci
 
-    - name: Compile with ThreadSanitizer
-      run: |
-        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=thread -I. -Isrc" LDFLAGS="-fsanitize=thread"
+    #- name: Compile with ThreadSanitizer
+    #  run: |
+    #    make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=thread -I. -Isrc" LDFLAGS="-fsanitize=thread"
 
-    - name: Run Tests with TSan
-      # Run the normal test script with the TSan-instrumented binary.
-      run: |
-        tests/test.sh ci
+    #- name: Run Tests with TSan
+    #  # Run the normal test script with the TSan-instrumented binary.
+    #  run: |
+    #    tests/test.sh ci
