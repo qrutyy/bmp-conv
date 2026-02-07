@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "../../libbmp/libbmp.h"
-#include "../../logger/log.h"
+#include "libbmp/libbmp.h"
+#include "logger/log.h"
 #include "threads-general.h"
 #include "utils.h"
 #include "args-parse.h"
@@ -324,7 +324,7 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 
 	if (strcmp(args->files_cfg.output_filename, "") != 0) {
 		snprintf(output_filepath, path_len, "test-img/%s", args->files_cfg.output_filename);
-	} else if (args->compute_cfg.mt_mode == 2) {
+	} else if (args->compute_cfg.backend == CONV_BACKEND_MPI) {
 		snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->files_cfg.input_filename[0]);
 	} else {
 		if (threadnum > 1) {

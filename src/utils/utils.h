@@ -4,7 +4,7 @@
 
 #define _POSIX_C_SOURCE 200809L // to use functions from posix
 
-#include "../../libbmp/libbmp.h"
+#include "libbmp/libbmp.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <sys/time.h>
@@ -22,7 +22,6 @@
 #define QT_LOG_FILE_PATH "tests/queue-timings.dat"
 
 enum LOG_TAG { QPOP, QPUSH, READER, WORKER, WRITER };
-enum compute_mode { BY_ROW, BY_COLUMN, BY_PIXEL, BY_GRID };
 extern const char *valid_modes[];
 
 /**
@@ -48,7 +47,7 @@ int selectKth(int *data, int s, int e, int k);
  * @return current time in seconds.
  */
 double get_time_in_seconds(void);
-const char *compute_mode_to_str(enum compute_mode);
+const char *compute_mode_to_str(enum conv_compute_mode);
 
 /**
  * Converts a log tag enum value `tag` to its string representation based on

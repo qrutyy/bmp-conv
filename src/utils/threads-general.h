@@ -3,7 +3,7 @@
 #pragma once
 
 #include <stdlib.h>
-#include "../../libbmp/libbmp.h"
+#include "libbmp/libbmp.h"
 #include "utils.h"
 #include "args-parse.h"
 #include "filters.h"

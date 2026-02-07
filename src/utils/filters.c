@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "filters.h"
-#include "../../logger/log.h"
+#include "logger/log.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

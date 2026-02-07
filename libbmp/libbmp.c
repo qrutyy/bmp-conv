@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "libbmp.h"
-#include "../logger/log.h"
+#include "logger/log.h"
 
 // BMP_HEADER
 

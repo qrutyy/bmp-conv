@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "utils.h"
-#include "../../libbmp/libbmp.h"
-#include "../../logger/log.h"
+#include "libbmp/libbmp.h"
+#include "logger/log.h"
 #include "args-parse.h"
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +59,7 @@ double get_time_in_seconds(void)
 	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
 }
 
-const char *compute_mode_to_str(enum compute_mode mode)
+const char *compute_mode_to_str(enum conv_compute_mode mode)
 {
 	if ((size_t)mode <= 3) {
 		return valid_modes[mode];
@@ -100,17 +100,17 @@ void st_write_logs(struct p_args *args, double result_time)
 		return;
 
 	file = fopen(ST_LOG_FILE_PATH, "a");
-	const char *mode_str = (args->mt_mode_cfg.threadnum == 1 && args->compute_cfg.compute_mode < 0) ? "none" : compute_mode_to_str(args->compute_cfg.compute_mode);
+	const char *mode_str = (args->compute_ctx.threadnum == 1 && args->compute_cfg.compute_mode < 0) ? "none" : compute_mode_to_str(args->compute_cfg.compute_mode);
 	const char *filter_str = args->compute_cfg.filter_type ? args->compute_cfg.filter_type : "unknown";
 
 	if (file) {
-		fprintf(file, "%s %d %s %d %.6f\n", filter_str, args->mt_mode_cfg.threadnum, mode_str, args->compute_cfg.block_size, result_time);
+		fprintf(file, "%s %d %s %d %.6f\n", filter_str, args->compute_ctx.threadnum, mode_str, args->compute_cfg.block_size, result_time);
 		fclose(file);
 	} else {
 		log_error("Error: could not open standard timing results file '%s' for appending.\n", ST_LOG_FILE_PATH);
 	}
 
-	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->mt_mode_cfg.threadnum, mode_str, args->compute_cfg.block_size, result_time);
+	log_debug("RESULT: filter=%s, threadnum=%d, mode=%s, block=%d, time=%.6f seconds\n\n", filter_str, args->compute_ctx.threadnum, mode_str, args->compute_cfg.block_size, result_time);
 }
 
 void set_wait_time(struct timespec *wait_time)
