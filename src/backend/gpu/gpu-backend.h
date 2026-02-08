@@ -5,7 +5,7 @@
 #include "../compute-backend.h"
 
 /**
- * CPU Compute Backend operations.
- * Implementation of compute_backend_ops for CPU execution.
+ * gpu Compute Backend operations.
+ * Implementation of compute_backend_ops for gpu execution.
  */
-extern const struct compute_backend_ops cpu_backend_ops;
+extern const struct compute_backend_ops gpu_backend_ops;

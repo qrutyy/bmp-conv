@@ -8,17 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "utils/utils.h"
-#include "st/st_exec.h"
-#include "mt/mt_exec.h"
-#include "qmt/qmt_exec.h"
-#include "qmt/qmt_threads.h"
-
-/**
- * gpu-specific backend data.
- * Contains thread management information.
- */
-struct gpu_backend_data {
-};
+#include "core/mw-exec.h"
 
 int gpu_verify_args(struct p_args *args)
 {
@@ -55,12 +45,6 @@ static int gpu_init(struct compute_backend *backend, struct p_args *args)
 		return -1;
 	}
 
-	data = malloc(sizeof(struct gpu_backend_data));
-	if (!data) {
-		log_error("Error: Failed to allocate memory for gpu_backend_data\n");
-		return -1;
-	}
-
 	rc = gpu_verify_args(args);
 	if (rc) {
 		free(data);
@@ -69,7 +53,6 @@ static int gpu_init(struct compute_backend *backend, struct p_args *args)
 
 	backend->backend_data = data;
 	
-	log_debug("gpu Backend: Initialized with %d threads\n", data->thread_count);
 	return 0;
 }
 
@@ -93,7 +76,8 @@ static double gpu_process_non_queue_mode(struct compute_backend *backend)
 		goto cleanup;
 	}
 
-	save_result_image(output_filepath, sizeof(output_filepath), threadnum, img_spec->output, args);
+	/* TODO: get worker_item count */
+	save_result_image(output_filepath, sizeof(output_filepath), 0, img_spec->output, args);
 
 cleanup:
 	log_debug("Cleaning up non-queue mode resources...");
@@ -110,6 +94,7 @@ cleanup:
 
 static double gpu_process_queue_mode(struct compute_backend *backend)
 {
+	backend = NULL;
 	return 0;
 }
 
