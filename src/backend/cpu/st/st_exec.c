@@ -26,7 +26,7 @@ double execute_st_computation(struct img_spec *img_spec, struct p_args *args, vo
 	start_time = get_time_in_seconds();
 
 	// Directly call the computation function (no splitting is needed)
-	filter_part_computation(spec, args->compute_cfg.filter_type, filters);
+	filter_part_computation(spec);
 
 	end_time = get_time_in_seconds();
 	free(spec->st_gen_info);

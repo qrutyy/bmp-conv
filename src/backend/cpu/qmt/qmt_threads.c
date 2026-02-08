@@ -235,7 +235,7 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
 			}
 			break;
 		}
-		filter_part_computation(th_spec, pargs->compute_cfg.filter_type, filters);
+		filter_part_computation(th_spec);
 	}
 
 	pthread_mutex_destroy(&local_xy_mutex);
