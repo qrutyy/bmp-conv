@@ -1,7 +1,6 @@
 name: Code Analysis (Build, Valgrind, Sanitizers)
 
 on:
-  # if not triggered on PR - trigger manually, that was made to avoid workflow duplication
   push:
   workflow_dispatch:
 
@@ -19,36 +18,60 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           build-essential \
+          cmake \
           valgrind \
           mpich \
-          libmpich-dev
+          libmpich-dev \
+          ninja-build # optional, faster builds
 
-    - name: Compile Project (Standard with Debug Symbols)
+    - name: Configure Project (Standard)
       run: |
-        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -I. -Isrc"
-    
-    #- name: Run Tests under Valgrind (Memcheck - Memory Errors)
-    #  run: |
-    #      ./tests/test.sh ci-memcheck
+        mkdir -p build
+        cmake -S . -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLOG_USE_COLOR=ON
 
-    #- name: Run Tests under Valgrind (Helgrind - Threading Errors)
-    #  run: |
-    #      tests/test.sh ci-helgrind 
-
-    - name: Compile with AddressSanitizer + UndefinedBehaviorSanitizer
+    - name: Build Project
       run: |
-        make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=address,undefined -I. -Isrc" LDFLAGS="-fsanitize=address,undefined"
+        cmake --build build --parallel
 
-   # - name: Run Tests with ASan + UBSan
-      # It will abort (and fail the step) if sanitizers detect errors.
- #     run: |
- #       tests/test.sh ci
+    - name: Run Tests (Single-threaded)
+      run: |
+        ./tests/test.sh ci
 
-    #- name: Compile with ThreadSanitizer
-    #  run: |
-    #    make build-f CFLAGS="-g -Wall -Wextra -Wpedantic -std=c99 -DLOG_USE_COLOR -pthread -fsanitize=thread -I. -Isrc" LDFLAGS="-fsanitize=thread"
+    - name: Run Tests under Valgrind (Memcheck)
+      run: |
+        ./tests/test.sh ci-memcheck
 
-    #- name: Run Tests with TSan
-    #  # Run the normal test script with the TSan-instrumented binary.
-    #  run: |
-    #    tests/test.sh ci
+    - name: Run Tests under Valgrind (Helgrind)
+      run: |
+        ./tests/test.sh ci-helgrind
+
+    - name: Compile with ASan + UBSan
+      if: false
+      run: |
+        cmake -S . -B build-asan \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="-g -O1 -fsanitize=address,undefined -Wall -Wextra -Wpedantic -pthread -I. -Isrc" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+        cmake --build build-asan --parallel
+
+    - name: Run Tests with ASan + UBSan
+      if: false
+      run: |
+        ./tests/test.sh ci
+
+    - name: Compile with ThreadSanitizer
+      if: false
+      run: |
+        cmake -S . -B build-tsan \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="-g -O1 -fsanitize=thread -Wall -Wextra -Wpedantic -pthread -I. -Isrc" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+        cmake --build build-tsan --parallel
+
+    - name: Run Tests with TSan
+      if: false
+      run: |
+        ./tests/test.sh ci
+
