@@ -5,20 +5,29 @@ on:
   push:
   workflow_dispatch:
 
-jobs: 
+jobs:
   buildntest:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: install_deps
-        run: |
-            sudo apt update
-            sudo apt install -y mpich libmpich-dev
 
-      - name: build
+      - name: Install Build Tools, Analyzers, and MPI
         run: |
-            cmake --build build
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            mpich \
+            libmpich-dev \
+            ninja-build
+
+      - name: Configure Project (Standard)
+        run: |
+          mkdir -p build
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLOG_USE_COLOR=ON
 
       - name: test
         run: |

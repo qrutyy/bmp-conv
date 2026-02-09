@@ -120,6 +120,10 @@ clang-format.txt
 tests/*.dat
 venv_py/
 test-img/*.bmp
+!test-img/image1.bmp
+!test-img/image2.bmp
+!test-img/image3.bmp
+!test-img/image5.bmp
 build/
 .cache/
 
