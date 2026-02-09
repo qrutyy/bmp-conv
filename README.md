@@ -3,7 +3,7 @@
 This tool provides a various range of computing approaches for BMP image convolution algorithm. It includes singlethreaded, multithreaded (queued and static) and MPI-based approaches. Convolution can be used with multiple different filters and configuration options. The analysis of proposed approaches along with some notes is presented in [docs](https://github.com/qrutyy/bmp-conv/tree/main/docs).
 
 ## Usage
-At first, you should build the sources by `make`.
+At first, you should build the sources by `cmake --build build`.
 
 ### Command Line Arguments
 

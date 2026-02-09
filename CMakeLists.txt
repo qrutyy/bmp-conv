@@ -80,7 +80,7 @@ endfunction()
 # === Run targets ===
 
 add_custom_target(run
-    COMMAND ${CMAKE_PROJECT_DIR}/bmp-conv
+    COMMAND $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
@@ -88,7 +88,7 @@ add_custom_target(run
 )
 
 add_custom_target(run-q-mode
-    COMMAND ${CMAKE_PROJECT_DIR}/bmp-conv
+    COMMAND $<TARGET_FILE:bmp-conv>
             -queue-mode ${INPUT_TF} --mode=${COMPUTE_MODE} --filter=${FILTER_TYPE} --block=${BLOCK_SIZE} --rww=${RWW_MIX} --queue-size=${QUEUE_CAP} --queue-mem=${QUEUE_MEM}
     DEPENDS bmp-conv
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
@@ -96,7 +96,7 @@ add_custom_target(run-q-mode
 )
 
 add_custom_target(run-mac-e-cores
-    COMMAND taskpolicy -c background ${CMAKE_PROJECT_DIR}/bmp-conv
+    COMMAND taskpolicy -c background $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
@@ -104,7 +104,7 @@ add_custom_target(run-mac-e-cores
 )
 
 add_custom_target(run-mac-p-cores
-    COMMAND ${CMAKE_PROJECT_DIR}/bmp-conv
+    COMMAND $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
@@ -113,7 +113,7 @@ add_custom_target(run-mac-p-cores
 
 if(MPI_FOUND)
     add_custom_target(run-mpi-mode
-        COMMAND mpirun -np ${MPI_NP} ${CMAKE_PROJECT_DIR}/bmp-conv-mpi
+        COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv-mpi>
                 -mpi-mode ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
         DEPENDS bmp-conv-mpi
         WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
