@@ -7,11 +7,7 @@ High-performance BMP image convolution tool with multiple parallelization strate
 - MPI-based distributed processing
 - on-GPU WIP
 
-The project is focused on **performance analysis**, **parallel design**, and **comparison of execution models**.
-
----
-
-## ✨ Features
+## Features
 
 - CPU, MPI (GPU — WIP)
 - Multiple convolution filters (blur, sharpen, gaussian, median, etc.)
@@ -19,9 +15,7 @@ The project is focused on **performance analysis**, **parallel design**, and **c
 - Queue-based pipeline for batch processing
 - Built-in benchmarking & logging
 
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Build
 ```bash
@@ -35,9 +29,7 @@ cmake --build build
 ./bmp-conv image.bmp --filter=sh --mode=by_column --block=30
 ```
 
----
-
-## 🧠 Execution Modes
+## Execution Modes
 
 ### Platforms
 
@@ -54,9 +46,7 @@ cmake --build build
 * `by_pixel`
 * `by_grid` (block-based)
 
----
-
-## 🧪 Examples
+## Examples
 
 **Multi-threaded grid convolution**
 
@@ -78,9 +68,8 @@ mpirun -np 4 ./bmp-conv-mpi -mpi image.bmp \
   --filter=em --mode=by_column --block=5
 ```
 
----
 
-## 📊 Benchmarking & Analysis
+## Benchmarking & Analysis
 
 The project includes scripts for:
 
@@ -101,17 +90,15 @@ Run benchmarks:
 ./tests/mpi-benchmark.sh
 ```
 
----
 
-## 📁 Documentation
+## Documentation
 
 * [Command-line reference](docs/CLI.md)
 * [Filters overview](docs/Filters.md)
 * [Parallel models explained](docs/Architecture.md)
 * [Performance analysis](docs/MT-mode-analysis.md)
 
----
 
-## 📄 License
+## License
 
 GPL-3.0 — see [LICENSE](LICENSE)
