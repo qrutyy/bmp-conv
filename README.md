@@ -8,10 +8,15 @@ At first, you should build the sources by `cmake --build build`.
 ### Command Line Arguments
 
 ```bash
-Usage: ./bmp-conv [-queue-mode/-mpi-mode] <input_file.bmp> --filter=<type> [--threadnum=<N>] [--mode=<compute_mode>] [--block=<size>] [--output=<file>] [--log=<N>]
+Usage: ./bmp-conv [-cpu/-gpu/-mpi] [--queue-mode] <input_file.bmp> --filter=<type> [--threadnum=<N>] [--mode=<compute_mode>] [--block=<size>] [--output=<file>] [--log=<N>]
 ```
 
 #### Mandatory Arguments:
+Platform mode:
+- `-cpu` : Enables basic on-CPU mode. **Should be the first argumen** (made for better args handling).
+- `-mpi` : Enables MPI-based mode. Implemented for using processing with multiple processes. **Should be the first argumen** (made for better args handling). `mpich` and `mpich-devel` packages are required. **Should be ran with `mpirun` - see usage examples**.
+- `-gpu` : Enables GPU-based mode. WIP.
+Others:
 - `<input_file.bmp>`: The path to the input BMP image from test-img/ dir.  **All free arguments will be considered as input_files. Non queued mode uses only 1 input file.**
 - `--mode=<compute_mode>`: Defines the mode of computation. Possible values:
   - `by_row`: Process image row by row.
@@ -34,8 +39,7 @@ Usage: ./bmp-conv [-queue-mode/-mpi-mode] <input_file.bmp> --filter=<type> [--th
 [Filter description and MT-mode performance analysis](https://github.com/qrutyy/bmp-conv/blob/main/MT-mode-analysis.md)
 
 #### Optional Arguments:
-- `-queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)
-- `-mpi-mode` : Enables MPI-based mode. Implemented for using processing with multiple processes. **Should be the first argumen** (made for better args handling). `mpich` and `mpich-devel` packages are required. **Should be ran with `mpirun` - see usage examples**.
+- `--queue-mode` : Enables queue-based multi-threaded mode. Implemented for multiple input files processing. **Should be the first argumen** (made for better args handling)
 - `--threadnum=<N>`: The number of threads to use (default: `1`). Specify the number of threads to run in parallel. **Isn't required for queue mode.**
 - `--output=<file>`: The name of the output file where the processed image will be saved. If not specified, an output filename will be generated based on the input filename. In case of queue-mode provided parameter will be used as a template
 - `--log=<0|1>`: Enable or disable logging (default: `0`). Set to `1` to log execution time and parameters to a file.
@@ -63,7 +67,7 @@ Apply Box Blur in multi-threaded queue-based mode using "by_row" distribution (1
 
 Apply Emboss filter in MPI mode using "by_column" distribution (4 processes):
 ```bash
-mpirun -np 4 ./bmp-conv-mpi -mpi-mode image5.bmp --mode=by_column --filter=em --block=5 
+mpirun -np 4 ./bmp-conv-mpi -mpi image5.bmp --mode=by_column --filter=em --block=5 
 ```
 
 *Additionally, to shorten the calls - check Makefile targets (etc. run, run-mpi-mode...)*
