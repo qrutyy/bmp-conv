@@ -114,7 +114,7 @@ add_custom_target(run-mac-p-cores
 if(MPI_FOUND)
     add_custom_target(run-mpi-mode
         COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv-mpi>
-                -mpi-mode ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
+                -mpi ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
         DEPENDS bmp-conv-mpi
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running MPI version..."

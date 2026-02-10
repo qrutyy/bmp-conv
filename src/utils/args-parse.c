@@ -260,7 +260,7 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 		if (strcmp(argv[i], "-cpu") == 0) {
 			args->compute_cfg.backend = CONV_BACKEND_CPU;
 			argv[i] = "_";
-		} else if (strcmp(argv[i], "-mpi-mode") == 0 || strcmp(argv[i], "-mpi") == 0) {
+		} else if (strcmp(argv[i], "-mpi") == 0 || strcmp(argv[i], "-mpi") == 0) {
 			args->compute_cfg.backend = CONV_BACKEND_MPI;
 			argv[i] = "_";
 		} else if (strcmp(argv[i], "-gpu") == 0) {
