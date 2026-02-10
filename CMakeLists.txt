@@ -83,7 +83,7 @@ add_custom_target(run
     COMMAND $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running bmp-conv..."
 )
 
@@ -91,7 +91,7 @@ add_custom_target(run-q-mode
     COMMAND $<TARGET_FILE:bmp-conv>
             -queue-mode ${INPUT_TF} --mode=${COMPUTE_MODE} --filter=${FILTER_TYPE} --block=${BLOCK_SIZE} --rww=${RWW_MIX} --queue-size=${QUEUE_CAP} --queue-mem=${QUEUE_MEM}
     DEPENDS bmp-conv
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running Queue Mode..."
 )
 
@@ -99,7 +99,7 @@ add_custom_target(run-mac-e-cores
     COMMAND taskpolicy -c background $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running on macOS E-cores..."
 )
 
@@ -107,7 +107,7 @@ add_custom_target(run-mac-p-cores
     COMMAND $<TARGET_FILE:bmp-conv>
             ${INPUT_TF} --filter=${FILTER_TYPE} --threadnum=${THREAD_NUM} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --output=${OUTPUT_FILE} --log=${LOG}
     DEPENDS bmp-conv
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running on macOS P-cores..."
 )
 
@@ -116,7 +116,7 @@ if(MPI_FOUND)
         COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv-mpi>
                 -mpi-mode ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
         DEPENDS bmp-conv-mpi
-        WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running MPI version..."
     )
 endif()

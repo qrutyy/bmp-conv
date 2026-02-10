@@ -29,6 +29,10 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DLOG_USE_COLOR=ON
 
+      - name: Build Project
+        run: |
+          cmake --build build --parallel
+
       - name: test
         run: |
              ./tests/test.sh

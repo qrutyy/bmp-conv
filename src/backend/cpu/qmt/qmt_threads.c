@@ -39,6 +39,12 @@ void *reader_thread(void *arg)
 
 		start_time = get_time_in_seconds();
 
+		if (!qt_info->pargs->files_cfg.input_filename[read_files_local]) {
+			log_error("Reader Error: NULL filename for file index %zu (file_cnt=%u)", read_files_local,
+				  (unsigned)qt_info->pargs->files_cfg.file_cnt);
+			break;
+		}
+
 		img = malloc(sizeof(bmp_img));
 		if (!img) {
 			log_error("Reader Error: Failed to allocate bmp_img struct");
@@ -342,7 +348,7 @@ void *writer_thread(void *arg)
 	size_t current_wf_local = 0;
 	const char *mode_str = NULL;
 
-	log_debug("Writer: thread started. Expecting %d files.", qt_info->pargs->files_cfg.file_cnt);
+	log_debug("Writer: thread started. Expecting %u files.", (unsigned)qt_info->pargs->files_cfg.file_cnt);
 
 	mode_str = compute_mode_to_str(qt_info->pargs->compute_cfg.compute_mode);
 
@@ -358,7 +364,12 @@ void *writer_thread(void *arg)
 		img = queue_pop(qt_info->output_q, &filename, qt_info->pargs->files_cfg.file_cnt, &written_files, mode_str);
 
 		if (!img) {
-			log_info("Writer: queue_pop returned NULL. Assuming end of tasks.");
+			size_t w = __atomic_load_n(&written_files, __ATOMIC_ACQUIRE);
+			if (w >= (size_t)qt_info->pargs->files_cfg.file_cnt) {
+				log_debug("Writer: queue_pop returned NULL, all %u files written.", (unsigned)qt_info->pargs->files_cfg.file_cnt);
+			} else {
+				log_error("Writer: queue_pop returned NULL but only %zu/%u files written.", w, (unsigned)qt_info->pargs->files_cfg.file_cnt);
+			}
 			break;
 		}
 
@@ -387,7 +398,7 @@ void *writer_thread(void *arg)
 			log_error("Writer Error: Failed to write image to '%s'", output_filepath);
 		} else {
 			current_wf_local = __atomic_add_fetch(&written_files, 1, __ATOMIC_RELEASE);
-			log_info("Writer: Successfully wrote '%s' (file %zu/%d)", output_filepath, current_wf_local, qt_info->pargs->files_cfg.file_cnt);
+			log_info("Writer: Successfully wrote '%s' (file %zu/%u)", output_filepath, current_wf_local, (unsigned)qt_info->pargs->files_cfg.file_cnt);
 
 			result_time = get_time_in_seconds() - start_time;
 			if (result_time > 0)

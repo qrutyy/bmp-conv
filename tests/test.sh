@@ -83,7 +83,8 @@ for fil in "${FILTERS[@]}"; do
             -DFILTER_TYPE="$fil" \
             -DTHREAD_NUM=1 \
             -DBLOCK_SIZE="$bs" \
-            -DLOG=0
+            -DLOG=0 \
+            -DOUTPUT_FILE=""
         compare_results "$TEST_FILE" "st"
     done
 done
@@ -99,7 +100,8 @@ for mode in "${MODES[@]}"; do
                 -DTHREAD_NUM=1 \
                 -DBLOCK_SIZE="$bs" \
                 -DCOMPUTE_MODE="$mode" \
-                -DLOG=0
+                -DLOG=0 \
+                -DOUTPUT_FILE=""
 
             for th in "${TP_NUM[@]}"; do
                 run_target run \
@@ -108,7 +110,8 @@ for mode in "${MODES[@]}"; do
                     -DTHREAD_NUM="$th" \
                     -DBLOCK_SIZE="$bs" \
                     -DCOMPUTE_MODE="$mode" \
-                    -DLOG=0
+                    -DLOG=0 \
+                    -DOUTPUT_FILE=""
                 compare_results "$TEST_FILE" "mt"
             done
         done
@@ -120,22 +123,29 @@ echo -e "\n=== Queue-mode verification tests ==="
 for mode in "${MODES[@]}"; do
     for fil in "${FILTERS[@]}"; do
         for bs in "${BLOCK_SIZE[@]}"; do
-            # Run all input files first
-            for file in "${QMT_INPUT_FILES[@]}"; do
-                run_target run \
-                    -DINPUT_TF="$file" \
-                    -DFILTER_TYPE="$fil" \
-                    -DTHREAD_NUM=4 \
-                    -DLOG=0
-            done
+            # Clean and regenerate reference (rcon_out_*) for this mode/filter/block
+            rm -f "${IMG_FOLDER}rcon_out_"*.bmp
+            # Run all input files first to produce reference outputs
+			for file in "${QMT_INPUT_FILES[@]}"; do
+				run_target run \
+					-DINPUT_TF="$file" \
+					-DFILTER_TYPE="$fil" \
+					-DTHREAD_NUM=4 \
+					-DCOMPUTE_MODE="$mode" \
+					-DBLOCK_SIZE="$bs" \
+					-DLOG=0 \
+					-DOUTPUT_FILE=""
+			done
 
             # Run queue mode for all RWW combinations
             for rww in "${RWW_COMBINATIONS[@]}"; do
-                input_files=$(IFS=" "; echo "${QMT_INPUT_FILES[*]}")
-                echo "QMT Test: mode=$mode filter=$fil block_size=$bs rww=$rww files=(${input_files})"
+                input_files_cmake=$(IFS=";"; echo "${QMT_INPUT_FILES[*]}")
+                input_files_display=$(IFS=" "; echo "${QMT_INPUT_FILES[*]}")
+                echo "QMT Test: mode=$mode filter=$fil block_size=$bs rww=$rww files=(${input_files_display})"
 
+                rm -f "${IMG_FOLDER}qmt_out_"*.bmp
                 run_target run-q-mode \
-                    -DINPUT_TF="$input_files" \
+                    -DINPUT_TF="$input_files_cmake" \
                     -DFILTER_TYPE="$fil" \
                     -DCOMPUTE_MODE="$mode" \
                     -DBLOCK_SIZE="$bs" \
@@ -160,7 +170,8 @@ for mode in "${MPI_MODES[@]}"; do
             -DFILTER_TYPE="$fil" \
             -DTHREAD_NUM=4 \
             -DBLOCK_SIZE=10 \
-            -DLOG=0
+            -DLOG=0 \
+            -DOUTPUT_FILE=""
 
         for pc in "${TP_NUM[@]}"; do
             run_target run-mpi-mode \
