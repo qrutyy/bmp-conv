@@ -20,7 +20,8 @@ jobs:
             cmake \
             mpich \
             libmpich-dev \
-            ninja-build
+            ninja-build \
+            ocl-icd-opencl-dev
 
       - name: Configure Project (Standard)
         run: |
