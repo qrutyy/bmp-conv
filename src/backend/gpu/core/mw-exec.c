@@ -25,7 +25,6 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
     cl_kernel kernel;
     cl_mem input_buf, output_buf, weights_buf;
 
-    // 1. Setup OpenCL
     err = clGetPlatformIDs(1, &platform, NULL);
     if (err != CL_SUCCESS) { log_error("Failed to get platform"); return 0; }
 
@@ -60,15 +59,17 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
         return 0;
     }
 
-    kernel = clCreateKernel(program, "apply_filter_kernel", &err);
+	if (strcmp(args->compute_cfg.filter_type, "mm") == 0)
+		kernel = clCreateKernel(program, "apply_mm_filter_kernel", &err);
+	else 
+		kernel = clCreateKernel(program, "apply_filter_kernel", &err);
+
     if (err != CL_SUCCESS) { log_error("Failed to create kernel"); return 0; }
 
-    // 3. Prepare Data
+    // Prepare Data
     int width = img_spec->dim->width;
     int height = img_spec->dim->height;
     int num_pixels = width * height;
-    int block_size = args->compute_cfg.block_size;
-    if (block_size <= 0) block_size = 1; // Default safety
 
     size_t img_size_bytes = num_pixels * sizeof(bmp_pixel);
     bmp_pixel* flat_input = malloc(img_size_bytes);
@@ -80,7 +81,7 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
         }
     }
 
-    // 4. Create Buffers
+    // Create Buffers
     input_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, img_size_bytes, flat_input, &err);
     if (err != CL_SUCCESS) { log_error("Failed to create input buffer"); free(flat_input); return 0; }
     
@@ -104,30 +105,20 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
     weights_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, weights_size, flat_weights, &err);
     if (err != CL_SUCCESS) { log_error("Failed to create weights buffer"); free(flat_input); free(flat_weights); return 0; }
 
-    // 5. Set Arguments
-    struct filter_params params = {
-        .size = f->size,
-        .bias = (float)f->bias,
-        .factor = (float)f->factor
-    };
-    
-    struct wi_kernel_spec spec = {
-        .img_width = width,
-        .img_height = height,
-        .block_size = block_size
-    };
-
     err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buf);
     err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buf);
-    err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &weights_buf);
-    err |= clSetKernelArg(kernel, 3, sizeof(struct filter_params), &params);
-    err |= clSetKernelArg(kernel, 4, sizeof(struct wi_kernel_spec), &spec);
+	err |= clSetKernelArg(kernel, 2, sizeof(int), &width);
+	err |= clSetKernelArg(kernel, 3, sizeof(int), &height);
+    err |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &weights_buf);
+	err |= clSetKernelArg(kernel, 5, sizeof(int), &f->factor);
+	err |= clSetKernelArg(kernel, 6, sizeof(int), &f->bias);
+
     if (err != CL_SUCCESS) { log_error("Failed to set kernel args"); free(flat_input); free(flat_weights); return 0; }
 
-    // 6. Enqueue
+    // Enqueue (1 work item per 1 pixel)
     size_t global_work_size[2];
-    global_work_size[0] = (width + block_size - 1) / block_size;
-    global_work_size[1] = (height + block_size - 1) / block_size;
+    global_work_size[0] = width;
+    global_work_size[1] = height;
 
     cl_event event;
     err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_work_size, NULL, 0, NULL, &event);
@@ -140,7 +131,7 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
     clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
     double time_seconds = (double)(end - start) / 1e9;
 
-    // 7. Read Result
+    // Read Result
     bmp_pixel* flat_output = malloc(img_size_bytes);
     err = clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
     if (err != CL_SUCCESS) { log_error("Failed to read buffer"); free(flat_input); free(flat_weights); free(flat_output); return 0; }
@@ -151,7 +142,6 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
         }
     }
 
-    // Cleanup
     free(flat_input);
     free(flat_weights);
     free(flat_output);
