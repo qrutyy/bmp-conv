@@ -14,57 +14,66 @@ add_compile_definitions(
 
 include_directories(. src)
 
-# === MPI ===
-find_package(MPI)
-find_package(OpenCL REQUIRED)
+option(ENABLE_MPI "Enable MPI backend" ON)
+option(ENABLE_OPENCL "Enable OpenCL backend" ON)
+
+find_package(MPI COMPONENTS C QUIET)
+find_package(OpenCL QUIET)
 
 # === Sources ===
 set(SRCS_COMMON
-    src/bmp-conv.c
-    src/utils/args-parse.c
-    src/utils/filters.c
-    src/utils/threads-general.c
-    src/utils/utils.c
-    src/backend/compute-backend.c
-    src/backend/cpu/cpu-backend.c
-    src/backend/cpu/st/st_exec.c
-    src/backend/cpu/mt/mt_compute.c
-    src/backend/cpu/mt/mt_exec.c
-    src/backend/cpu/qmt/qmt_exec.c
-    src/backend/cpu/qmt/qmt_queue.c
-    src/backend/cpu/qmt/qmt_threads.c
+	src/bmp-conv.c
+	src/utils/args-parse.c
+	src/utils/filters.c
+	src/utils/threads-general.c
+	src/utils/utils.c
+	src/backend/compute-backend.c
+	src/backend/cpu/cpu-backend.c
+	src/backend/cpu/st/st_exec.c
+	src/backend/cpu/mt/mt_compute.c
+	src/backend/cpu/mt/mt_exec.c
+	src/backend/cpu/qmt/qmt_exec.c
+	src/backend/cpu/qmt/qmt_queue.c
+	src/backend/cpu/qmt/qmt_threads.c
 	src/backend/gpu/gpu-backend.c
 	src/backend/gpu/core/mw-exec.c
 	src/backend/gpu/utils/utils.c
-    logger/log.c
-    libbmp/libbmp.c
+	logger/log.c
+	libbmp/libbmp.c
 )
 
 set(SRCS_MPI_ONLY
-    src/backend/mpi/mpi-backend.c
-    src/backend/mpi/core/exec.c
-    src/backend/mpi/utils/utils.c
-    src/backend/mpi/comm/phases.c
-    src/backend/mpi/comm/rank0-proc.c
-    src/backend/mpi/comm/data-transfer.c
-    src/backend/mpi/compute/filter-comp.c
+	src/backend/mpi/mpi-backend.c
+	src/backend/mpi/core/exec.c
+	src/backend/mpi/utils/utils.c
+	src/backend/mpi/comm/phases.c
+	src/backend/mpi/comm/rank0-proc.c
+	src/backend/mpi/comm/data-transfer.c
+	src/backend/mpi/compute/filter-comp.c
 )
 
-# === Executables ===
-add_executable(bmp-conv ${SRCS_COMMON})
-target_link_libraries(bmp-conv PRIVATE m)
+set(SRCS_OPENCL_ONLY
+	src/backend/gpu/gpu-backend.c
+	src/backend/gpu/core/mw-exec.c
+	src/backend/gpu/utils/utils.c
+)
 
-if(MPI_FOUND)
-	message(STATUS "Found MPI: ${MPI}")
-    add_executable(bmp-conv-mpi ${SRCS_COMMON} ${SRCS_MPI_ONLY})
-    target_compile_definitions(bmp-conv-mpi PRIVATE USE_MPI)
-    target_link_libraries(bmp-conv-mpi PRIVATE MPI::MPI_C m ${OpenCL_LIBRARY})
+set(SRCS
+	${SRCS_COMMON}
+)
+add_executable(bmp-conv ${SRCS_COMMON})
+
+if(ENABLE_MPI AND MPI_C_FOUND)
+    target_sources(bmp-conv PRIVATE ${SRCS_MPI_ONLY})
+    target_compile_definitions(bmp-conv PRIVATE USE_MPI)
+    target_link_libraries(bmp-conv PRIVATE MPI::MPI_C)
 endif()
 
-if(OpenCL_FOUND)
-    message(STATUS "Found OpenCL: ${OpenCL_LIBRARY}")
-    include_directories(${OpenCL_INCLUDE_DIRS})
-	target_link_libraries(bmp-conv PRIVATE ${OpenCL_LIBRARY} m)
+if(ENABLE_OPENCL AND OpenCL_FOUND)
+    target_sources(bmp-conv PRIVATE ${SRCS_OPENCL_ONLY})
+    target_compile_definitions(bmp-conv PRIVATE USE_OPENCL)
+    target_link_libraries(bmp-conv PRIVATE ${OpenCL_LIBRARY})
+    target_include_directories(bmp-conv PRIVATE ${OpenCL_INCLUDE_DIRS})
 endif()
 
 # === Runtime arguments ===
@@ -124,9 +133,9 @@ add_custom_target(run-mac-p-cores
 
 if(MPI_FOUND)
     add_custom_target(run-mpi-mode
-        COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv-mpi>
+        COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv>
                 -mpi ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
-        DEPENDS bmp-conv-mpi
+        DEPENDS bmp-conv
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running MPI version..."
     )

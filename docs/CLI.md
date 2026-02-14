@@ -107,6 +107,6 @@ Enable execution logging (default: `0`).
 * Must be launched via `mpirun`
 
 ```bash
-mpirun -np 4 ./bmp-conv-mpi -mpi image.bmp --filter=em --mode=by_column --block=5
+mpirun -np 4 ./bmp-conv -mpi image.bmp --filter=em --mode=by_column --block=5
 ```
 

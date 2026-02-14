@@ -36,7 +36,7 @@ cmake --build build
 | Mode   | Description                                |
 | ------ | ------------------------------------------ |
 | `-cpu` | Default CPU execution                      |
-| `-mpi` | Distributed execution using MPI (`mpirun`) |
+| `-mpi` | Distributed execution using MPI (`mpirun`/ multi-containered, check README) |
 | `-gpu` | GPU mode (work in progress)                |
 
 ### Distribution strategies
@@ -64,7 +64,7 @@ cmake --build build
 **MPI execution (4 processes)**
 
 ```bash
-mpirun -np 4 ./bmp-conv-mpi -mpi image.bmp \
+mpirun -np 4 ./bmp-conv -mpi image.bmp \
   --filter=em --mode=by_column --block=5
 ```
 
