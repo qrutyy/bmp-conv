@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "qmt_threads.h"
+#include "qmt-threads.h"
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include "libbmp/libbmp.h"
 #include "logger/log.h"
 #include "utils/threads-general.h"
-#include "../mt/mt_compute.h"
+#include "../mt/mt-compute.h"
 #include "utils/utils.h"
-#include "qmt_queue.h"
+#include "utils/qmt-queue.h"
 
 // Global counters for tracking file progress across threads
 size_t written_files = 0;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "st_exec.h"
+#include "st-exec.h"
 #include <stdlib.h>
 #include <string.h>
 #include "utils/utils.h"

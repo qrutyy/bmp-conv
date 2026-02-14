@@ -9,10 +9,11 @@ High-performance BMP image convolution tool with multiple parallelization strate
 
 ## Features
 
-- CPU, MPI (GPU — WIP)
+- CPU, (GPU — WIP)
 - Multiple convolution filters (blur, sharpen, gaussian, median, etc.)
 - Several workload distribution strategies
 - Queue-based pipeline for batch processing
+- MPI-based on-CPU pipeline
 - Built-in benchmarking & logging
 
 ## Quick Start
@@ -35,9 +36,8 @@ cmake --build build
 
 | Mode   | Description                                |
 | ------ | ------------------------------------------ |
-| `-cpu` | Default CPU execution                      |
-| `-mpi` | Distributed execution using MPI (`mpirun`/ multi-containered, check README) |
-| `-gpu` | GPU mode (work in progress)                |
+| `-cpu` | Default CPU execution (including queue mode and MPI) |
+| `-gpu` | GPU mode (WIP)                |
 
 ### Distribution strategies
 
@@ -64,7 +64,7 @@ cmake --build build
 **MPI execution (4 processes)**
 
 ```bash
-mpirun -np 4 ./bmp-conv -mpi image.bmp \
+mpirun -np 4 ./bmp-conv -cpu -mpi image.bmp \
   --filter=em --mode=by_column --block=5
 ```
 

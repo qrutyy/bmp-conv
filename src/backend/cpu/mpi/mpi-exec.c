@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "exec.h"
+#include "mpi-exec.h"
 #include "libbmp/libbmp.h"
 #include "logger/log.h"
 #include "utils/threads-general.h"
-#include "../compute/filter-comp.h"
-#include "../comm/rank0-proc.h"
-#include "../comm/data-transfer.h"
-#include "../comm/phases.h"
-#include "backend/mpi/utils/utils.h"
-#include "../utils/mpi-types.h"
+#include "compute/filter-comp.h"
+#include "comm/rank0-proc.h"
+#include "comm/data-transfer.h"
+#include "comm/phases.h"
+#include "utils/utils.h"
+#include "utils/mpi-types.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

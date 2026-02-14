@@ -30,7 +30,6 @@ enum conv_compute_mode {
 
 enum conv_backend {
     CONV_BACKEND_CPU,
-    CONV_BACKEND_MPI,
     CONV_BACKEND_GPU
 };
 
@@ -44,6 +43,11 @@ enum conv_queue_mode {
     CONV_QUEUE_ENABLED
 };
 
+enum conv_mpi_mode {
+    CONV_MPI_DISABLED,
+    CONV_MPI_ENABLED
+};
+
 struct compute_cfg {
 	char *filter_type;
 
@@ -53,6 +57,7 @@ struct compute_cfg {
 	enum conv_backend backend; 
 	enum conv_threadnum threadnum; 
 	enum conv_queue_mode queue;
+	enum conv_mpi_mode mpi;
 };
 
 // Structure for storing input arguments. Better described in README

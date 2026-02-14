@@ -5,8 +5,8 @@
 #include "libbmp/libbmp.h"
 #include "utils/args-parse.h"
 #include "utils/utils.h"
-#include "qmt_threads.h"
-#include "qmt_queue.h"
+#include "qmt-threads.h"
+#include "utils/qmt-queue.h"
 
 /**
  * Allocates memory for thread management structures (reader, worker, writer thread arrays)

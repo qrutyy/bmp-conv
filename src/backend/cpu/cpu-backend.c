@@ -7,18 +7,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <mpi.h>
 #include "utils/utils.h"
-#include "st/st_exec.h"
-#include "mt/mt_exec.h"
-#include "qmt/qmt_exec.h"
-#include "qmt/qmt_threads.h"
+#include "st/st-exec.h"
+#include "mt/mt-exec.h"
+#include "qmt/qmt-exec.h"
+#include "qmt/qmt-threads.h"
+#include "mpi/mpi-exec.h"
 
 /**
  * CPU-specific backend data.
  * Contains thread management information.
  */
-struct cpu_backend_data {
+union cpu_backend_data {
 	int thread_count;
+	struct{
+		int rank;
+		int size;
+	} mpi_mode;
 };
 
 int cpu_verify_args(struct p_args *args)
@@ -46,7 +52,7 @@ int cpu_verify_args(struct p_args *args)
 
 static int cpu_init(struct compute_backend *backend, struct p_args *args)
 {
-	struct cpu_backend_data *data = NULL;
+	union cpu_backend_data *data = NULL;
 	int rc;
 
 	if (!backend || !args) {
@@ -54,7 +60,7 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 		return -1;
 	}
 
-	data = malloc(sizeof(struct cpu_backend_data));
+	data = malloc(sizeof(union cpu_backend_data));
 	if (!data) {
 		log_error("Error: Failed to allocate memory for cpu_backend_data\n");
 		return -1;
@@ -66,12 +72,26 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 		return rc;
 	}
 
+#ifdef USE_MPI
+	/* 
+     * Using NULL, NULL for argc, argv as we don't have access to them here easily
+     * and they are consumed by parse_args already. 
+     * Most MPI implementations support this.
+     */
+	MPI_Init(NULL, NULL);
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &data->mpi_mode.rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &data->mpi_mode.size);
+
+	log_info("MPI Initialized. Rank: %d, Size: %d", data->mpi_mode.rank, data->mpi_mode.size);
+#else 
 	// Determine thread count based on arguments
 	if (args->compute_ctx.threadnum > 0) {
 		data->thread_count = args->compute_ctx.threadnum;
 	} else {
 		data->thread_count = 1;
 	}
+#endif
 
 	backend->backend_data = data;
 	
@@ -83,7 +103,7 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 {
 	struct p_args *args = backend->args;
 	struct filter_mix *filters = backend->filters;
-	struct cpu_backend_data *data = (struct cpu_backend_data *)backend->backend_data;
+	union cpu_backend_data *data = (union cpu_backend_data *)backend->backend_data;
 	int threadnum = data->thread_count;
 	
 	struct img_spec *img_spec = NULL;
@@ -95,6 +115,13 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 	img_spec = setup_img_spec(args);
 	if (!img_spec)
 		goto cleanup;
+
+#ifdef USE_MPI
+	if (args->compute_cfg.backend) {
+		log_info("Executing MPI CPU computation...");
+		result_time = execute_mpi_computation(data->mpi_mode.size, data->mpi_mode.rank, backend->args, backend->filters);
+	}
+#endif
 
 	if (threadnum > 1) {
 		log_info("Executing multi-threaded computation (%d threads)...", threadnum);
@@ -178,6 +205,9 @@ static void cpu_cleanup(struct compute_backend *backend)
 		free(backend->backend_data);
 		backend->backend_data = NULL;
 	}
+#ifdef USE_MPI
+	MPI_Finalize();
+#endif
 }
 
 static enum conv_backend cpu_get_type(void)

@@ -4,7 +4,7 @@
 
 #include "utils/args-parse.h"
 #include "libbmp/libbmp.h"
-#include "backend/mpi/utils/utils.h"
+#include "../utils/utils.h"
 #include "utils/threads-general.h"
 #include "../utils/mpi-types.h"
 #include <stdint.h>

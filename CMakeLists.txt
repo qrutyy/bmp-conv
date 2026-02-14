@@ -29,12 +29,12 @@ set(SRCS_COMMON
 	src/utils/utils.c
 	src/backend/compute-backend.c
 	src/backend/cpu/cpu-backend.c
-	src/backend/cpu/st/st_exec.c
-	src/backend/cpu/mt/mt_compute.c
-	src/backend/cpu/mt/mt_exec.c
-	src/backend/cpu/qmt/qmt_exec.c
-	src/backend/cpu/qmt/qmt_queue.c
-	src/backend/cpu/qmt/qmt_threads.c
+	src/backend/cpu/st/st-exec.c
+	src/backend/cpu/mt/mt-compute.c
+	src/backend/cpu/mt/mt-exec.c
+	src/backend/cpu/qmt/qmt-exec.c
+	src/backend/cpu/qmt/utils/qmt-queue.c
+	src/backend/cpu/qmt/qmt-threads.c
 	src/backend/gpu/gpu-backend.c
 	src/backend/gpu/core/mw-exec.c
 	src/backend/gpu/utils/utils.c
@@ -43,13 +43,12 @@ set(SRCS_COMMON
 )
 
 set(SRCS_MPI_ONLY
-	src/backend/mpi/mpi-backend.c
-	src/backend/mpi/core/exec.c
-	src/backend/mpi/utils/utils.c
-	src/backend/mpi/comm/phases.c
-	src/backend/mpi/comm/rank0-proc.c
-	src/backend/mpi/comm/data-transfer.c
-	src/backend/mpi/compute/filter-comp.c
+	src/backend/cpu/mpi/mpi-exec.c
+	src/backend/cpu/mpi/utils/utils.c
+	src/backend/cpu/mpi/comm/phases.c
+	src/backend/cpu/mpi/comm/rank0-proc.c
+	src/backend/cpu/mpi/comm/data-transfer.c
+	src/backend/cpu/mpi/compute/filter-comp.c
 )
 
 set(SRCS_OPENCL_ONLY

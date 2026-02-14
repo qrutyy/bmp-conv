@@ -6,7 +6,7 @@
 #include "data-transfer.h"
 #include "../compute/filter-comp.h"
 #include "rank0-proc.h"
-#include "backend/mpi/utils/utils.h"
+#include "utils/utils.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

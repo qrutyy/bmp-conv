@@ -260,14 +260,14 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 		if (strcmp(argv[i], "-cpu") == 0) {
 			args->compute_cfg.backend = CONV_BACKEND_CPU;
 			argv[i] = "_";
-		} else if (strcmp(argv[i], "-mpi") == 0 || strcmp(argv[i], "-mpi") == 0) {
-			args->compute_cfg.backend = CONV_BACKEND_MPI;
-			argv[i] = "_";
 		} else if (strcmp(argv[i], "-gpu") == 0) {
 			args->compute_cfg.backend = CONV_BACKEND_GPU;
 			argv[i] = "_";
 		} else if (strcmp(argv[i], "-queue-mode") == 0 || strcmp(argv[i], "-queue") == 0) {
 			args->compute_cfg.queue = CONV_QUEUE_ENABLED;
+			argv[i] = "_";
+		} else if (strcmp(argv[i], "-mpi-mode") == 0 || strcmp(argv[i], "-mpi") == 0) {
+			args->compute_cfg.mpi = CONV_MPI_ENABLED;
 			argv[i] = "_";
 		}
 	}
