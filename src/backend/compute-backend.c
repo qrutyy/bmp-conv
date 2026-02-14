@@ -2,6 +2,7 @@
 
 #include "compute-backend.h"
 #include "cpu/cpu-backend.h"
+#include "gpu/gpu-backend.h"
 #include "logger/log.h"
 #include <stdlib.h>
 
@@ -29,9 +30,8 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 		backend->ops = &cpu_backend_ops;
 		break;
 	case CONV_BACKEND_GPU:
-		log_error("Error: GPU backend not yet implemented\n");
-		free(backend);
-		return NULL;
+		backend->ops= &gpu_backend_ops;
+		break;
 	case CONV_BACKEND_MPI: 
 #ifdef USE_MPI
 		backend->ops = &mpi_backend_ops;

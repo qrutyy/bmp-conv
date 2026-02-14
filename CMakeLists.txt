@@ -16,6 +16,7 @@ include_directories(. src)
 
 # === MPI ===
 find_package(MPI)
+find_package(OpenCL REQUIRED)
 
 # === Sources ===
 set(SRCS_COMMON
@@ -32,6 +33,9 @@ set(SRCS_COMMON
     src/backend/cpu/qmt/qmt_exec.c
     src/backend/cpu/qmt/qmt_queue.c
     src/backend/cpu/qmt/qmt_threads.c
+	src/backend/gpu/gpu-backend.c
+	src/backend/gpu/core/mw-exec.c
+	src/backend/gpu/utils/utils.c
     logger/log.c
     libbmp/libbmp.c
 )
@@ -51,9 +55,16 @@ add_executable(bmp-conv ${SRCS_COMMON})
 target_link_libraries(bmp-conv PRIVATE m)
 
 if(MPI_FOUND)
+	message(STATUS "Found MPI: ${MPI}")
     add_executable(bmp-conv-mpi ${SRCS_COMMON} ${SRCS_MPI_ONLY})
     target_compile_definitions(bmp-conv-mpi PRIVATE USE_MPI)
-    target_link_libraries(bmp-conv-mpi PRIVATE MPI::MPI_C m)
+    target_link_libraries(bmp-conv-mpi PRIVATE MPI::MPI_C m ${OpenCL_LIBRARY})
+endif()
+
+if(OpenCL_FOUND)
+    message(STATUS "Found OpenCL: ${OpenCL_LIBRARY}")
+    include_directories(${OpenCL_INCLUDE_DIRS})
+	target_link_libraries(bmp-conv PRIVATE ${OpenCL_LIBRARY} m)
 endif()
 
 # === Runtime arguments ===

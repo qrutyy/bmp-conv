@@ -69,7 +69,7 @@ struct img_spec *init_img_spec(bmp_img *input, bmp_img *output, struct img_dim *
  * @param filters Pointer to the filter_mix structure (potentially unused in this basic init).
  * @return Pointer to the newly allocated thread_spec structure, or NULL on failure.
  */
-void *init_thread_spec(struct p_args *args, struct filter_mix *filters);
+struct thread_spec *init_thread_spec(struct p_args *args, struct filter_mix *filters);
 
 /**
  * Applies a convolution filter (defined by `cfilter`) to a specified portion of an image.
@@ -105,11 +105,12 @@ void apply_median_filter(struct thread_spec *spec, uint16_t filter_size);
  * Selects and applies the appropriate filter based on the filter_type string. Compares filter_type against known filter identifiers and calls either `apply_filter` (for convolution filters) or `apply_median_filter`.
  *
  * @param spec Pointer to the thread_spec structure containing image data and processing range.
- * @param filter_type A string identifier for the desired filter (e.g., "mb", "mm", "sh").
  * @param filters Pointer to the filter_mix structure containing pre-initialized filter data.
  * @return void. Calls the relevant filter application function.
  */
-void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters);
+void filter_part_computation(struct thread_spec *spec);
+
+struct filter* get_filter_by_name(struct filter_mix *filters, const char* name);
 
 void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, const struct p_args *args);
 void free_img_spec(struct img_spec *img_data);

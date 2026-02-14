@@ -35,7 +35,7 @@ typedef struct _bmp_header
 	unsigned int   biClrImportant;
 } bmp_header;
 
-typedef struct _bmp_pixel
+typedef struct __attribute__((packed))
 {
 	unsigned char blue;
 	unsigned char green;

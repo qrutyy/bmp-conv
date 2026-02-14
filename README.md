@@ -51,13 +51,13 @@ cmake --build build
 **Multi-threaded grid convolution**
 
 ```bash
-./bmp-conv image.bmp --filter=gg --mode=by_grid --threadnum=4 --block=16
+./bmp-conv -cpu image.bmp --filter=gg --mode=by_grid --threadnum=4 --block=16
 ```
 
 **Queue-based batch processing**
 
 ```bash
-./bmp-conv --queue-mode img1.bmp img2.bmp img3.bmp \
+./bmp-conv -queue-mode img1.bmp img2.bmp img3.bmp \
   --filter=bb --mode=by_row --block=5 --rww=1,2,1
 ```
 

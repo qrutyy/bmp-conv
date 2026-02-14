@@ -193,11 +193,10 @@ static struct thread_spec *worker_allocate_resources(bmp_img *input_img, struct 
  *
  * @param th_spec The thread specification structure containing image data, dimensions, etc.
  * @param pargs Pointer to the program arguments structure containing compute mode, block size.
- * @param filters Pointer to the filter mix structure.
  *
  * @return 0 on successful processing of the entire image, < 0 on error.
  */
-static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs, struct filter_mix *filters)
+static int worker_process_image(struct thread_spec *th_spec, struct p_args *pargs)
 {
 	uint16_t next_x_block_local = 0;
 	uint16_t next_y_block_local = 0;
@@ -235,7 +234,7 @@ static int worker_process_image(struct thread_spec *th_spec, struct p_args *parg
 			}
 			break;
 		}
-		filter_part_computation(th_spec, pargs->compute_cfg.filter_type, filters);
+		filter_part_computation(th_spec);
 	}
 
 	pthread_mutex_destroy(&local_xy_mutex);
@@ -301,7 +300,7 @@ void *worker_thread(void *arg)
 		}
 		img_result = th_spec->img->output;
 
-		process_status = worker_process_image(th_spec, qt_info->pargs, qt_info->filters);
+		process_status = worker_process_image(th_spec, qt_info->pargs);
 
 		if (process_status != 0) {
 			log_error("Worker Error: Image processing failed, discarding result.");

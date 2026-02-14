@@ -44,7 +44,7 @@ static void *sthread_function(void *arg)
 			log_error("Error: Invalid state before filter_part_computation.\n");
 			return NULL;
 		}
-		filter_part_computation(th_spec, th_spec->st_gen_info->args->compute_cfg.filter_type, th_spec->st_gen_info->filters);
+		filter_part_computation(th_spec);
 	}
 
 exit:

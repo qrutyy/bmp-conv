@@ -134,7 +134,7 @@ struct img_spec *init_img_spec(bmp_img *input, bmp_img *output, struct img_dim *
 	return spec;
 }
 
-void *init_thread_spec(struct p_args *args, struct filter_mix *filters)
+struct thread_spec *init_thread_spec(struct p_args *args, struct filter_mix *filters)
 {
 	struct thread_spec *th_spec;
 	struct st_gen_info *st_gen_info;
@@ -286,8 +286,11 @@ mem_err:
 	free(blue);
 }
 
-void filter_part_computation(struct thread_spec *spec, char *filter_type, struct filter_mix *filters)
+void filter_part_computation(struct thread_spec *spec)
 {
+	char *filter_type = spec->st_gen_info->args->compute_cfg.filter_type;
+	struct filter_mix *filters = spec->st_gen_info->filters;
+
 	if (!filter_type || !filters || !spec) {
 		log_error("NULL parameter passed to filter_part_computation.");
 		return;
@@ -316,6 +319,19 @@ void filter_part_computation(struct thread_spec *spec, char *filter_type, struct
 	} else {
 		log_error("Unknown filter type parameter '%s' in filter_part_computation.", filter_type);
 	}
+}
+
+struct filter* get_filter_by_name(struct filter_mix *filters, const char* name) {
+    if (strcmp(name, "blur") == 0) return filters->blur;
+    if (strcmp(name, "motion_blur") == 0) return filters->motion_blur;
+    if (strcmp(name, "gaus_blur") == 0) return filters->gaus_blur;
+    if (strcmp(name, "conv") == 0) return filters->conv;
+    if (strcmp(name, "sharpen") == 0) return filters->sharpen;
+    if (strcmp(name, "emboss") == 0) return filters->emboss;
+    if (strcmp(name, "big_gaus") == 0) return filters->big_gaus;
+    if (strcmp(name, "med_gaus") == 0) return filters->med_gaus;
+    if (strcmp(name, "box_blur") == 0) return filters->box_blur;
+    return NULL;
 }
 
 void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, const struct p_args *args)
