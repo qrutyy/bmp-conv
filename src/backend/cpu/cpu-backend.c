@@ -110,7 +110,7 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 	struct filter_mix *filters = backend->filters;
 	union cpu_backend_data *data = (union cpu_backend_data *)backend->backend_data;
 #ifdef USE_MPI
-	int threadnum = 1; /* MPI build: fallback path uses 1 thread; MPI path does not use threadnum */
+	int threadnum = (data->mpi_mode.size > 1) ? 1 : (args->compute_ctx.threadnum > 0 ? args->compute_ctx.threadnum : 1);
 #else
 	int threadnum = data->thread_count;
 #endif
