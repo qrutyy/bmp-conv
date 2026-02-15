@@ -4,7 +4,7 @@
 #include "logger/log.h"
 #include "libbmp/libbmp.h"
 #include "utils/threads-general.h"
-#include "backend/mpi/utils/utils.h"
+#include "utils/utils.h"
 #include "rank0-proc.h"
 #include <mpi.h>
 #include <stdint.h>

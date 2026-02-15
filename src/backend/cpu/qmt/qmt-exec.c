@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "qmt_exec.h"
+#include "qmt-exec.h"
 #include "utils/args-parse.h"
 #include "logger/log.h"
-#include "qmt_queue.h"
-#include "qmt_threads.h"
+#include "utils/qmt-queue.h"
+#include "qmt-threads.h"
 #include <pthread.h>
 #include <string.h>
 #include <stdatomic.h>

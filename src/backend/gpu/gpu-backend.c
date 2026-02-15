@@ -60,7 +60,6 @@ static double gpu_process_non_queue_mode(struct compute_backend *backend)
 {
 	struct p_args *args = backend->args;
 	struct filter_mix *filters = backend->filters;
-	struct gpu_backend_data *data = (struct gpu_backend_data *)backend->backend_data;
 	struct img_spec *img_spec = NULL;
 	char output_filepath[256];
 	double result_time = 0;
@@ -69,7 +68,16 @@ static double gpu_process_non_queue_mode(struct compute_backend *backend)
 	if (!img_spec)
 		goto cleanup;
 
-	result_time = execute_basic_computation(img_spec, args, filters);
+	/* i really cant get away with this eneven compile option checks (MPI in compute_backend), 
+	 * but mpi cant really be incapsulated into cpu mode 
+	 * UPD: ok, ive checked, thats real, ill try to unite them asap */
+#ifdef USE_OPENCL
+	result_time = opencl_execute_basic_computation(img_spec, args, filters);
+#else
+	log_error("Error: use OpenCL GPU backend requested but USE_OpenCL is not defined (check build logs)\n");
+	free(backend);
+	return -1;
+#endif
 
 	if (result_time <= 0) {
 		log_error("Error: Computation execution failed or returned non-positive time (%.6f).\n", result_time);
@@ -94,7 +102,7 @@ cleanup:
 
 static double gpu_process_queue_mode(struct compute_backend *backend)
 {
-	backend = NULL;
+	(void)backend;
 	return 0;
 }
 

@@ -1,0 +1,46 @@
+services:
+  head_node:
+    build:
+      # Fix: Go up two levels to the project root so we can copy src/ and CMakeLists.txt
+      context: ../..
+      # Path to Dockerfile relative to the context (root)
+      dockerfile: infra/mpi/Dockerfile
+    hostname: head_node
+    # Keep the container alive
+    command: ["/usr/sbin/sshd", "-D"]
+
+  node_1:
+    build:
+      context: ../..
+      dockerfile: infra/mpi/Dockerfile
+    hostname: node_1
+    depends_on:
+      - head_node
+    command: ["/usr/sbin/sshd", "-D"]
+
+  node_2:
+    build:
+      context: ../..
+      dockerfile: infra/mpi/Dockerfile
+    hostname: node_2
+    depends_on:
+      - head_node
+    command: ["/usr/sbin/sshd", "-D"]
+
+  node_3:
+    build:
+      context: ../..
+      dockerfile: infra/mpi/Dockerfile
+    hostname: node_3
+    depends_on:
+      - head_node
+    command: ["/usr/sbin/sshd", "-D"]
+
+  node_4:
+    build:
+      context: ../..
+      dockerfile: infra/mpi/Dockerfile
+    hostname: node_4
+    depends_on:
+      - head_node
+    command: ["/usr/sbin/sshd", "-D"]

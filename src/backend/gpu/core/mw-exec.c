@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#ifdef USE_OPENCL
+
 #include "libbmp/libbmp.h"
 #include "logger/log.h"
 #include "mw-exec.h"
@@ -14,7 +16,7 @@
 #include "utils/threads-general.h"
 #include "backend/gpu/utils/utils.h"
 
-double execute_basic_computation(struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters)
+double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters)
 {
     cl_int err;
     cl_platform_id platform;
@@ -155,3 +157,5 @@ double execute_basic_computation(struct img_spec *img_spec, struct p_args *args,
 
     return time_seconds;
 }
+
+#endif

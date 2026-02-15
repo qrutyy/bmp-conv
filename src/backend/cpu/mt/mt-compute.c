@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "mt_compute.h"
+#include "mt-compute.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>

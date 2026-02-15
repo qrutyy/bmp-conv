@@ -6,4 +6,4 @@
 
 typedef struct thread_spec wi_spec;
 
-double execute_basic_computation(struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters);
+double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args *args, struct filter_mix *filters);
