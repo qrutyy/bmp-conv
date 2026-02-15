@@ -73,12 +73,14 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 	}
 
 #ifdef USE_MPI
-	/* 
-     * Using NULL, NULL for argc, argv as we don't have access to them here easily
-     * and they are consumed by parse_args already. 
-     * Most MPI implementations support this.
-     */
-	MPI_Init(NULL, NULL);
+	/*
+	 * Pass argc/argv so the process manager (e.g. Hydra over SSH) can pass
+	 * bootstrap info; required for multi-node runs where env may not be forwarded.
+	 */
+	if (backend->init_argc && backend->init_argv)
+		MPI_Init(backend->init_argc, backend->init_argv);
+	else
+		MPI_Init(NULL, NULL);
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &data->mpi_mode.rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &data->mpi_mode.size);
@@ -94,8 +96,11 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 #endif
 
 	backend->backend_data = data;
-	
+#ifdef USE_MPI
+	log_debug("CPU Backend: Initialized (MPI rank %d, size %d)\n", data->mpi_mode.rank, data->mpi_mode.size);
+#else
 	log_debug("CPU Backend: Initialized with %d threads\n", data->thread_count);
+#endif
 	return 0;
 }
 
@@ -104,8 +109,11 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 	struct p_args *args = backend->args;
 	struct filter_mix *filters = backend->filters;
 	union cpu_backend_data *data = (union cpu_backend_data *)backend->backend_data;
+#ifdef USE_MPI
+	int threadnum = 1; /* MPI build: fallback path uses 1 thread; MPI path does not use threadnum */
+#else
 	int threadnum = data->thread_count;
-	
+#endif
 	struct img_spec *img_spec = NULL;
 	char output_filepath[256];
 	double result_time = 0;
@@ -117,9 +125,11 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 		goto cleanup;
 
 #ifdef USE_MPI
-	if (args->compute_cfg.backend) {
+	if (args->compute_cfg.mpi == CONV_MPI_ENABLED && data->mpi_mode.size > 1) {
 		log_info("Executing MPI CPU computation...");
 		result_time = execute_mpi_computation(data->mpi_mode.size, data->mpi_mode.rank, backend->args, backend->filters);
+		if (result_time > 0)
+			goto cleanup; /* MPI path saves result and manages its own resources */
 	}
 #endif
 

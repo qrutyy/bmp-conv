@@ -6,7 +6,7 @@
 #include "logger/log.h"
 #include <stdlib.h>
 
-struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters)
+struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters, int *argc, char ***argv)
 {
 	enum conv_backend type = args->compute_cfg.backend;
 	struct compute_backend *backend = NULL;
@@ -20,6 +20,8 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 	backend->args = args;
 	backend->filters = filters;
 	backend->backend_data = NULL;
+	backend->init_argc = argc;
+	backend->init_argv = argv;
 
 	switch (type) {
 	case CONV_BACKEND_CPU:
