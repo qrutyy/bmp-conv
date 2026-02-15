@@ -65,13 +65,13 @@ add_executable(bmp-conv ${SRCS_COMMON})
 if(ENABLE_MPI AND MPI_C_FOUND)
     target_sources(bmp-conv PRIVATE ${SRCS_MPI_ONLY})
     target_compile_definitions(bmp-conv PRIVATE USE_MPI)
-    target_link_libraries(bmp-conv PRIVATE MPI::MPI_C)
+    target_link_libraries(bmp-conv PRIVATE m MPI::MPI_C)
 endif()
 
 if(ENABLE_OPENCL AND OpenCL_FOUND)
     target_sources(bmp-conv PRIVATE ${SRCS_OPENCL_ONLY})
     target_compile_definitions(bmp-conv PRIVATE USE_OPENCL)
-    target_link_libraries(bmp-conv PRIVATE ${OpenCL_LIBRARY})
+    target_link_libraries(bmp-conv PRIVATE m ${OpenCL_LIBRARY})
     target_include_directories(bmp-conv PRIVATE ${OpenCL_INCLUDE_DIRS})
 endif()
 
@@ -133,7 +133,7 @@ add_custom_target(run-mac-p-cores
 if(MPI_FOUND)
     add_custom_target(run-mpi-mode
         COMMAND mpirun -np ${MPI_NP} $<TARGET_FILE:bmp-conv>
-                -mpi ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
+				-cpu -mpi ${INPUT_TF} --filter=${FILTER_TYPE} --mode=${COMPUTE_MODE} --block=${BLOCK_SIZE} --log=${LOG}
         DEPENDS bmp-conv
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running MPI version..."

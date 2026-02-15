@@ -60,7 +60,6 @@ static double gpu_process_non_queue_mode(struct compute_backend *backend)
 {
 	struct p_args *args = backend->args;
 	struct filter_mix *filters = backend->filters;
-	struct gpu_backend_data *data = (struct gpu_backend_data *)backend->backend_data;
 	struct img_spec *img_spec = NULL;
 	char output_filepath[256];
 	double result_time = 0;
@@ -103,7 +102,7 @@ cleanup:
 
 static double gpu_process_queue_mode(struct compute_backend *backend)
 {
-	backend = NULL;
+	(void)backend;
 	return 0;
 }
 
