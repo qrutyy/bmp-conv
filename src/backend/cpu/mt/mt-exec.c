@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "mt_exec.h"
+#include "mt-exec.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 #include "logger/log.h"
 #include "utils/threads-general.h"
-#include "mt_compute.h"
+#include "mt-compute.h"
 
 uint16_t st_next_x_block = 0;
 uint16_t st_next_y_block = 0;

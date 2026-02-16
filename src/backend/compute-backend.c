@@ -6,11 +6,7 @@
 #include "logger/log.h"
 #include <stdlib.h>
 
-#ifdef USE_MPI
-#include "mpi/mpi-backend.h"
-#endif
-
-struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters)
+struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters, int *argc, char ***argv)
 {
 	enum conv_backend type = args->compute_cfg.backend;
 	struct compute_backend *backend = NULL;
@@ -24,6 +20,8 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 	backend->args = args;
 	backend->filters = filters;
 	backend->backend_data = NULL;
+	backend->init_argc = argc;
+	backend->init_argv = argv;
 
 	switch (type) {
 	case CONV_BACKEND_CPU:
@@ -32,15 +30,6 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 	case CONV_BACKEND_GPU:
 		backend->ops= &gpu_backend_ops;
 		break;
-	case CONV_BACKEND_MPI: 
-#ifdef USE_MPI
-		backend->ops = &mpi_backend_ops;
-		break;
-#else
-		log_error("Error: MPI backend requested but USE_MPI is not defined\n");
-		free(backend);
-		return NULL;
-#endif
 	default:
 		log_error("Error: Unknown compute backend type %d\n", type);
 		free(backend);

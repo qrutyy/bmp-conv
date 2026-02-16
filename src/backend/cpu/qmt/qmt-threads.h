@@ -10,7 +10,7 @@
 
 #include "utils/args-parse.h"
 #include "utils/filters.h"
-#include "qmt_queue.h"
+#include "utils/qmt-queue.h"
 
 // thread-work specific struct for better abstraction (#saynotoglobals)
 struct threads_info {

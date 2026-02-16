@@ -62,14 +62,18 @@ struct compute_backend {
 	void *backend_data;  // Backend-specific context data (threads, GPU context, MPI comm, etc.)
 	struct p_args *args;
 	struct filter_mix *filters;
+	/** Optional main() arguments for MPI_Init (when non-NULL). */
+	int *init_argc;
+	char ***init_argv;
 };
 
 /**
  * Creates a compute backend of the specified type.
- * 
+ * @param argc Optional; when non-NULL, passed to backend init (e.g. for MPI_Init).
+ * @param argv Optional; when non-NULL, passed to backend init (e.g. for MPI_Init).
  * @return Pointer to created compute_backend structure, or NULL on error.
  */
-struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters);
+struct compute_backend *compute_backend_create(struct p_args *args, struct filter_mix *filters, int *argc, char ***argv);
 
 /**
  * Destroys a compute backend and frees associated resources.

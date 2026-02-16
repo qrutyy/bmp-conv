@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	backend = compute_backend_create(args, filters);
+	backend = compute_backend_create(args, filters, &argc, &argv);
 	if (!backend) {
 		free_filters(filters);
 		free(filters);

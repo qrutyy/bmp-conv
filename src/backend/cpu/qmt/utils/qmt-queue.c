@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "qmt_queue.h"
+#include "qmt-queue.h"
 #include "utils/utils.h" // For get_time_in_seconds, qt_write_logs, set_wait_time
 #include "logger/log.h"
 #include <pthread.h>
