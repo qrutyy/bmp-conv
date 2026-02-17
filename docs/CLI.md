@@ -7,10 +7,10 @@ This document describes all available command-line options for **bmp-conv**.
 ## General Syntax
 
 ```bash
-./bmp-conv [-cpu|-mpi|-gpu] [--queue-mode] <input.bmp> [options]
+./bmp-conv [-cpu|-gpu] [-mpi(-mode)|-queue(-mode)] <input.bmp> [options]
 ```
 
-> **Important:** platform flags (`-cpu`, `-mpi`, `-gpu`) and `--queue-mode` must appear **before** input files.
+> **Important:** platform flags (`-cpu`, `-gpu`) and `-queue|-queue-mode`,`-mpi|-mpi-mode` must appear **before** input files.
 
 ---
 
@@ -19,7 +19,6 @@ This document describes all available command-line options for **bmp-conv**.
 | Flag   | Description                                         |
 | ------ | --------------------------------------------------- |
 | `-cpu` | CPU execution mode (default)                        |
-| `-mpi` | MPI-based distributed execution (requires `mpirun`) |
 | `-gpu` | GPU mode (WIP)                                      |
 
 ---
@@ -64,10 +63,15 @@ Block size for row/column/grid modes.
 
 Number of worker threads (default: `1`).
 
-### `--queue-mode`
+### `-queue|--queue-mode`
 
 Enables queue-based pipeline processing.
 Required for batch input processing.
+
+### `-mpi|--mpi-mode`
+
+Enables mpi-based on-CPU pipeline processing.
+MPICH is required for this mode.
 
 ### `--rww=<r,w,w>`
 
