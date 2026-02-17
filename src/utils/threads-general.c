@@ -322,15 +322,15 @@ void filter_part_computation(struct thread_spec *spec)
 }
 
 struct filter* get_filter_by_name(struct filter_mix *filters, const char* name) {
-    if (strcmp(name, "blur") == 0) return filters->blur;
-    if (strcmp(name, "motion_blur") == 0) return filters->motion_blur;
-    if (strcmp(name, "gaus_blur") == 0) return filters->gaus_blur;
-    if (strcmp(name, "conv") == 0) return filters->conv;
-    if (strcmp(name, "sharpen") == 0) return filters->sharpen;
-    if (strcmp(name, "emboss") == 0) return filters->emboss;
-    if (strcmp(name, "big_gaus") == 0) return filters->big_gaus;
-    if (strcmp(name, "med_gaus") == 0) return filters->med_gaus;
-    if (strcmp(name, "box_blur") == 0) return filters->box_blur;
+    if (strcmp(name, "bb") == 0) return filters->blur;
+    if (strcmp(name, "mb") == 0) return filters->motion_blur;
+    if (strcmp(name, "gb") == 0) return filters->gaus_blur;
+    if (strcmp(name, "co") == 0) return filters->conv;
+    if (strcmp(name, "sh") == 0) return filters->sharpen;
+    if (strcmp(name, "em") == 0) return filters->emboss;
+    if (strcmp(name, "gg") == 0) return filters->big_gaus;
+    if (strcmp(name, "mg") == 0) return filters->med_gaus;
+    if (strcmp(name, "bo") == 0) return filters->box_blur;
     return NULL;
 }
 
@@ -342,6 +342,8 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 		snprintf(output_filepath, path_len, "test-img/%s", args->files_cfg.output_filename);
 	} else if (args->compute_cfg.mpi == CONV_MPI_ENABLED) {
 		snprintf(output_filepath, path_len, "test-img/mpi_out_%s", args->files_cfg.input_filename[0]);
+	} else if (args->compute_cfg.backend == CONV_BACKEND_GPU) {
+		snprintf(output_filepath, path_len, "test-img/gpu_out_%s", args->files_cfg.input_filename[0]);
 	} else {
 		if (threadnum > 1) {
 			snprintf(output_filepath, path_len, "test-img/rcon_out_%s", args->files_cfg.input_filename[0]);
@@ -350,14 +352,14 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 		}
 	}
 
-	log_debug("Result out filepath %s\n", output_filepath);
+	log_debug("Result image is written by filepath: %s\n", output_filepath);
 
 	if (!img_result->img_pixels)
 		log_error("Pointer to images pixel array is NULL");
 
 	status = bmp_img_write(img_result, output_filepath);
 
-	log_debug("status %d", status);
+	log_debug("bmp_img_write status %d", status);
 }
 
 void free_img_spec(struct img_spec *img_data)

@@ -63,7 +63,7 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
 
 	if (strcmp(args->compute_cfg.filter_type, "mm") == 0)
 		kernel = clCreateKernel(program, "apply_mm_filter_kernel", &err);
-	else 
+	else
 		kernel = clCreateKernel(program, "apply_filter_kernel", &err);
 
     if (err != CL_SUCCESS) { log_error("Failed to create kernel"); return 0; }
@@ -72,21 +72,24 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
     int width = img_spec->dim->width;
     int height = img_spec->dim->height;
     int num_pixels = width * height;
+    size_t img_size_bytes = num_pixels * 3 * sizeof(unsigned char); // Explicitly 3 bytes per pixel
 
-    size_t img_size_bytes = num_pixels * sizeof(bmp_pixel);
-    bmp_pixel* flat_input = malloc(img_size_bytes);
+    unsigned char* flat_input = malloc(img_size_bytes);
     if (!flat_input) { log_error("Malloc failed"); return 0; }
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            flat_input[y * width + x] = img_spec->input->img_pixels[y][x];
+            int idx = (y * width + x) * 3;
+            flat_input[idx]     = img_spec->input->img_pixels[y][x].blue;
+            flat_input[idx + 1] = img_spec->input->img_pixels[y][x].green;
+            flat_input[idx + 2] = img_spec->input->img_pixels[y][x].red;
         }
     }
 
     // Create Buffers
     input_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, img_size_bytes, flat_input, &err);
     if (err != CL_SUCCESS) { log_error("Failed to create input buffer"); free(flat_input); return 0; }
-    
+
     output_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, img_size_bytes, NULL, &err);
     if (err != CL_SUCCESS) { log_error("Failed to create output buffer"); free(flat_input); return 0; }
 
@@ -107,13 +110,17 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
     weights_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, weights_size, flat_weights, &err);
     if (err != CL_SUCCESS) { log_error("Failed to create weights buffer"); free(flat_input); free(flat_weights); return 0; }
 
-    err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buf);
-    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buf);
+	float factor_f = (float)f->factor;
+    float bias_f = (float)f->bias;
+	err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buf);
+	err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buf);
 	err |= clSetKernelArg(kernel, 2, sizeof(int), &width);
 	err |= clSetKernelArg(kernel, 3, sizeof(int), &height);
-    err |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &weights_buf);
-	err |= clSetKernelArg(kernel, 5, sizeof(int), &f->factor);
-	err |= clSetKernelArg(kernel, 6, sizeof(int), &f->bias);
+	err |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &weights_buf);
+	err |= clSetKernelArg(kernel, 5, sizeof(int), &f->size);
+	err |= clSetKernelArg(kernel, 6, sizeof(float), &factor_f);
+	err |= clSetKernelArg(kernel, 7, sizeof(float), &bias_f);
+
 
     if (err != CL_SUCCESS) { log_error("Failed to set kernel args"); free(flat_input); free(flat_weights); return 0; }
 
@@ -124,7 +131,12 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
 
     cl_event event;
     err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_work_size, NULL, 0, NULL, &event);
-    if (err != CL_SUCCESS) { log_error("Failed to enqueue kernel"); free(flat_input); free(flat_weights); return 0; }
+    if (err != CL_SUCCESS) {
+		log_error("Failed to enqueue kernel");
+		free(flat_input);
+		free(flat_weights);
+		return 0;
+	}
 
     clWaitForEvents(1, &event);
 
@@ -134,13 +146,18 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
     double time_seconds = (double)(end - start) / 1e9;
 
     // Read Result
-    bmp_pixel* flat_output = malloc(img_size_bytes);
     err = clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
+	unsigned char* flat_output = malloc(img_size_bytes);
+    clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
     if (err != CL_SUCCESS) { log_error("Failed to read buffer"); free(flat_input); free(flat_weights); free(flat_output); return 0; }
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            img_spec->output->img_pixels[y][x] = flat_output[y * width + x];
+            int idx = (y * width + x) * 3;
+            // Unpack back to struct
+            img_spec->output->img_pixels[y][x].blue  = flat_output[idx];
+            img_spec->output->img_pixels[y][x].green = flat_output[idx + 1];
+            img_spec->output->img_pixels[y][x].red   = flat_output[idx + 2];
         }
     }
 
