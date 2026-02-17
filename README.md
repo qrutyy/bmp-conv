@@ -64,7 +64,7 @@ cmake --build build
 **MPI execution (4 processes)**
 
 ```bash
-mpirun -np 4 ./bmp-conv -cpu -mpi image.bmp \
+mpirun -np 4 ./bmp-conv -cpu -mpi-mode image.bmp \
   --filter=em --mode=by_column --block=5
 ```
 
@@ -79,7 +79,9 @@ The project includes scripts for:
 
 See:
 
-* [`docs/MT-mode-analysis.md`](docs/MT-mode-analysis.md)
+* [`docs/ST-MT-mode-analysis.md`](docs/ST-MT-mode-analysis.md)
+* [`docs/QMT-mode-analysis.md`](docs/QMT-mode-analysis.md)
+* [`docs/MPI-mode-analysis.md`](docs/MPI-mode-analysis.md)
 * [`docs/Benchmark-setup.md`](docs/Benchmark-setup.md)
 
 Run benchmarks:
@@ -90,13 +92,11 @@ Run benchmarks:
 ./tests/mpi-benchmark.sh
 ```
 
-
 ## Documentation
 
 * [Command-line reference](docs/CLI.md)
 * [Filters overview](docs/Filters.md)
 * [Parallel models explained](docs/Architecture.md)
-* [Performance analysis](docs/MT-mode-analysis.md)
 
 
 ## License
