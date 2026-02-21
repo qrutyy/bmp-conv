@@ -1,77 +1,75 @@
 #!/bin/bash
 
-SD=$(dirname "$(realpath "$0")") # script directory
-BASEDIR=$(dirname "$SD")  # Parent directory of script's location
+SD=$(dirname "$(realpath "$0")")
+BASEDIR=$(dirname "$SD")
 BD="$BASEDIR"
+BUILD_DIR="${BUILD_DIR:-$BD/build}"
 
 LOG_FILE="$SD/timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
 
 TEST_FILE="image5.bmp"
-FILTERS=( "co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
-BLOCK_SIZE=("4" "8" "16" "32" "64" "128")
+FILTERS=(co sh bb gb em mb mg gg bo)
+BLOCK_SIZE=(4 8 16 32 64 128)
 THREADNUM=4
-MODES=("by_row" "by_column" "by_grid") # removed by_pixel due to too big execution time
+MODES=("by_row" "by_column" "by_grid")
 FILTER_PAIRS="gb,sh sh,gb mb,sh sh,mb gg,sh sh,gg"
 
 IFS=' ' read -r -a pairs <<< "$FILTER_PAIRS"
 
-for pair in "${pairs[@]}"; do
-    IFS=',' read -r f1 f2 <<< "$pair"
-    echo "f1: $f1, f2: $f2"
-done
+if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    cmake -B "$BUILD_DIR"
+fi
+cmake --build "$BUILD_DIR"
 
-make -C "$BD" build-f
+BIN="$BUILD_DIR/bmp-conv"
+if [[ ! -x "$BIN" ]]; then
+    echo "Error: executable not found: $BIN"
+    exit 1
+fi
 
+cd "$BD" || exit 1
 echo "RunID Filter-type Thread-num Mode Block-size Result" > "$LOG_FILE"
-
 mkdir -p "$PLOTS_PATH" "$PLOTS_PATH/mt" "$PLOTS_PATH/st"
 
 echo -e "\nRunning single-threaded tests"
 for fil in "${FILTERS[@]}"; do
-	echo "$BD"
-
 	for i in $(seq 1 "$RUN_NUM"); do
 		echo -n "$i " >> "$LOG_FILE"
-		make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM=1 
+		"$BIN" -cpu "$TEST_FILE" --filter="$fil" --mode=by_row --block=1 --threadnum=1 --log=1
 	done
 done
 
-python3 "$SD/avg_plots.py"
+python3 "$SD/avg-plots.py"
 
 echo -e "\nRunning multithreaded tests"
 for mode in "${MODES[@]}"; do
 	for fil in "${FILTERS[@]}"; do
 		for bs in "${BLOCK_SIZE[@]}"; do
-
 			for i in $(seq 1 "$RUN_NUM"); do
 				echo -n "$i " >> "$LOG_FILE"
-				make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$fil" THREAD_NUM="$THREADNUM" BLOCK_SIZE="$bs" COMPUTE_MODE="$mode"
+				"$BIN" -cpu "$TEST_FILE" --filter="$fil" --threadnum="$THREADNUM" --block="$bs" --mode="$mode" --log=1
 			done
 		done
 	done
 done
 
-python3 "$SD/avg_plots.py"
+python3 "$SD/avg-plots.py"
 
 echo -e "\nRunning multithreaded tests with filter composition"
 for pair in "${pairs[@]}"; do
 	IFS=',' read -r f1 f2 <<< "$pair"
-	echo -e "SEQUENTIAL MODE:\n"
+	echo "Filter pair: $f1 -> $f2"
 
-	make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$f1" THREADNUM=1 OUTPUT_FILE="${f1}_$TEST_FILE" LOG=0 
-	make -C "$BD" run-mac-p-cores INPUT_TF="${f1}_$TEST_FILE" FILTER_TYPE="$f2" THREADNUM=1 OUTPUT_FILE="seq_out_${f1}_${f2}_$TEST_FILE" LOG=0 
+	"$BIN" -cpu "$TEST_FILE" --filter="$f1" --threadnum=1 --mode=by_row --block=16 --log=0 --output="${f1}_$TEST_FILE"
+	"$BIN" -cpu "${f1}_$TEST_FILE" --filter="$f2" --threadnum=1 --mode=by_row --block=16 --log=0 --output="seq_out_${f1}_${f2}_$TEST_FILE"
 
 	for i in $(seq 1 "$RUN_NUM"); do
 		echo -n "$i " >> "$LOG_FILE"
-		echo -e "MULTITHREADED MODE:\n"
-
-		make -C "$BD" run-mac-p-cores INPUT_TF="$TEST_FILE" FILTER_TYPE="$f1" THREADNUM="$THREADNUM" BLOCK_SIZE=16 COMPUTE_MODE=by_grid OUTPUT_FILE="${f1}_$TEST_FILE"
+		"$BIN" -cpu "$TEST_FILE" --filter="$f1" --threadnum="$THREADNUM" --block=16 --mode=by_grid --log=0 --output="${f1}_$TEST_FILE"
 		echo -n "$i " >> "$LOG_FILE"
-		make -C "$BD" run-mac-p-cores INPUT_TF="${f1}_$TEST_FILE" FILTER_TYPE="$f2" THREADNUM="$THREADNUM" BLOCK_SIZE=16 COMPUTE_MODE=by_grid OUTPUT_FILE="rcon_out_${f1}_${f2}_$TEST_FILE"
-
-		compare_results "${f1}_${f2}_$TEST_FILE"
+		"$BIN" -cpu "${f1}_$TEST_FILE" --filter="$f2" --threadnum="$THREADNUM" --block=16 --mode=by_grid --log=0 --output="rcon_out_${f1}_${f2}_$TEST_FILE"
 	done
 done
 

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* TODO: make log_file path as a param */
 #define LOG_FILE_PATH "tests/timing-results.dat"
 
 // Global pointer to parsed arguments. Consider passing this instead of using global.
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
 		free(args);
 		return -1;
 	}
-	
+
 	filters = setup_filters(args);
 	if (!filters) {
 		free(args);

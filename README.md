@@ -48,24 +48,30 @@ cmake --build build
 
 ## Examples
 
-**Multi-threaded grid convolution**
+**CPU Multi-threaded grid convolution**
 
 ```bash
 ./bmp-conv -cpu image.bmp --filter=gg --mode=by_grid --threadnum=4 --block=16
 ```
 
-**Queue-based batch processing**
+**CPU Queue-based batch processing**
 
 ```bash
 ./bmp-conv -queue-mode img1.bmp img2.bmp img3.bmp \
   --filter=bb --mode=by_row --block=5 --rww=1,2,1
 ```
 
-**MPI execution (4 processes)**
+**CPU MPI execution (4 processes)**
 
 ```bash
 mpirun -np 4 ./bmp-conv -cpu -mpi-mode image.bmp \
   --filter=em --mode=by_column --block=5
+```
+
+**GPU execution (auto-defined work-group size)**
+
+```bash
+./bmp-conv -gpu image.bmp --filter=gg
 ```
 
 
