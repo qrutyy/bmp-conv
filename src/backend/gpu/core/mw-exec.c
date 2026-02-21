@@ -159,9 +159,8 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
     double time_seconds = (double)(end - start) / 1e9;
 
     // Read Result
-    err = clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
 	unsigned char* flat_output = malloc(img_size_bytes);
-    clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(queue, output_buf, CL_TRUE, 0, img_size_bytes, flat_output, 0, NULL, NULL);
     if (err != CL_SUCCESS) { log_error("Failed to read buffer"); free(flat_input); free(flat_weights); free(flat_output); return 0; }
 
     for (int y = 0; y < height; y++) {
