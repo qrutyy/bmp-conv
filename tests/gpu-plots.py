@@ -30,17 +30,21 @@ FILTER_DISPLAY_NAMES = {
     "co": "Convolution",
 }
 
-plt.rcParams.update({
-    "axes.titlesize": 14,
-    "axes.labelsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-})
+plt.rcParams.update(
+    {
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+    }
+)
 
 
 def load_gpu_df():
     if not os.path.isfile(RESULTS_FILE):
-        raise FileNotFoundError(f"Results file not found: {RESULTS_FILE} (run from project root)")
+        raise FileNotFoundError(
+            f"Results file not found: {RESULTS_FILE} (run from project root)"
+        )
     df = pd.read_csv(
         RESULTS_FILE,
         sep=r"\s+",
@@ -67,7 +71,9 @@ def plot_time_vs_block_size(gpu_df):
     os.makedirs(PLOTS_PATH, exist_ok=True)
     filters = sorted(gpu_df["FILTER"].unique())
     if not filters:
-        print("No GPU data found (BLOCK_SIZE in 4,8,16,32,64,128). Skip time vs block size.")
+        print(
+            "No GPU data found (BLOCK_SIZE in 4,8,16,32,64,128). Skip time vs block size."
+        )
         return
 
     fig, ax = plt.subplots(figsize=(12, 7), dpi=150)
@@ -89,7 +95,7 @@ def plot_time_vs_block_size(gpu_df):
             label=label,
         )
 
-    ax.set_xlabel("Block size (work group size)")
+    ax.set_xlabel("Work group size)")
     ax.set_ylabel("Execution time (s)")
     ax.set_title("GPU: execution time vs block size (OpenCL work group)")
     ax.set_xticks(block_order)
@@ -142,7 +148,12 @@ def plot_per_filter_block_bars(gpu_df):
         errs = by_block.apply(confidence_interval_half).reindex(block_order).fillna(0)
 
         fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
-        ax.bar(means.index.astype(int).astype(str), means.values, yerr=errs.values, capsize=5)
+        ax.bar(
+            means.index.astype(int).astype(str),
+            means.values,
+            yerr=errs.values,
+            capsize=5,
+        )
         ax.set_xlabel("Block size")
         ax.set_ylabel("Execution time (s)")
         ax.set_title(f"GPU: {FILTER_DISPLAY_NAMES.get(f, f)} — time vs block size")
@@ -156,7 +167,9 @@ def plot_per_filter_block_bars(gpu_df):
 def main():
     gpu_df = load_gpu_df()
     if gpu_df.empty:
-        print("No GPU benchmark rows in timing-results.dat (expected BLOCK_SIZE in 4,8,16,32,64,128).")
+        print(
+            "No GPU benchmark rows in timing-results.dat (expected BLOCK_SIZE in 1,4,8,16,32,64,128)."
+        )
         return
     plot_time_vs_block_size(gpu_df)
     plot_mean_time_per_filter(gpu_df)
