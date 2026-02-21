@@ -1,34 +1,43 @@
 #!/bin/bash
 
 SD=$(dirname "$(realpath "$0")")
-BASEDIR=$(dirname "$SD")  
+BASEDIR=$(dirname "$SD")
 BD="$BASEDIR"
+BUILD_DIR="${BUILD_DIR:-$BD/build}"
 PLOTS_PATH="$SD/plots/"
 FILES_COUNT=20
 RUN_NUM=25
-QTHREADSMIX=("1,1,1" "2,2,2" "3,3,3" "5,5,5" "1,2,1" "1,1,2" "2,1,1" "1,2,2" "3,2,2" "2,3,3"  "1,3,3" "1,4,4" "1,6,6" )
-MODES=("by_row" "by_column" "by_grid") # removed by_pixel due to too big execution time
+QTHREADSMIX=("1,1,1" "2,2,2" "3,3,3" "5,5,5" "1,2,1" "1,1,2" "2,1,1" "1,2,2" "3,2,2" "2,3,3" "1,3,3" "1,4,4" "1,6,6")
+MODES=("by_row" "by_column" "by_grid")
+
+if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    cmake -B "$BUILD_DIR"
+fi
+cmake --build "$BUILD_DIR"
+
+BIN="$BUILD_DIR/bmp-conv"
+if [[ ! -x "$BIN" ]]; then
+    echo "Error: executable not found: $BIN"
+    exit 1
+fi
 
 clean_plot_dir() {
 	rm -rf "$PLOTS_PATH"/q-mode/*.png
 }
 
-set_input_images() {
-	input=""
-	for ((i=1; i<=FILES_COUNT; i++)); do
-		input+="image4.bmp "
-	done
-	echo "$input"
-}
+INPUT_FILES=()
+for ((i=1; i<=FILES_COUNT; i++)); do
+	INPUT_FILES+=(image4.bmp)
+done
 
 clean_plot_dir
-set_input_images
+cd "$BD" || exit 1
 
 for mode in "${MODES[@]}"; do
-	for mix in "${QTHREADSMIX[@]}"; do 
-		rm -rf "$SD/queue-timings.dat"
+	for mix in "${QTHREADSMIX[@]}"; do
+		rm -f "$SD/queue-timings.dat"
 		for i in $(seq 1 "$RUN_NUM"); do
-			make -C "$BD" run-q-mode VALGRIND_PREFIX="" COMPUTE_MODE="$mode" INPUT_TF="$input" FILTER_TYPE=gg BLOCK_SIZE=15 RWW_MIX="$mix"
+			"$BIN" -queue-mode "${INPUT_FILES[@]}" --mode="$mode" --filter=gg --block=15 --rww="$mix" --log=1
 		done
 		python3 "$SD/qmt-plots.py" --mix="$mix"
 	done

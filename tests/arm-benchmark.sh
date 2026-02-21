@@ -1,24 +1,34 @@
 #!/bin/bash
 
+SD=$(dirname "$(realpath "$0")")
+BASEDIR=$(dirname "$SD")
+BD="$BASEDIR"
+BUILD_DIR="${BUILD_DIR:-$BD/build}"
+
 ITERATIONS=40
 INPUT_FILE="image4.bmp"
 FILTER_TYPE="gg"
 THREAD_NUM=4
 COMPUTE_MODE="by_grid"
 BLOCK_SIZE=32
-MAKE_DIR="../"
 
-MAKE_CMD_ECORES="make -C ${MAKE_DIR} run-mac-e-cores"
-MAKE_CMD_PCORES="make -C ${MAKE_DIR} run-mac-p-cores" # Or 'make run'
+if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    cmake -B "$BUILD_DIR"
+fi
+cmake --build "$BUILD_DIR"
 
-MAKE_PARAMS="INPUT_TF=${INPUT_FILE} FILTER_TYPE=${FILTER_TYPE} THREAD_NUM=${THREAD_NUM} COMPUTE_MODE=${COMPUTE_MODE} BLOCK_SIZE=${BLOCK_SIZE}"
+BIN="$BUILD_DIR/bmp-conv"
+if [[ ! -x "$BIN" ]]; then
+    echo "Error: executable not found: $BIN"
+    exit 1
+fi
 
 e_core_times=()
 p_core_times=()
 
 extract_time() {
   local output="$1"
-  echo -e "$output" | grep 'RESULT:.*time = ' | awk '{print $(NF-1)}'
+  echo -e "$output" | grep -E 'RESULT:.*time|time=.*seconds' | awk '{print $(NF-1)}'
 }
 
 calculate_stats() {
@@ -65,11 +75,12 @@ calculate_stats() {
   echo -e "$stats"
 }
 
-echo -e "\nRunning tests on E-cores (${ITERATIONS} times)"
+cd "$BD" || exit 1
 
+echo -e "\nRunning tests on E-cores (${ITERATIONS} times)"
 for (( i=1; i<=ITERATIONS; i++ )); do
   echo -e "Running E-cores $i/$ITERATIONS... "
-  output=$(eval "${MAKE_CMD_ECORES} ${MAKE_PARAMS}" 2>&1)
+  output=$(taskpolicy -c background "$BIN" -cpu "$INPUT_FILE" --filter="$FILTER_TYPE" --threadnum="$THREAD_NUM" --mode="$COMPUTE_MODE" --block="$BLOCK_SIZE" --log=0 2>&1)
   time_val=$(extract_time "$output")
 
   if [[ "$time_val" =~ ^[0-9.]+$ ]]; then
@@ -81,10 +92,9 @@ for (( i=1; i<=ITERATIONS; i++ )); do
 done
 
 echo -e "\nRunning tests on P-cores (${ITERATIONS} times)"
-
 for (( i=1; i<=ITERATIONS; i++ )); do
   echo -e "Running P-cores $i/$ITERATIONS... "
-  output=$(eval "${MAKE_CMD_PCORES} ${MAKE_PARAMS}" 2>&1)
+  output=$("$BIN" -cpu "$INPUT_FILE" --filter="$FILTER_TYPE" --threadnum="$THREAD_NUM" --mode="$COMPUTE_MODE" --block="$BLOCK_SIZE" --log=0 2>&1)
   time_val=$(extract_time "$output")
 
   if [[ "$time_val" =~ ^[0-9.]+$ ]]; then
