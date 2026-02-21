@@ -55,6 +55,9 @@ Block size for row/column/grid modes.
 * `size > 0`
 * `1` enables pixel-based processing
 
+Supported in `-gpu` mode and stands for work-group size (in terms of work-items).
+If isn't passed - is chosen automatically by OpenCL.
+
 ---
 
 ## Multithreading Options

@@ -124,13 +124,26 @@ double opencl_execute_basic_computation(struct img_spec *img_spec, struct p_args
 
     if (err != CL_SUCCESS) { log_error("Failed to set kernel args"); free(flat_input); free(flat_weights); return 0; }
 
-    // Enqueue (1 work item per 1 pixel)
+    // Enqueue (1 work item per 1 pixel). Optional: --block sets OpenCL local work group size.
+    // When block == 0: local_ptr = NULL → implementation chooses work group size automatically.
     size_t global_work_size[2];
-    global_work_size[0] = width;
-    global_work_size[1] = height;
+    size_t local_work_size[2];
+    size_t *local_ptr = NULL;
+    int block = args->compute_cfg.block_size > 0 ? args->compute_cfg.block_size : 0;
+
+    if (block > 0) {
+	    global_work_size[0] = (size_t)((width + block - 1) / block) * (size_t)block;
+	    global_work_size[1] = (size_t)((height + block - 1) / block) * (size_t)block;
+	    local_work_size[0] = (size_t)block;
+	    local_work_size[1] = (size_t)block;
+	    local_ptr = local_work_size;
+    } else {
+	    global_work_size[0] = (size_t)width;
+	    global_work_size[1] = (size_t)height;
+    }
 
     cl_event event;
-    err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_work_size, NULL, 0, NULL, &event);
+    err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_work_size, local_ptr, 0, NULL, &event);
     if (err != CL_SUCCESS) {
 		log_error("Failed to enqueue kernel");
 		free(flat_input);
