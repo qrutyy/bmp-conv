@@ -16,7 +16,6 @@
 # Precompiled Headers
 *.gch
 *.pch
-
 # Libraries
 *.lib
 *.a
@@ -126,4 +125,7 @@ test-img/*.bmp
 !test-img/image5.bmp
 build/
 .cache/
+
+venv/
+tests/logs/
 

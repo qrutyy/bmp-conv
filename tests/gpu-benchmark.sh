@@ -5,9 +5,10 @@ BASEDIR=$(dirname "$SD")          # project root
 BD="$BASEDIR"
 BUILD_DIR="${BUILD_DIR:-$BD/build}"
 
-LOG_FILE="$SD/timing-results.dat"
+LOG_FILE="$SD/logs/gpu-timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
+UNIFIED_HEADER="RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result"
 
 TEST_FILE="image-7.bmp"
 FILTERS=("co" "sh" "bb" "gb" "em" "mb" "mg" "gg" "bo") # mm can be added, but has too high execution time (x20)
@@ -26,8 +27,8 @@ if [[ ! -x "$BIN" ]]; then
 fi
 
 cd "$BD" || exit 1
-echo "RunID Filter-type Thread-num Mode Block-size Result" > "$LOG_FILE"
-mkdir -p "$PLOTS_PATH" "$PLOTS_PATH/mt" "$PLOTS_PATH/st"
+mkdir -p "$SD/logs" "$PLOTS_PATH" "$PLOTS_PATH/mt" "$PLOTS_PATH/st"
+echo "$UNIFIED_HEADER" > "$LOG_FILE"
 
 if [[ ! -e "$TEST_FILE" ]]; then
 	convert -size 16000x16000 pattern:checkerboard "$TEST_FILE" 2>/dev/null || \
@@ -38,7 +39,7 @@ echo -e "\nRunning GPU tests (block size = work group size)"
 for fil in "${FILTERS[@]}"; do
 	for bs in "${BLOCK_SIZE_GPU[@]}"; do
 		for i in $(seq 1 "$RUN_NUM"); do
-			echo -n "$i " >> "$LOG_FILE"
+			echo -n "$i 1 " >> "$LOG_FILE"
 			"$BIN" -gpu "$TEST_FILE" --filter="$fil" --mode=by_row --block="$bs" --log=1
 		done
 	done

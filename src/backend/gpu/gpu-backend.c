@@ -52,7 +52,7 @@ static int gpu_init(struct compute_backend *backend, struct p_args *args)
 	}
 
 	backend->backend_data = data;
-	
+
 	return 0;
 }
 
@@ -68,8 +68,8 @@ static double gpu_process_non_queue_mode(struct compute_backend *backend)
 	if (!img_spec)
 		goto cleanup;
 
-	/* i really cant get away with this eneven compile option checks (MPI in compute_backend), 
-	 * but mpi cant really be incapsulated into cpu mode 
+	/* i really cant get away with this eneven compile option checks (MPI in compute_backend),
+	 * but mpi cant really be incapsulated into cpu mode
 	 * UPD: ok, ive checked, thats real, ill try to unite them asap */
 #ifdef USE_OPENCL
 	result_time = opencl_execute_basic_computation(img_spec, args, filters);
@@ -136,10 +136,17 @@ static const char *gpu_get_name(void)
 	return "gpu";
 }
 
+static int gpu_get_logging_rank(struct compute_backend *backend)
+{
+	(void)backend;
+	return 0;
+}
+
 const struct compute_backend_ops gpu_backend_ops = {
 	.init = gpu_init,
 	.process_image = gpu_process_image,
 	.cleanup = gpu_cleanup,
 	.get_type = gpu_get_type,
-	.get_name = gpu_get_name
+	.get_name = gpu_get_name,
+	.get_logging_rank = gpu_get_logging_rank,
 };

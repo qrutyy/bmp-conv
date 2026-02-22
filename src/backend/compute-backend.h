@@ -19,14 +19,14 @@ struct compute_backend;
 struct compute_backend_ops {
 	/**
 	 * Initializes the compute backend with given arguments.
-	 * 
+	 *
 	 * @return 0 on success, negative value on error.
 	 */
 	int (*init)(struct compute_backend *backend, struct p_args *args);
 
 	/**
 	 * Processes an image using the specified filter and compute mode.
-	 * 
+	 *
 	 * @return Processing time in seconds, or 0.0 on error.
 	 */
 	double (*process_image)(struct compute_backend *backend);
@@ -38,17 +38,25 @@ struct compute_backend_ops {
 
 	/**
 	 * Returns the type of the compute backend.
-	 * 
+	 *
 	 * @return Backend type enum value.
 	 */
 	enum conv_backend (*get_type)(void);
 
 	/**
 	 * Returns the name of the compute backend.
-	 * 
+	 *
 	 * @return Constant string with backend name.
 	 */
 	const char *(*get_name)(void);
+
+	/**
+	 * Returns the rank that should perform logging (e.g. MPI rank 0 only).
+	 * Caller should only call write_logs when this returns 0.
+	 *
+	 * @return 0 if this process should log, non-zero to skip logging.
+	 */
+	int (*get_logging_rank)(struct compute_backend *backend);
 };
 
 /**
@@ -58,7 +66,7 @@ struct compute_backend_ops {
 struct compute_backend {
 	enum conv_backend backend; // for fast access
 	const struct compute_backend_ops *ops;
-	
+
 	void *backend_data;  // Backend-specific context data (threads, GPU context, MPI comm, etc.)
 	struct p_args *args;
 	struct filter_mix *filters;
@@ -81,4 +89,3 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 double compute_backend_run(struct compute_backend *backend);
 
 void compute_backend_destroy(struct compute_backend *backend);
-

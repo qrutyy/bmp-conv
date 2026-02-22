@@ -17,9 +17,12 @@
 #define MAX_FILTER_SIZE 9
 #define PADDING (cfilter.size / 2)
 #define MAX_FILTERS 10
-#define ST_LOG_FILE_PATH "tests/timing-results.dat"
 #define NSEC_OFFSET (1000 * 1000000) // 1000 ms in nanoseconds
-#define QT_LOG_FILE_PATH "tests/queue-timings.dat"
+
+#define CPU_LOG_FILE_PATH "tests/logs/cpu-timing-results.dat"
+#define GPU_LOG_FILE_PATH "tests/logs/gpu-timing-results.dat"
+
+#define CPU_QT_LOG_FILE_PATH "tests/logs/cpu-queue-timings.dat"
 
 enum LOG_TAG { QPOP, QPUSH, READER, WORKER, WRITER };
 extern const char *valid_modes[];
@@ -69,14 +72,15 @@ void qt_write_logs(double result_time, enum LOG_TAG tag, const char *compute_mod
 
 /**
  * Appends a timing result for single-threaded or non-queued multi-threaded execution
- * to the standard log file (ST_LOG_FILE_PATH), if logging is enabled via the `args`
+ * to the standard log file (dedpendsing on the specified backend), if logging is enabled via the `args`
  * structure. Also prints the result summary to stdout. Takes the `args` structure
  * containing execution parameters and the measured `result_time` (in seconds).
  * Errors opening the file are printed to stderr.
  *
  * @return void.
  */
-void st_write_logs(struct p_args *args, double result_time);
+
+void write_logs(struct p_args *args, double result_time, enum conv_backend backend);
 
 /**
  * Calculates an absolute time point in the future for use with timed waits.

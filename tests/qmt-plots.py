@@ -5,9 +5,10 @@ import pandas as pd
 import os
 import re
 
-TIMING_FILE = "tests/queue-timings.dat"
-SUMMARY_FILE = "tests/queue-summary-results.dat"
-PLOTS_PATH = "./tests/plots/q-mode/"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TIMING_FILE = os.path.join(SCRIPT_DIR, "logs", "cpu-queue-timings.dat")
+SUMMARY_FILE = os.path.join(SCRIPT_DIR, "logs", "queue-summary-results.dat")
+PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots", "q-mode")
 
 parser = argparse.ArgumentParser(
     description="Process timing data for a single mix and append aggregates."
