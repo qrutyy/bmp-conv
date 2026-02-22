@@ -10,9 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* TODO: make log_file path as a param */
-#define LOG_FILE_PATH "tests/timing-results.dat"
-
 // Global pointer to parsed arguments. Consider passing this instead of using global.
 struct p_args *args = NULL;
 
@@ -64,7 +61,9 @@ int main(int argc, char *argv[])
 	result_time = compute_backend_run(backend);
 
 	if (result_time > 0) {
-		st_write_logs(args, result_time);
+		int rank = (backend->ops->get_logging_rank ? backend->ops->get_logging_rank(backend) : 0);
+		if (rank == 0)
+			write_logs(args, result_time, backend->backend);
 	}
 
 	compute_backend_destroy(backend);

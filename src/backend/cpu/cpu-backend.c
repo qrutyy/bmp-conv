@@ -86,7 +86,7 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 	MPI_Comm_size(MPI_COMM_WORLD, &data->mpi_mode.size);
 
 	log_info("MPI Initialized. Rank: %d, Size: %d", data->mpi_mode.rank, data->mpi_mode.size);
-#else 
+#else
 	// Determine thread count based on arguments
 	if (args->compute_ctx.threadnum > 0) {
 		data->thread_count = args->compute_ctx.threadnum;
@@ -230,10 +230,21 @@ static const char *cpu_get_name(void)
 	return "CPU";
 }
 
+static int cpu_get_logging_rank(struct compute_backend *backend)
+{
+#ifdef USE_MPI
+	union cpu_backend_data *data = (union cpu_backend_data *)backend->backend_data;
+	if (data && backend->args->compute_cfg.mpi == CONV_MPI_ENABLED)
+		return data->mpi_mode.rank;
+#endif
+	return 0;
+}
+
 const struct compute_backend_ops cpu_backend_ops = {
 	.init = cpu_init,
 	.process_image = cpu_process_image,
 	.cleanup = cpu_cleanup,
 	.get_type = cpu_get_type,
-	.get_name = cpu_get_name
+	.get_name = cpu_get_name,
+	.get_logging_rank = cpu_get_logging_rank,
 };
