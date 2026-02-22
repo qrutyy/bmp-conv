@@ -8,7 +8,17 @@ RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "cpu-timing-results.dat")
 PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots")
 
 # Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
-COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
+COLUMNS = [
+    "RunID",
+    "ProcessNum",
+    "Backend",
+    "Mode",
+    "Filter",
+    "ThreadNum",
+    "ComputeMode",
+    "BlockSize",
+    "Result",
+]
 
 plt.rcParams.update(
     {

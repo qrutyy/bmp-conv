@@ -16,7 +16,17 @@ RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "gpu-timing-results.dat")
 PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots", "gpu")
 
 # Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
-COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
+COLUMNS = [
+    "RunID",
+    "ProcessNum",
+    "Backend",
+    "Mode",
+    "Filter",
+    "ThreadNum",
+    "ComputeMode",
+    "BlockSize",
+    "Result",
+]
 
 # Block sizes used in gpu-benchmark.sh — only these rows are treated as GPU runs
 GPU_BLOCK_SIZES = (1, 4, 8, 16, 32, 64, 128)

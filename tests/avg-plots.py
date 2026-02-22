@@ -6,9 +6,10 @@ import scipy.stats as stats
 import argparse
 
 parser = argparse.ArgumentParser(
-                    prog='avg_plots.py',
-                    description='Generate average execution time plots',
-                    epilog='Text at the bottom of help')
+    prog="avg_plots.py",
+    description="Generate average execution time plots",
+    epilog="Text at the bottom of help",
+)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "cpu-timing-results.dat")
@@ -17,7 +18,17 @@ MT_PP = os.path.join(PLOTS_PATH, "mt")
 ST_PP = os.path.join(PLOTS_PATH, "st")
 
 # Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
-COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
+COLUMNS = [
+    "RunID",
+    "ProcessNum",
+    "Backend",
+    "Mode",
+    "Filter",
+    "ThreadNum",
+    "ComputeMode",
+    "BlockSize",
+    "Result",
+]
 
 colors = ["green", "red", "blue", "brown", "purple", "orange", "pink"]
 

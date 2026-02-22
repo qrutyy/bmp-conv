@@ -256,7 +256,8 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
             stds = []
             for mode in unique_modes:
                 row = plot_df[
-                    (plot_df["ComputeMode"] == mode) & (plot_df["ProcessNum"] == proc_num)
+                    (plot_df["ComputeMode"] == mode)
+                    & (plot_df["ProcessNum"] == proc_num)
                 ]
                 # Use .iloc[0] safely after checking if row is empty
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
@@ -338,7 +339,9 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
             means = []
             stds = []
             for mode in unique_modes:
-                row = plot_df[(plot_df["ComputeMode"] == mode) & (plot_df["BlockSize"] == bs)]
+                row = plot_df[
+                    (plot_df["ComputeMode"] == mode) & (plot_df["BlockSize"] == bs)
+                ]
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
                 stds.append(row["std_dev"].iloc[0] if not row.empty else 0)
 
