@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 	result_time = compute_backend_run(backend);
 
 	if (result_time > 0) {
+		/* TODO: make it more accurate */
 		int rank = (backend->ops->get_logging_rank ? backend->ops->get_logging_rank(backend) : 0);
 		if (rank == 0)
 			write_logs(args, result_time, backend->backend);
