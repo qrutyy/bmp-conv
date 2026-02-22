@@ -22,6 +22,7 @@ struct compute_backend *compute_backend_create(struct p_args *args, struct filte
 	backend->backend_data = NULL;
 	backend->init_argc = argc;
 	backend->init_argv = argv;
+	backend->backend = type;
 
 	switch (type) {
 	case CONV_BACKEND_CPU:
