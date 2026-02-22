@@ -5,9 +5,10 @@ BASEDIR=$(dirname "$SD")
 BD="$BASEDIR"
 BUILD_DIR="${BUILD_DIR:-$BD/build}"
 
-LOG_FILE="$SD/timing-results.dat"
+LOG_FILE="$SD/logs/cpu-timing-results.dat"
 PLOTS_PATH="$SD/plots/"
 RUN_NUM=25
+UNIFIED_HEADER="RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result"
 
 TEST_FILE="image7.bmp"
 FILTER="gg"
@@ -26,7 +27,8 @@ if [[ ! -x "$BIN" ]]; then
     exit 1
 fi
 
-echo "RunID Process-num Filter ThreadNum_logged Mode Block-size Result" > "$LOG_FILE"
+mkdir -p "$SD/logs"
+echo "$UNIFIED_HEADER" > "$LOG_FILE"
 
 echo "Generating $TEST_FILE (1GB)..."
 mkdir -p "$BD/test-img"

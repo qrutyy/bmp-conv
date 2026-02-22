@@ -3,11 +3,21 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import scipy.stats as stats
+import argparse
 
-RESULTS_FILE = "tests/timing-results.dat"
-PLOTS_PATH = "./tests/plots/"
-MT_PP = f"{PLOTS_PATH}mt/"
-ST_PP = f"{PLOTS_PATH}st/"
+parser = argparse.ArgumentParser(
+                    prog='avg_plots.py',
+                    description='Generate average execution time plots',
+                    epilog='Text at the bottom of help')
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "cpu-timing-results.dat")
+PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots")
+MT_PP = os.path.join(PLOTS_PATH, "mt")
+ST_PP = os.path.join(PLOTS_PATH, "st")
+
+# Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
+COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
 
 colors = ["green", "red", "blue", "brown", "purple", "orange", "pink"]
 
@@ -23,11 +33,12 @@ plt.rcParams.update(
 df = pd.read_csv(
     RESULTS_FILE,
     sep=r"\s+",
-    skiprows=2,
-    names=["RunID", "FILTER", "THREADNUM", "MODE", "BLOCK_SIZE", "TIME"],
+    skiprows=1,
+    names=COLUMNS,
 )
-df.loc[df["THREADNUM"] == 1, "MODE"] = "single_thread"
-df.loc[df["THREADNUM"] == 1, "BLOCK_SIZE"] = 0
+# Normal/CPU single-thread: no compute mode label
+df.loc[df["ThreadNum"] == 1, "ComputeMode"] = "single_thread"
+df.loc[df["ThreadNum"] == 1, "BlockSize"] = 0
 
 
 def clean_numeric(series):
@@ -50,8 +61,8 @@ def convert_fn(fn):
     return mapping.get(fn, fn)
 
 
-df["TIME"] = clean_numeric(df["TIME"])
-df["BLOCK_SIZE"] = clean_numeric(df["BLOCK_SIZE"])
+df["Result"] = clean_numeric(df["Result"])
+df["BlockSize"] = clean_numeric(df["BlockSize"])
 
 
 def compute_confidence_interval(data):
@@ -66,15 +77,15 @@ def compute_confidence_interval(data):
 
 
 def plot_single_thread():
-    single_thread_df = df[df["THREADNUM"] == 1]
+    single_thread_df = df[df["ThreadNum"] == 1]
     plt.figure(figsize=(14, 8), dpi=300)
 
-    filters = single_thread_df["FILTER"].unique()
+    filters = single_thread_df["Filter"].unique()
     means = []
     conf_intervals = []
 
     for f in filters:
-        times = single_thread_df[single_thread_df["FILTER"] == f]["TIME"]
+        times = single_thread_df[single_thread_df["Filter"] == f]["Result"]
         means.append(times.mean())
         conf_intervals.append(compute_confidence_interval(times))
 
@@ -97,7 +108,7 @@ def plot_single_thread():
 
 
 def plot_filter(filter_name):
-    filter_df = df[(df["FILTER"] == filter_name) & (df["THREADNUM"] > 1)].copy()
+    filter_df = df[(df["Filter"] == filter_name) & (df["ThreadNum"] > 1)].copy()
     if filter_df.empty:
         print(f"No multi-threaded data found for filter: {filter_name}")
         return
@@ -105,10 +116,10 @@ def plot_filter(filter_name):
     plt.figure(figsize=(14, 8), dpi=300)
     con_filter_name = convert_fn(filter_name)
 
-    block_sizes = sorted(filter_df["BLOCK_SIZE"].unique())
+    block_sizes = sorted(filter_df["BlockSize"].unique())
     canonical_modes = ["by_row", "by_column", "by_grid"]
 
-    modes_in_data = filter_df["MODE"].unique()
+    modes_in_data = filter_df["ComputeMode"].unique()
     modes_to_plot = [m for m in canonical_modes if m in modes_in_data]
 
     if not modes_to_plot:
@@ -123,8 +134,8 @@ def plot_filter(filter_name):
     start_offset = -(total_width_per_group / 2) + (width / 2)
 
     for i, block_size in enumerate(block_sizes):
-        subset = filter_df[filter_df["BLOCK_SIZE"] == block_size].groupby("MODE")[
-            "TIME"
+        subset = filter_df[filter_df["BlockSize"] == block_size].groupby("ComputeMode")[
+            "Result"
         ]
         means = subset.mean().reindex(modes_to_plot)
         conf_intervals = subset.apply(compute_confidence_interval).reindex(
@@ -158,8 +169,8 @@ os.makedirs(MT_PP, exist_ok=True)
 os.makedirs(ST_PP, exist_ok=True)
 
 plot_single_thread()
-for filter_name in df["FILTER"].unique():
-    if df[(df["FILTER"] == filter_name) & (df["THREADNUM"] > 1)].empty:
+for filter_name in df["Filter"].unique():
+    if df[(df["Filter"] == filter_name) & (df["ThreadNum"] > 1)].empty:
         continue
     plot_filter(filter_name)
 

@@ -5,8 +5,9 @@ import pandas as pd
 import os
 import re
 
-SUMMARY_FILE = "tests/queue-summary-results.dat"
-PLOTS_PATH = "./tests/plots/"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SUMMARY_FILE = os.path.join(SCRIPT_DIR, "logs", "queue-summary-results.dat")
+PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots")
 
 plt.rcParams.update(
     {

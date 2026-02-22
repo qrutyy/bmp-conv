@@ -18,8 +18,21 @@ except NameError:
     )
 
 BASE_DIR = SCRIPT_DIR
-LOG_FILE = BASE_DIR / "timing-results.dat"
+LOG_FILE = BASE_DIR / "logs" / "cpu-timing-results.dat"
 PLOTS_PATH = BASE_DIR / "plots" / "mpi" / "1gb-image"
+
+# Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
+FINAL_COL_NAMES = [
+    "RunID",
+    "ProcessNum",
+    "Backend",
+    "Mode",
+    "Filter",
+    "ThreadNum",
+    "ComputeMode",
+    "BlockSize",
+    "Result",
+]
 
 plt.rcParams.update(
     {
@@ -47,16 +60,6 @@ if not LOG_FILE.is_file():
     print(f"Error: Log file not found at '{LOG_FILE}'")
     sys.exit(1)
 
-final_col_names = [
-    "RunID",
-    "Process-num",
-    "Filter",
-    "ThreadNum_logged",
-    "Mode",
-    "Block-size",
-    "Result",
-]
-
 df_final = pd.DataFrame()  # Initialize df_final in outer scope
 
 try:
@@ -65,7 +68,7 @@ try:
         LOG_FILE,
         sep=r"\s+",  # Use regex for whitespace separation
         header=None,  # No header row in the data itself
-        names=final_col_names,  # Use the defined column names
+        names=FINAL_COL_NAMES,  # Use the defined column names
         skiprows=1,  # Skip the actual header line in the file
         skipinitialspace=True,
         comment="#",  # Ignore lines starting with #
@@ -89,12 +92,9 @@ try:
     try:
         # Use errors='coerce' to turn non-numeric values into NaN temporarily
         df_raw["RunID"] = pd.to_numeric(df_raw["RunID"], errors="coerce")
-        df_raw["Process-num"] = pd.to_numeric(df_raw["Process-num"], errors="coerce")
-        # Filter and ThreadNum_logged are also numeric in the example
-        df_raw["ThreadNum_logged"] = pd.to_numeric(
-            df_raw["ThreadNum_logged"], errors="coerce"
-        )
-        df_raw["Block-size"] = pd.to_numeric(df_raw["Block-size"], errors="coerce")
+        df_raw["ProcessNum"] = pd.to_numeric(df_raw["ProcessNum"], errors="coerce")
+        df_raw["ThreadNum"] = pd.to_numeric(df_raw["ThreadNum"], errors="coerce")
+        df_raw["BlockSize"] = pd.to_numeric(df_raw["BlockSize"], errors="coerce")
         df_raw["Result"] = pd.to_numeric(df_raw["Result"], errors="coerce")
 
         # Check for NaNs introduced by coercion (indicates bad data)
@@ -112,11 +112,9 @@ try:
 
         # Convert integer columns to int type *after* handling NaNs
         df_raw["RunID"] = df_raw["RunID"].astype(int)
-        df_raw["Process-num"] = df_raw["Process-num"].astype(int)
-        df_raw["ThreadNum_logged"] = df_raw["ThreadNum_logged"].astype(
-            int
-        )  # Convert new column
-        df_raw["Block-size"] = df_raw["Block-size"].astype(int)
+        df_raw["ProcessNum"] = df_raw["ProcessNum"].astype(int)
+        df_raw["ThreadNum"] = df_raw["ThreadNum"].astype(int)
+        df_raw["BlockSize"] = df_raw["BlockSize"].astype(int)
 
         print("Type conversion successful.")
         if conversion_errors:
@@ -138,6 +136,10 @@ try:
     print("Skipping duplicate row drop (no longer needed after removing ffill).")
 
     df_final = df_raw.copy()  # Use df_final from here on
+    # Only plot MPI runs (Mode column = execution mode: mpi / queue / normal)
+    if "Mode" in df_final.columns and "mpi" in df_final["Mode"].values:
+        df_final = df_final[df_final["Mode"] == "mpi"].copy()
+        print(f"Filtered to MPI rows only: {len(df_final)} rows.")
 
 except Exception as e:
     print(f"\n--- An unexpected error occurred during file processing ---")
@@ -157,17 +159,17 @@ print("\n--- Cleaned and Final DataFrame ---")
 print("Head:")
 print(df_final.head())
 print(f"\nTotal final rows: {len(df_final)}")
-print("Unique Process-num found:", sorted(df_final["Process-num"].unique()))
-print("Unique Modes found:", sorted(df_final["Mode"].unique()))
-print("Unique Block-sizes found:", sorted(df_final["Block-size"].unique()))
-print("Unique ThreadNum_logged found:", sorted(df_final["ThreadNum_logged"].unique()))
-print("Unique Filters found:", df_final["Filter"].unique())
+print("Unique ProcessNum found:", sorted(df_final["ProcessNum"].unique()))
+print("Unique ComputeMode found:", sorted(df_final["ComputeMode"].unique()))
+print("Unique BlockSize found:", sorted(df_final["BlockSize"].unique()))
+print("Unique ThreadNum found:", sorted(df_final["ThreadNum"].unique()))
+print("Unique Filter found:", df_final["Filter"].unique())
 
 
 print("\n--- Aggregating Results ---")
 df_agg = pd.DataFrame()  # Initialize df_agg
 try:
-    grouping_cols = ["Process-num", "Mode", "Block-size"]
+    grouping_cols = ["ProcessNum", "ComputeMode", "BlockSize"]
     print(f"Grouping by: {grouping_cols}")
 
     df_agg = (
@@ -206,17 +208,17 @@ print("\n--- Aggregated MPI DataFrame ---")
 print("Head:")
 print(df_agg.head())
 print(f"\nTotal aggregated rows: {len(df_agg)}")
-print("Unique Process-num in aggregated data:", sorted(df_agg["Process-num"].unique()))
-print("Unique Modes found:", sorted(df_agg["Mode"].unique()))
-print("Unique Block-sizes found:", sorted(df_agg["Block-size"].unique()))
+print("Unique ProcessNum in aggregated data:", sorted(df_agg["ProcessNum"].unique()))
+print("Unique ComputeMode found:", sorted(df_agg["ComputeMode"].unique()))
+print("Unique BlockSize found:", sorted(df_agg["BlockSize"].unique()))
 print("-" * 30)
 
 
 def plot_grouped_by_block_size(agg_data, base_plots_path):
     """Generates plots where each plot shows results for a single block size."""
-    unique_block_sizes = sorted(agg_data["Block-size"].unique())
-    unique_modes = sorted(agg_data["Mode"].unique())
-    unique_proc_nums = sorted(agg_data["Process-num"].unique())
+    unique_block_sizes = sorted(agg_data["BlockSize"].unique())
+    unique_modes = sorted(agg_data["ComputeMode"].unique())
+    unique_proc_nums = sorted(agg_data["ProcessNum"].unique())
 
     if not unique_block_sizes or not unique_modes or not unique_proc_nums:
         print("Warning: Not enough unique dimension values to plot by block size.")
@@ -228,7 +230,7 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
 
     for bs in unique_block_sizes:
         plot_df = agg_data[
-            agg_data["Block-size"] == bs
+            agg_data["BlockSize"] == bs
         ].copy()  # Filter data for this block size
         if plot_df.empty:
             print(f"  Skipping Block Size: {bs} (no data)")
@@ -254,7 +256,7 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
             stds = []
             for mode in unique_modes:
                 row = plot_df[
-                    (plot_df["Mode"] == mode) & (plot_df["Process-num"] == proc_num)
+                    (plot_df["ComputeMode"] == mode) & (plot_df["ProcessNum"] == proc_num)
                 ]
                 # Use .iloc[0] safely after checking if row is empty
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
@@ -298,9 +300,9 @@ def plot_grouped_by_block_size(agg_data, base_plots_path):
 
 def plot_grouped_by_proc_num(agg_data, base_plots_path):
     """Generates plots where each plot shows results for a single process number."""
-    unique_block_sizes = sorted(agg_data["Block-size"].unique())
-    unique_modes = sorted(agg_data["Mode"].unique())
-    unique_proc_nums = sorted(agg_data["Process-num"].unique())
+    unique_block_sizes = sorted(agg_data["BlockSize"].unique())
+    unique_modes = sorted(agg_data["ComputeMode"].unique())
+    unique_proc_nums = sorted(agg_data["ProcessNum"].unique())
 
     if not unique_block_sizes or not unique_modes or not unique_proc_nums:
         print("Warning: Not enough unique dimension values to plot by process number.")
@@ -312,7 +314,7 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
 
     for pn in unique_proc_nums:
         plot_df = agg_data[
-            agg_data["Process-num"] == pn
+            agg_data["ProcessNum"] == pn
         ].copy()  # Filter data for this process number
         if plot_df.empty:
             print(f"  Skipping Process Number: {pn} (no data)")
@@ -336,7 +338,7 @@ def plot_grouped_by_proc_num(agg_data, base_plots_path):
             means = []
             stds = []
             for mode in unique_modes:
-                row = plot_df[(plot_df["Mode"] == mode) & (plot_df["Block-size"] == bs)]
+                row = plot_df[(plot_df["ComputeMode"] == mode) & (plot_df["BlockSize"] == bs)]
                 means.append(row["avg_time"].iloc[0] if not row.empty else 0)
                 stds.append(row["std_dev"].iloc[0] if not row.empty else 0)
 

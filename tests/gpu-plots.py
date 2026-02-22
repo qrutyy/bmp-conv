@@ -11,8 +11,12 @@ import pandas as pd
 import os
 import scipy.stats as stats
 
-RESULTS_FILE = "tests/timing-results.dat"
-PLOTS_PATH = "tests/plots/gpu/"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "gpu-timing-results.dat")
+PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots", "gpu")
+
+# Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
+COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
 
 # Block sizes used in gpu-benchmark.sh — only these rows are treated as GPU runs
 GPU_BLOCK_SIZES = (1, 4, 8, 16, 32, 64, 128)
@@ -43,17 +47,18 @@ plt.rcParams.update(
 def load_gpu_df():
     if not os.path.isfile(RESULTS_FILE):
         raise FileNotFoundError(
-            f"Results file not found: {RESULTS_FILE} (run from project root)"
+            f"Results file not found: {RESULTS_FILE} (run from project root or tests/)"
         )
     df = pd.read_csv(
         RESULTS_FILE,
         sep=r"\s+",
-        names=["RunID", "FILTER", "THREADNUM", "MODE", "BLOCK_SIZE", "TIME"],
+        skiprows=1,
+        names=COLUMNS,
     )
-    df["TIME"] = pd.to_numeric(df["TIME"], errors="coerce")
-    df["BLOCK_SIZE"] = pd.to_numeric(df["BLOCK_SIZE"], errors="coerce")
-    df = df.dropna(subset=["TIME", "BLOCK_SIZE"])
-    gpu = df[df["BLOCK_SIZE"].isin(GPU_BLOCK_SIZES)].copy()
+    df["Result"] = pd.to_numeric(df["Result"], errors="coerce")
+    df["BlockSize"] = pd.to_numeric(df["BlockSize"], errors="coerce")
+    df = df.dropna(subset=["Result", "BlockSize"])
+    gpu = df[df["BlockSize"].isin(GPU_BLOCK_SIZES)].copy()
     return gpu
 
 
@@ -69,18 +74,18 @@ def confidence_interval_half(data):
 def plot_time_vs_block_size(gpu_df):
     """Time vs block size (work group size) per filter — main GPU benchmark plot."""
     os.makedirs(PLOTS_PATH, exist_ok=True)
-    filters = sorted(gpu_df["FILTER"].unique())
+    filters = sorted(gpu_df["Filter"].unique())
     if not filters:
         print(
-            "No GPU data found (BLOCK_SIZE in 4,8,16,32,64,128). Skip time vs block size."
+            "No GPU data found (BlockSize in 4,8,16,32,64,128). Skip time vs block size."
         )
         return
 
     fig, ax = plt.subplots(figsize=(12, 7), dpi=150)
-    block_order = sorted(gpu_df["BLOCK_SIZE"].unique(), key=int)
+    block_order = sorted(gpu_df["BlockSize"].unique(), key=int)
 
     for f in filters:
-        sub = gpu_df[gpu_df["FILTER"] == f].groupby("BLOCK_SIZE")["TIME"]
+        sub = gpu_df[gpu_df["Filter"] == f].groupby("BlockSize")["Result"]
         means = sub.mean().reindex(block_order)
         errs = sub.apply(confidence_interval_half).reindex(block_order)
         means = means.fillna(0)
@@ -95,7 +100,7 @@ def plot_time_vs_block_size(gpu_df):
             label=label,
         )
 
-    ax.set_xlabel("Work group size)")
+    ax.set_xlabel("Work group size")
     ax.set_ylabel("Execution time (s)")
     ax.set_title("GPU: execution time vs block size (OpenCL work group)")
     ax.set_xticks(block_order)
@@ -113,7 +118,7 @@ def plot_mean_time_per_filter(gpu_df):
     if gpu_df.empty:
         return
     os.makedirs(PLOTS_PATH, exist_ok=True)
-    by_filter = gpu_df.groupby("FILTER")["TIME"]
+    by_filter = gpu_df.groupby("Filter")["Result"]
     means = by_filter.mean()
     errs = by_filter.apply(confidence_interval_half)
     labels = [FILTER_DISPLAY_NAMES.get(f, f) for f in means.index]
@@ -139,11 +144,11 @@ def plot_per_filter_block_bars(gpu_df):
     os.makedirs(PLOTS_PATH, exist_ok=True)
     subdir = os.path.join(PLOTS_PATH, "per_filter")
     os.makedirs(subdir, exist_ok=True)
-    block_order = sorted(gpu_df["BLOCK_SIZE"].unique(), key=int)
+    block_order = sorted(gpu_df["BlockSize"].unique(), key=int)
 
-    for f in gpu_df["FILTER"].unique():
-        sub = gpu_df[gpu_df["FILTER"] == f]
-        by_block = sub.groupby("BLOCK_SIZE")["TIME"]
+    for f in gpu_df["Filter"].unique():
+        sub = gpu_df[gpu_df["Filter"] == f]
+        by_block = sub.groupby("BlockSize")["Result"]
         means = by_block.mean().reindex(block_order).fillna(0)
         errs = by_block.apply(confidence_interval_half).reindex(block_order).fillna(0)
 

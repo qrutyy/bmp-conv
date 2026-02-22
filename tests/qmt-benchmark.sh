@@ -22,6 +22,7 @@ if [[ ! -x "$BIN" ]]; then
 fi
 
 clean_plot_dir() {
+	mkdir -p "$PLOTS_PATH/q-mode"
 	rm -rf "$PLOTS_PATH"/q-mode/*.png
 }
 
@@ -32,10 +33,11 @@ done
 
 clean_plot_dir
 cd "$BD" || exit 1
+mkdir -p "$SD/logs"
 
 for mode in "${MODES[@]}"; do
 	for mix in "${QTHREADSMIX[@]}"; do
-		rm -f "$SD/queue-timings.dat"
+		rm -f "$SD/logs/cpu-queue-timings.dat"
 		for i in $(seq 1 "$RUN_NUM"); do
 			"$BIN" -queue-mode "${INPUT_FILES[@]}" --mode="$mode" --filter=gg --block=15 --rww="$mix" --log=1
 		done

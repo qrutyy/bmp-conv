@@ -3,8 +3,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
-RESULTS_FILE = "tests/timing-results.dat"
-PLOTS_PATH = "./tests/plots/"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_FILE = os.path.join(SCRIPT_DIR, "logs", "cpu-timing-results.dat")
+PLOTS_PATH = os.path.join(SCRIPT_DIR, "plots")
+
+# Unified log columns: RunID ProcessNum Backend Mode Filter ThreadNum ComputeMode BlockSize Result
+COLUMNS = ["RunID", "ProcessNum", "Backend", "Mode", "Filter", "ThreadNum", "ComputeMode", "BlockSize", "Result"]
 
 plt.rcParams.update(
     {
@@ -18,10 +22,11 @@ plt.rcParams.update(
 df = pd.read_csv(
     RESULTS_FILE,
     sep=r"\s+",
-    names=["RunID", "FILTER", "THREADNUM", "MODE", "BLOCK_SIZE", "TIME"],
+    skiprows=1,
+    names=COLUMNS,
 )
-df["TIME"] = pd.to_numeric(df["TIME"], errors="coerce")
-df["BLOCK_SIZE"] = pd.to_numeric(df["BLOCK_SIZE"], errors="coerce")
+df["Result"] = pd.to_numeric(df["Result"], errors="coerce")
+df["BlockSize"] = pd.to_numeric(df["BlockSize"], errors="coerce")
 df = df.dropna()
 
 allowed_pairs = {
@@ -40,11 +45,11 @@ def process_filter_pairs(df):
     pair_order = {}
 
     for i in range(len(df) - 1):
-        f1, f2 = df.iloc[i]["FILTER"], df.iloc[i + 1]["FILTER"]
+        f1, f2 = df.iloc[i]["Filter"], df.iloc[i + 1]["Filter"]
 
         if (f1, f2) in allowed_pairs:
             filter_pair = f"{f1}-{f2}"
-            total_time = df.iloc[i]["TIME"] + df.iloc[i + 1]["TIME"]
+            total_time = df.iloc[i]["Result"] + df.iloc[i + 1]["Result"]
 
             if filter_pair not in pair_order:
                 pair_order[filter_pair] = len(pair_order)
