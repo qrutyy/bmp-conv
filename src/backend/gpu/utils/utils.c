@@ -18,7 +18,10 @@ char* read_kernel_source(const char* filename) {
     fseek(f, 0, SEEK_SET);
     char* source = malloc(len + 1);
     if (source) {
-        fread(source, 1, len, f);
+        size_t read_len = fread(source, 1, len, f);
+        if (read_len != (size_t)len) {
+            log_warn("Warning: fread read less bytes than expected");
+        }
         source[len] = '\0';
     }
     fclose(f);

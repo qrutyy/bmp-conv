@@ -26,3 +26,15 @@ It is recommended to use a virtual environment to manage Python dependencies.
     ```bash
     pip install -r requirements-dev.txt
     ```
+
+#### Optional:
+
+1. If you are using **convert** for file generation - set the upper limit of the disk usage:
+    ```xml
+    <policy domain="resource" name="disk" value="8GiB"/>
+    ```
+    and 
+    ```xml
+    <policy domain="resource" name="width" value="128KP"/>
+    <policy domain="resource" name="height" value="128KP"/>
+    ```

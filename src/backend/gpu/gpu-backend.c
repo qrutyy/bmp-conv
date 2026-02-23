@@ -13,12 +13,12 @@
 int gpu_verify_args(struct p_args *args)
 {
 	if (!args->compute_cfg.filter_type || args->compute_cfg.block_size == 0) {
-		log_error("Error: Missing required arguments: --filter and --block must be set.\n");
+		log_error("Error: Missing required arguments: --filter and --block must be set.");
 		return -1;
 	}
 
 	if (args->compute_cfg.compute_mode < 1) {
-		log_warn("Warn: --mode is required for gpu backend mode, setting BY_ROW.\n");
+		log_warn("Warn: --mode is required for gpu backend mode, setting BY_ROW.");
 		args->compute_cfg.compute_mode = CONV_COMPUTE_BY_ROW;
 	}
 	/*
@@ -28,7 +28,7 @@ int gpu_verify_args(struct p_args *args)
 	}
 	*/
 	if (args->compute_cfg.queue == CONV_QUEUE_ENABLED) {
-		log_error("Error: Queued mode isn't supported\n");
+		log_error("Error: Queued mode isn't supported");
 		return -1;
 	}
 

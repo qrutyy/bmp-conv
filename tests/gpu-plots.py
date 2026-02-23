@@ -129,8 +129,8 @@ def plot_mean_time_per_filter(gpu_df):
         return
     os.makedirs(PLOTS_PATH, exist_ok=True)
     by_filter = gpu_df.groupby("Filter")["Result"]
-    means = by_filter.mean()
-    errs = by_filter.apply(confidence_interval_half)
+    means = by_filter.mean().sort_values()
+    errs = by_filter.apply(confidence_interval_half).reindex(means.index)
     labels = [FILTER_DISPLAY_NAMES.get(f, f) for f in means.index]
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=150)

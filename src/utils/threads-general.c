@@ -352,14 +352,14 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 		}
 	}
 
-	log_debug("Result image is written by filepath: %s\n", output_filepath);
-
 	if (!img_result->img_pixels)
 		log_error("Pointer to images pixel array is NULL");
 
 	status = bmp_img_write(img_result, output_filepath);
+	if (status)
+		log_debug("bmp_img_write status:%d", status);
 
-	log_debug("bmp_img_write status %d", status);
+	log_debug("Result image is written by filepath: %s", output_filepath);
 }
 
 void free_img_spec(struct img_spec *img_data)
