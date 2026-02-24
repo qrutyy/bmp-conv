@@ -310,7 +310,7 @@ char *args_get_filename_list_str(struct p_args *args) {
 		size_t len = strlen(args->files_cfg.input_filename[i]);
 		if (used + len + 2 >= cap)
 			break;
-
+		strcat(tmp_buf, "test-img/");
 		strcat(tmp_buf, args->files_cfg.input_filename[i]);
 		strcat(tmp_buf, " ");
 		used += len + 1;
@@ -334,6 +334,9 @@ char *args_get_optional_modes_list_str(struct p_args *args) {
 
 	if (args->compute_cfg.mpi == CONV_MPI_ENABLED)
 		strcat(tmp_buf, "mpi-based");
+
+	if (args->compute_cfg.mpi == CONV_MPI_DISABLED && args->compute_cfg.queue == CONV_QUEUE_DISABLED)
+		strcat(tmp_buf, "None");
 
 	return tmp_buf;
 }
