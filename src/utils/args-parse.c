@@ -195,6 +195,8 @@ void initialize_args(struct p_args *args_ptr)
 	args_ptr->compute_cfg.compute_mode = CONV_COMPUTE_INIT;
 	args_ptr->log_enabled = 0;
 	args_ptr->compute_cfg.backend = CONV_BACKEND_CPU;
+	args_ptr->compute_cfg.queue = 0; 
+	args_ptr->compute_cfg.mpi = 0;
 	args_ptr->compute_ctx.threadnum = 1; // Default to single thread
 	args_ptr->compute_ctx.qm.threads_cfg.writer_cnt = 0;
 	args_ptr->compute_ctx.qm.threads_cfg.reader_cnt = 0;
@@ -290,4 +292,51 @@ int parse_args(int argc, char *argv[], struct p_args *args)
 	}
 
 	return 1;
+}
+
+char *args_get_filename_list_str(struct p_args *args) {
+	char *tmp_buf;
+	int i;
+	size_t used = 0;
+	size_t cap = 100;
+
+	tmp_buf = calloc(100, sizeof(char));
+	if (!tmp_buf) {
+		log_error("Failed to allocate mem\n");
+		return NULL;
+	}
+
+	for (i = 0; i < args->files_cfg.file_cnt; i++) {
+		size_t len = strlen(args->files_cfg.input_filename[i]);
+		if (used + len + 2 >= cap)
+			break;
+		strcat(tmp_buf, "test-img/");
+		strcat(tmp_buf, args->files_cfg.input_filename[i]);
+		strcat(tmp_buf, " ");
+		used += len + 1;
+	}
+
+	return tmp_buf;
+}
+
+/* TODO: fix separators placement */
+char *args_get_optional_modes_list_str(struct p_args *args) {
+	char *tmp_buf;
+
+	tmp_buf = calloc(100, sizeof(char));
+	if (!tmp_buf) {
+		log_error("Failed to allocate mem\n");
+		return NULL;
+	}
+
+	if (args->compute_cfg.queue == CONV_QUEUE_ENABLED)
+		strcat(tmp_buf, "queued");
+
+	if (args->compute_cfg.mpi == CONV_MPI_ENABLED)
+		strcat(tmp_buf, "mpi-based");
+
+	if (args->compute_cfg.mpi == CONV_MPI_DISABLED && args->compute_cfg.queue == CONV_QUEUE_DISABLED)
+		strcat(tmp_buf, "None");
+
+	return tmp_buf;
 }

@@ -48,7 +48,7 @@ struct compute_backend_ops {
 	 *
 	 * @return Constant string with backend name.
 	 */
-	const char *(*get_name)(void);
+	char *(*get_name)(void);
 
 	/**
 	 * Returns the rank that should perform logging (e.g. MPI rank 0 only).

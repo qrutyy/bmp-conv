@@ -32,7 +32,6 @@ bmp_img *setup_input_file(struct p_args *args)
 
 	if (bmp_img_read(img, input_filepath) != 0) {
 		log_error("Error: Could not read BMP image '%s'\n", input_filepath);
-		bmp_img_free(img);
 		free(img);
 		return NULL;
 	}
@@ -334,7 +333,7 @@ struct filter* get_filter_by_name(struct filter_mix *filters, const char* name) 
     return NULL;
 }
 
-void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, const struct p_args *args)
+void save_result_image(char *output_filepath, size_t path_len, int threadnum, bmp_img *img_result, struct p_args *args)
 {
 	int8_t status = 0;
 
@@ -350,6 +349,18 @@ void save_result_image(char *output_filepath, size_t path_len, int threadnum, bm
 		} else if (threadnum == 1) {
 			snprintf(output_filepath, path_len, "test-img/seq_out_%s", args->files_cfg.input_filename[0]);
 		}
+	}
+
+	if (strcmp(args->files_cfg.output_filename, "") != 0) {
+		log_info("setting output file_name as %s", output_filepath);
+		args->files_cfg.output_filename = strdup(output_filepath);
+	}
+
+	log_info("output file_name as %s", output_filepath);
+
+	// Update the args structure with the generated filename so the CLI can display it
+	if (args->files_cfg.output_filename == NULL || strcmp(args->files_cfg.output_filename, "") == 0) {
+		args->files_cfg.output_filename = strdup(output_filepath);
 	}
 
 	if (!img_result->img_pixels)
