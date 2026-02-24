@@ -40,6 +40,23 @@ const double box_blur_arr[15][15] = {
 	{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
 };
 
+const char* filter_get_name(const char *filter_type) {
+    if (filter_type == NULL) return "Unknown";
+
+    if (strcmp(filter_type, "mb") == 0) return "Motion Blur";
+    if (strcmp(filter_type, "bb") == 0) return "Blur";
+    if (strcmp(filter_type, "gb") == 0) return "Gaussian Blur";
+    if (strcmp(filter_type, "co") == 0) return "Convolution";
+    if (strcmp(filter_type, "sh") == 0) return "Sharpen";
+    if (strcmp(filter_type, "em") == 0) return "Emboss";
+    if (strcmp(filter_type, "mm") == 0) return "Median Filter";
+    if (strcmp(filter_type, "gg") == 0) return "Large Gaussian Blur"; // big_gaus
+    if (strcmp(filter_type, "bo") == 0) return "Box Blur";
+    if (strcmp(filter_type, "mg") == 0) return "Medium Gaussian Blur"; // med_gaus
+
+    return "Unknown Filter";
+}
+
 /**
  * Allocates memory for a filter structure and its associated kernel matrix, then copies the provided kernel data, bias, and factor into the structure. Exits fatally if memory allocation fails.
  *
@@ -135,3 +152,5 @@ void free_filters(struct filter_mix *filters)
 	filters->med_gaus = NULL;
 	filters->box_blur = NULL;
 }
+
+

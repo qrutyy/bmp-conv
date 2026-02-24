@@ -154,3 +154,7 @@ int parse_normal_mode_args(int argc, char *argv[], struct p_args *args);
  * -1 on any parsing or validation error.
  */
 int parse_args(int argc, char *argv[], struct p_args *args);
+
+char *args_get_filename_list_str(struct p_args *args);
+
+char *args_get_optional_modes_list_str(struct p_args *args);

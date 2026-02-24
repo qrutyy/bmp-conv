@@ -21,6 +21,8 @@ struct filter_mix {
 	struct filter *box_blur;
 };
 
+const char* filter_get_name(const char *filter_type);
+
 /**
  * Initializes all predefined filter types within the filter_mix structure by calling init_filter for each one with its corresponding kernel matrix and parameters.
  *
