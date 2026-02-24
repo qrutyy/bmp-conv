@@ -5,6 +5,8 @@
 #include "utils/utils.h"
 #include "utils/args-parse.h"
 #include "utils/filters.h"
+#include "utils/cli.h"
+#include "utils/modes.h"
 #include "backend/compute-backend.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -29,8 +31,8 @@ int main(int argc, char *argv[])
 	struct filter_mix *filters = NULL;
 	int rc = 0;
 
-	log_set_quiet(true); // set false for default usage, true - for benchmarking.
-	log_set_level(LOG_TRACE);
+	log_set_quiet(!DEBUG_MODE_IS_ON);
+	log_set_level(DEBUG_MODE_IS_ON ? LOG_TRACE : LOG_ERROR);
 
 	args = malloc(sizeof(struct p_args));
 	if (!args) {
@@ -58,7 +60,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	cli_st_display_init(args, backend);
+
 	result_time = compute_backend_run(backend);
+
+	cli_st_display_finish(result_time);
 
 	if (result_time > 0) {
 		/* TODO: make it more accurate */

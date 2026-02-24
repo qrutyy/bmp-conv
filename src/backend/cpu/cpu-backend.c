@@ -73,34 +73,39 @@ static int cpu_init(struct compute_backend *backend, struct p_args *args)
 	}
 
 #ifdef USE_MPI
-	/*
-	 * Pass argc/argv so the process manager (e.g. Hydra over SSH) can pass
-	 * bootstrap info; required for multi-node runs where env may not be forwarded.
-	 */
-	if (backend->init_argc && backend->init_argv)
-		MPI_Init(backend->init_argc, backend->init_argv);
-	else
-		MPI_Init(NULL, NULL);
+	if (backend->args->compute_cfg.mpi == CONV_MPI_ENABLED) {
+		/*
+		 * Pass argc/argv so the process manager (e.g. Hydra over SSH) can pass
+		 * bootstrap info; required for multi-node runs where env may not be forwarded.
+		 */
+		if (backend->init_argc && backend->init_argv)
+			MPI_Init(backend->init_argc, backend->init_argv);
+		else
+			MPI_Init(NULL, NULL);
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &data->mpi_mode.rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &data->mpi_mode.size);
+		MPI_Comm_rank(MPI_COMM_WORLD, &data->mpi_mode.rank);
+		MPI_Comm_size(MPI_COMM_WORLD, &data->mpi_mode.size);
 
-	log_info("MPI Initialized. Rank: %d, Size: %d", data->mpi_mode.rank, data->mpi_mode.size);
-#else
-	// Determine thread count based on arguments
-	if (args->compute_ctx.threadnum > 0) {
-		data->thread_count = args->compute_ctx.threadnum;
-	} else {
-		data->thread_count = 1;
+		log_info("MPI Initialized. Rank: %d, Size: %d", data->mpi_mode.rank, data->mpi_mode.size);
 	}
 #endif
 
+	if (backend->args->compute_cfg.mpi != CONV_MPI_ENABLED) {
+		// Determine thread count based on arguments
+		if (args->compute_ctx.threadnum > 0) {
+			data->thread_count = args->compute_ctx.threadnum;
+		} else {
+			data->thread_count = 1;
+		}
+		log_info("Set data->thread_count to the %d", data->thread_count);
+	}
+
 	backend->backend_data = data;
-#ifdef USE_MPI
-	log_debug("CPU Backend: Initialized (MPI rank %d, size %d)\n", data->mpi_mode.rank, data->mpi_mode.size);
-#else
-	log_debug("CPU Backend: Initialized with %d threads\n", data->thread_count);
-#endif
+	if (backend->args->compute_cfg.mpi == CONV_MPI_ENABLED)
+		log_debug("CPU Backend: Initialized (MPI rank %d, size %d)\n", data->mpi_mode.rank, data->mpi_mode.size);
+	else
+		log_debug("CPU Backend: Initialized with %d threads\n", data->thread_count);
+
 	return 0;
 }
 
@@ -109,14 +114,15 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 	struct p_args *args = backend->args;
 	struct filter_mix *filters = backend->filters;
 	union cpu_backend_data *data = (union cpu_backend_data *)backend->backend_data;
-#ifdef USE_MPI
-	int threadnum = (data->mpi_mode.size > 1) ? 1 : (args->compute_ctx.threadnum > 0 ? args->compute_ctx.threadnum : 1);
-#else
-	int threadnum = data->thread_count;
-#endif
+	int threadnum ;
 	struct img_spec *img_spec = NULL;
 	char output_filepath[256];
 	double result_time = 0;
+
+	if (backend->args->compute_cfg.mpi == CONV_MPI_ENABLED)
+		threadnum = (data->mpi_mode.size > 1) ? 1 : (args->compute_ctx.threadnum > 0 ? args->compute_ctx.threadnum : 1);
+	else
+		threadnum = data->thread_count;
 
 	assert(threadnum > 0);
 
@@ -124,14 +130,12 @@ static double cpu_process_non_queue_mode(struct compute_backend *backend)
 	if (!img_spec)
 		goto cleanup;
 
-#ifdef USE_MPI
 	if (args->compute_cfg.mpi == CONV_MPI_ENABLED && data->mpi_mode.size > 1) {
 		log_info("Executing MPI CPU computation...");
 		result_time = execute_mpi_computation(data->mpi_mode.size, data->mpi_mode.rank, backend->args, backend->filters);
 		if (result_time > 0)
 			goto cleanup; /* MPI path saves result and manages its own resources */
 	}
-#endif
 
 	if (threadnum > 1) {
 		log_info("Executing multi-threaded computation (%d threads)...", threadnum);
@@ -216,7 +220,8 @@ static void cpu_cleanup(struct compute_backend *backend)
 		backend->backend_data = NULL;
 	}
 #ifdef USE_MPI
-	MPI_Finalize();
+	if (backend->args->compute_cfg.mpi == CONV_MPI_ENABLED)
+		MPI_Finalize();
 #endif
 }
 
