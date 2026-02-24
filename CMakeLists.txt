@@ -5,11 +5,16 @@ project(bmp-conv C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_compile_options(-Wall -Wpedantic -Wextra -O3)
+add_compile_options(-Wall -Wpedantic -Wextra)
+add_compile_options(
+    "$<$<CONFIG:Debug>:-O0;-g3;-ggdb>"
+    "$<$<CONFIG:Release>:-O3>"
+)
 add_compile_definitions(
     LOG_USE_COLOR
-    NDEBUG
     _POSIX_C_SOURCE=200809L
+    "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>"
+	"$<$<CONFIG:Debug>:DEBUG_MODE>"
 )
 
 include_directories(. src)
@@ -27,6 +32,7 @@ set(SRCS_COMMON
 	src/utils/filters.c
 	src/utils/threads-general.c
 	src/utils/utils.c
+	src/utils/cli.c
 	src/backend/compute-backend.c
 	src/backend/cpu/cpu-backend.c
 	src/backend/cpu/st/st-exec.c
