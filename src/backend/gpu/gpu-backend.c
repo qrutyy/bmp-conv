@@ -131,9 +131,9 @@ static enum conv_backend gpu_get_type(void)
 	return CONV_BACKEND_GPU;
 }
 
-static const char *gpu_get_name(void)
+static char *gpu_get_name(void)
 {
-	return "gpu";
+	return "GPU";
 }
 
 static int gpu_get_logging_rank(struct compute_backend *backend)

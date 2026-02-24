@@ -225,7 +225,7 @@ static enum conv_backend cpu_get_type(void)
 	return CONV_BACKEND_CPU;
 }
 
-static const char *cpu_get_name(void)
+static char *cpu_get_name(void)
 {
 	return "CPU";
 }
